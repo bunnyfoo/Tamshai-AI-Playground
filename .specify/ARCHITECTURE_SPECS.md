@@ -664,6 +664,71 @@ final result = await appAuth.authorizeAndExchangeCode(
 
 ---
 
+#### 010-security-compliance: Security Compliance & Governance
+**Status**: IMPLEMENTED ✓
+**Feature Branch**: `main`
+**Constitutional Compliance**: Articles I (all), II.3
+
+**Business Intent**:
+Establish comprehensive security governance including GDPR compliance, SOC 2 controls, GitHub security best practices, threat modeling, and secrets management.
+
+**Key Components**:
+
+| Component | Status | Description |
+|-----------|--------|-------------|
+| **GDPR Compliance** | ✅ Defined | SAR workflow, retention policies, lawful basis documentation |
+| **SOC 2 Controls** | ✅ Mapped | Trust service criteria, control matrix |
+| **GitHub Security** | ✅ Implemented | SHA pinning, CODEOWNERS, Dependabot, branch protection |
+| **Threat Model** | ✅ Documented | STRIDE analysis, AI-specific threats |
+| **Secrets Management** | ✅ Implemented | Env var substitution, realm separation |
+| **Incident Response** | ✅ Documented | Runbook, severity classification |
+
+**Security Improvements Implemented**:
+- GitHub Actions pinned to SHA (13 actions)
+- JWT audience validation enabled
+- Application-level rate limiting (60/min general, 10/min AI)
+- TOTP upgraded to SHA-256
+- Strict security headers (CSP, HSTS)
+- Keycloak startup validation
+- Separate dev/prod realm exports
+
+**Location**: `.specify/specs/010-security-compliance/`
+
+---
+
+#### 011-qa-testing: QA Testing Requirements
+**Status**: IMPLEMENTED ✓
+**Feature Branch**: `main`
+**Constitutional Compliance**: Article III.1
+
+**Business Intent**:
+Establish comprehensive automated testing at all levels (unit, integration, E2E, performance, security) to maintain code quality and catch regressions.
+
+**Testing Pyramid**:
+
+| Level | Framework | Coverage | Status |
+|-------|-----------|----------|--------|
+| **Unit Tests** | Jest | 70%+ | ✅ |
+| **Integration Tests** | Jest | RBAC covered | ✅ |
+| **E2E Tests** | Cypress | Partial | ⚡ |
+| **Security Tests** | npm audit, tfsec, CodeQL | Active | ✅ |
+| **Performance Tests** | k6 | Scripts ready | ✅ |
+
+**CI/CD Integration**:
+- All tests run in GitHub Actions pipeline
+- Coverage uploaded to Codecov
+- Security scans block on failure
+- Performance tests as optional check
+
+**Key Test Files**:
+- `services/mcp-gateway/src/__tests__/` - Unit tests
+- `tests/integration/rbac.test.ts` - RBAC integration tests
+- `tests/performance/` - k6 load tests
+
+**Location**: `.specify/specs/011-qa-testing/`
+
+---
+
 ## Specification File Structure
 
 Each specification follows this structure:
@@ -721,10 +786,12 @@ Each specification follows this structure:
 | 002-security-layer | ✅ I.1, I.2, I.3 | N/A | ✅ III.1 | ✅ IV.1 | N/A | ⚡ In Progress |
 | 003-mcp-core | ✅ I.2 | ✅ II.1, II.2, II.3 | ✅ III.1 | ✅ IV.1, IV.2 | N/A | ⚡ Current |
 | 004-mcp-suite | ✅ I.1, I.3 | ✅ II.1, II.2, II.3 | ✅ III.1, III.2 | ✅ IV.1, IV.2 | N/A | ⚡ In Progress |
-| 005-sample-apps | ✅ I.4 | N/A | N/A | ✅ IV.1 | ✅ **V.1, V.2, V.3** | 🔲 Planned |
+| 005-sample-apps | ✅ I.4 | N/A | N/A | ✅ IV.1 | ✅ **V.1, V.2, V.3** | ⚡ In Progress |
 | 006-ai-desktop | ~~I.4~~ | N/A | N/A | N/A | ~~V.1, V.2, V.3~~ | ❌ Deprecated |
 | 007-mobile | ~~I.4~~ | N/A | N/A | N/A | ~~V.1, V.2, V.3~~ | ❌ Deprecated |
 | **009-flutter-unified** | ✅ I.4 | N/A | N/A | N/A | ✅ **V.1, V.2, V.3** | ✅ Implemented |
+| **010-security-compliance** | ✅ I.1, I.2, I.3, I.4 | ✅ II.3 | N/A | N/A | N/A | ✅ Implemented |
+| **011-qa-testing** | N/A | N/A | ✅ III.1 | ✅ IV.1 | N/A | ✅ Implemented |
 
 **Legend**:
 - ✅ = Compliance required and documented
@@ -774,7 +841,15 @@ tamshai-enterprise-ai/
 │   │   │   ├── spec.md
 │   │   │   ├── plan.md
 │   │   │   └── tasks.md
-│   │   └── 009-flutter-unified/  [✓ IMPLEMENTED]
+│   │   ├── 009-flutter-unified/  [✓ IMPLEMENTED]
+│   │   │   ├── spec.md
+│   │   │   ├── plan.md
+│   │   │   └── tasks.md
+│   │   ├── 010-security-compliance/  [✓ IMPLEMENTED]
+│   │   │   ├── spec.md
+│   │   │   ├── plan.md
+│   │   │   └── tasks.md
+│   │   └── 011-qa-testing/  [✓ IMPLEMENTED]
 │   │       ├── spec.md
 │   │       ├── plan.md
 │   │       └── tasks.md
@@ -915,21 +990,29 @@ This approach avoids platform-specific protocol handler issues while maintaining
 ## Next Actions
 
 ### Completed
-1. ✅ Formalize all specifications (001-009)
+1. ✅ Formalize all specifications (001-011)
 2. ✅ Flutter Windows desktop client implemented (009-flutter-unified)
 3. ✅ OAuth login with PKCE and Keycloak integration
 4. ✅ SSE streaming chat interface with v1.4 features
 5. ✅ Integration tests for query scenarios
+6. ✅ Security compliance framework (010-security-compliance)
+7. ✅ QA testing requirements (011-qa-testing)
+8. ✅ GitHub Actions SHA pinning (supply chain security)
+9. ✅ Application-level rate limiting
+10. ✅ JWT audience validation
+11. ✅ Incident response runbook
 
 ### Current Sprint
-6. ⚡ Complete MCP Gateway token revocation (003-mcp-core)
-7. ⚡ Implement remaining RLS policies (002-security-layer)
-8. ⚡ MCP Suite servers refinement (004-mcp-suite)
+12. ⚡ Complete MCP Gateway token revocation (003-mcp-core)
+13. ⚡ Implement remaining RLS policies (002-security-layer)
+14. ⚡ MCP Suite servers refinement (004-mcp-suite)
+15. ⚡ GDPR SAR implementation in HR App (005-sample-apps)
 
 ### Next Sprint
-9. 🔲 Flutter macOS build and test (009-flutter-unified)
-10. 🔲 Flutter iOS/Android builds (009-flutter-unified)
-11. 🔲 Begin Sample Web Apps with Article V compliance (005-sample-apps)
+16. 🔲 Flutter macOS build and test (009-flutter-unified)
+17. 🔲 Flutter iOS/Android builds (009-flutter-unified)
+18. 🔲 Complete Finance/Sales/Support apps (005-sample-apps)
+19. 🔲 Performance baseline establishment
 
 ### Deprecated (Reference Only)
 - ~~006-ai-desktop (Electron)~~ - See ADR-004

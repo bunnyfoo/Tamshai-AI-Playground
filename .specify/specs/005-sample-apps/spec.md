@@ -834,7 +834,165 @@ export const CloseTicketButton: React.FC<{ ticketId: string }> = ({ ticketId }) 
 
 ---
 
-## 13. Constitution Compliance
+## 13. GDPR Subject Access Rights (SAR) - HR App
+
+### 13.1 Overview
+
+The HR App must support GDPR Subject Access Requests (Article 15), enabling employees to request a copy of all personal data held about them.
+
+**Regulatory Context:**
+- GDPR Article 15: Right of Access
+- Response deadline: 30 days (extendable to 60 for complex requests)
+- Format: Machine-readable (JSON/CSV)
+
+### 13.2 SAR Workflow for HR Representatives
+
+**User Story:** As an HR Representative, I need to extract all employee data for a subject access request, so that the organization can comply with GDPR Article 15.
+
+**Scenario - SAR Processing:**
+- HR Rep receives SAR via email/ticket
+- HR Rep logs into HR App with `hr-write` role
+- HR Rep navigates to Employee Profile → Actions → "Generate SAR Export"
+- System aggregates data from all sources
+- HR Rep reviews data for legal privilege exceptions
+- HR Rep downloads sanitized export
+- HR Rep sends to employee within 30 days
+
+### 13.3 SAR Export Feature Specification
+
+**Page Location:** `/employees/:id/sar-export`
+
+**Required Role:** `hr-write` or `executive`
+
+**UI Components:**
+
+```typescript
+// apps/hr/src/pages/SARExport.tsx
+
+interface SARExportProps {
+  employeeId: string;
+}
+
+export const SARExport: React.FC<SARExportProps> = ({ employeeId }) => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['sar-export', employeeId],
+    queryFn: () => fetchSARExport(employeeId)
+  });
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Subject Access Request Export</h1>
+
+      <WarningBanner>
+        This export contains personal data protected by GDPR.
+        Review for legal privilege before releasing to data subject.
+      </WarningBanner>
+
+      <DataCategoryAccordion title="Profile Data" data={data?.profile} />
+      <DataCategoryAccordion title="Employment History" data={data?.employment} />
+      <DataCategoryAccordion title="Performance Reviews" data={data?.reviews} />
+      <DataCategoryAccordion title="Access Logs (90 days)" data={data?.accessLogs} />
+      <DataCategoryAccordion title="AI Query History" data={data?.aiQueries} />
+
+      <RetentionSchedule retention={data?.retention} />
+
+      <div className="flex gap-4 mt-6">
+        <button onClick={() => downloadJSON(data)}>Download JSON</button>
+        <button onClick={() => downloadCSV(data)}>Download CSV</button>
+      </div>
+
+      <AuditNotice>
+        This action will be logged for compliance purposes.
+      </AuditNotice>
+    </div>
+  );
+};
+```
+
+### 13.4 SAR Data Categories
+
+| Category | Source | Retention | Notes |
+|----------|--------|-----------|-------|
+| **Profile** | HR Database | Employment + legal | Name, email, department, title |
+| **Compensation** | Finance | 7 years (tax law) | Salary history, benefits |
+| **Performance** | HR Database | Employment + 3 years | Reviews, goals, feedback |
+| **Access Logs** | Audit System | 90 days | Login times, resources accessed |
+| **AI Queries** | MCP Gateway | 1 year | Queries made by employee |
+| **Training** | HR Database | Employment + 5 years | Certifications, courses |
+
+### 13.5 Exclusions and Redactions
+
+HR Representatives must review exports for:
+- Legal privilege (pending litigation)
+- Third-party data (other employees mentioned in reviews)
+- Trade secrets
+- National security (if applicable)
+
+**Redaction UI:**
+```typescript
+// Allow HR Rep to redact specific fields before export
+<RedactableField
+  field="managerComments"
+  value={review.managerComments}
+  onRedact={(reason) => addRedaction(field, reason)}
+/>
+```
+
+### 13.6 API Integration
+
+**Endpoint:** `GET /api/gdpr/export?employeeId={id}`
+
+**Backend Implementation (MCP Gateway):**
+```typescript
+app.get('/api/gdpr/export', authMiddleware, async (req, res) => {
+  const { employeeId } = req.query;
+  const userRoles = req.userContext.roles;
+
+  // Verify HR write access
+  if (!userRoles.includes('hr-write') && !userRoles.includes('executive')) {
+    return res.status(403).json({
+      error: 'SAR exports require hr-write or executive role'
+    });
+  }
+
+  // Aggregate data from all MCP servers
+  const [profile, employment, reviews, accessLogs, aiQueries] = await Promise.all([
+    mcpHR.getEmployee(employeeId),
+    mcpHR.getEmploymentHistory(employeeId),
+    mcpHR.getPerformanceReviews(employeeId),
+    getAuditLogs(employeeId, { days: 90 }),
+    getAIQueryHistory(employeeId)
+  ]);
+
+  // Log SAR access for compliance
+  logger.info('SAR Export Generated', {
+    requestedBy: req.userContext.userId,
+    subjectId: employeeId,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({
+    subject: { id: employeeId, ...profile },
+    requestDate: new Date().toISOString(),
+    data: { profile, employment, reviews, accessLogs, aiQueries },
+    retention: HR_RETENTION_SCHEDULE
+  });
+});
+```
+
+### 13.7 Success Criteria
+
+- [ ] HR App includes SAR Export page at `/employees/:id/sar-export`
+- [ ] Export aggregates data from HR, Finance, and Audit sources
+- [ ] Redaction UI allows HR Rep to exclude privileged content
+- [ ] Export available in JSON and CSV formats
+- [ ] Action logged for compliance audit
+- [ ] Role check enforces `hr-write` or `executive` access
+- [ ] UI displays retention schedule for each data category
+
+---
+
+## 14. Constitution Compliance
 * **Article V.1:** No authorization logic in client - All data filtering happens at MCP/API layer
 * **Article V.2:** Tokens stored in memory only (not localStorage)
 * **Article V.3:** OIDC with PKCE flow (no implicit flow)
