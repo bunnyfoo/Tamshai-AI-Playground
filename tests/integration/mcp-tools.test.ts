@@ -30,43 +30,43 @@ const CONFIG = {
 const TEST_USERS = {
   hrUser: {
     username: 'alice.chen',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: ['hr-read', 'hr-write'],
     userId: 'f104eddc-21ab-457c-a254-78051ad7ad67', // Alice Chen's UUID from sample data
   },
   financeUser: {
     username: 'bob.martinez',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: ['finance-read', 'finance-write'],
     userId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', // Bob Martinez's UUID
   },
   salesUser: {
     username: 'carol.johnson',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: ['sales-read', 'sales-write'],
     userId: 'c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c', // Carol Johnson's UUID
   },
   supportUser: {
     username: 'dan.williams',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: ['support-read', 'support-write'],
     userId: 'd7f8e9c0-2a3b-4c5d-9e1f-8a7b6c5d4e3f', // Dan Williams's UUID
   },
   executive: {
     username: 'eve.thompson',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: ['executive'],
     userId: 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b', // Eve Thompson's UUID
   },
   manager: {
     username: 'nina.patel',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: ['manager'],
     userId: 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d', // Nina Patel's UUID
   },
   intern: {
     username: 'frank.davis',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     roles: [],
     userId: 'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e', // Frank Davis's UUID
   },

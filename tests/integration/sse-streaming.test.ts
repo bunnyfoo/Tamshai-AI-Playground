@@ -27,9 +27,9 @@ const CONFIG = {
 
 // Test users
 const TEST_USERS = {
-  executive: { username: 'eve.thompson', password: '[REDACTED-DEV-PASSWORD]' },
-  hrUser: { username: 'alice.chen', password: '[REDACTED-DEV-PASSWORD]' },
-  intern: { username: 'frank.davis', password: '[REDACTED-DEV-PASSWORD]' },
+  executive: { username: 'eve.thompson', password: 'password123' },
+  hrUser: { username: 'alice.chen', password: 'password123' },
+  intern: { username: 'frank.davis', password: 'password123' },
 };
 
 interface TokenResponse {

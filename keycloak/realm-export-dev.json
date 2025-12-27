@@ -176,7 +176,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -207,7 +207,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -238,7 +238,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -268,7 +268,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -299,7 +299,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -329,7 +329,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -359,7 +359,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -389,7 +389,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -419,7 +419,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "[REDACTED-DEV-PASSWORD]",
+          "value": "password123",
           "temporary": false
         }
       ],
@@ -503,7 +503,7 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
       "protocol": "openid-connect",
-      "secret": "[REDACTED-DEV-SECRET]",
+      "secret": "mcp-gateway-secret",
       "defaultClientScopes": [
         "openid",
         "profile",

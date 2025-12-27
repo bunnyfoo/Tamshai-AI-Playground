@@ -46,7 +46,7 @@ const CONFIG = {
 const TEST_USERS = {
   executive: {
     username: 'eve.thompson',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     email: 'eve@tamshai.local',
     roles: ['executive', 'manager', 'hr-read', 'support-read', 'sales-read', 'finance-read'],
     // Eve is CEO with direct reports: CFO, CTO, COO, VP of Sales
@@ -54,7 +54,7 @@ const TEST_USERS = {
   },
   hrManager: {
     username: 'alice.chen',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     email: 'alice@tamshai.local',
     roles: ['hr-read', 'hr-write', 'manager'],
     // Alice is VP of HR with direct report: Jennifer Lee
@@ -62,7 +62,7 @@ const TEST_USERS = {
   },
   engineeringManager: {
     username: 'nina.patel',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     email: 'nina.p@tamshai.local',
     roles: ['manager'],
     // Nina is Engineering Manager with reports: Marcus Johnson, Sophia Wang, Tyler Scott
@@ -70,7 +70,7 @@ const TEST_USERS = {
   },
   intern: {
     username: 'frank.davis',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     email: 'frank@tamshai.local',
     roles: [],
     // Frank is an intern with no direct reports
@@ -78,7 +78,7 @@ const TEST_USERS = {
   },
   financeUser: {
     username: 'bob.martinez',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     email: 'bob@tamshai.local',
     roles: ['finance-read', 'finance-write'],
   },

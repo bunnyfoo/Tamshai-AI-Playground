@@ -34,12 +34,12 @@ const CONFIG = {
 
 // Test users defined in Keycloak
 const TEST_USERS = {
-  hrUser: { username: 'alice.chen', password: '[REDACTED-DEV-PASSWORD]', expectedRoles: ['hr-read', 'hr-write'] },
-  financeUser: { username: 'bob.martinez', password: '[REDACTED-DEV-PASSWORD]', expectedRoles: ['finance-read', 'finance-write'] },
-  salesUser: { username: 'carol.johnson', password: '[REDACTED-DEV-PASSWORD]', expectedRoles: ['sales-read'] },
-  supportUser: { username: 'dan.williams', password: '[REDACTED-DEV-PASSWORD]', expectedRoles: ['support-read'] },
-  executive: { username: 'eve.thompson', password: '[REDACTED-DEV-PASSWORD]', expectedRoles: ['executive'] },
-  intern: { username: 'frank.davis', password: '[REDACTED-DEV-PASSWORD]', expectedRoles: [] },
+  hrUser: { username: 'alice.chen', password: 'password123', expectedRoles: ['hr-read', 'hr-write'] },
+  financeUser: { username: 'bob.martinez', password: 'password123', expectedRoles: ['finance-read', 'finance-write'] },
+  salesUser: { username: 'carol.johnson', password: 'password123', expectedRoles: ['sales-read'] },
+  supportUser: { username: 'dan.williams', password: 'password123', expectedRoles: ['support-read'] },
+  executive: { username: 'eve.thompson', password: 'password123', expectedRoles: ['executive'] },
+  intern: { username: 'frank.davis', password: 'password123', expectedRoles: [] },
 };
 
 interface TokenResponse {

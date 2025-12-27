@@ -15,17 +15,17 @@ const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
 const TEST_USERS = {
   hr: {
     username: 'alice.chen',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     expectedRoles: ['hr-read', 'hr-write'],
   },
   finance: {
     username: 'bob.martinez',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     expectedRoles: ['finance-read', 'finance-write'],
   },
   executive: {
     username: 'eve.thompson',
-    password: '[REDACTED-DEV-PASSWORD]',
+    password: 'password123',
     expectedRoles: ['executive'],
   },
 };
