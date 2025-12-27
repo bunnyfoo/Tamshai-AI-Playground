@@ -101,6 +101,36 @@ This document details the security architecture for the Tamshai Corp Enterprise 
 | Refresh Token | 30 minutes | Balance security with user experience |
 | Refresh Token (idle) | 15 minutes | Auto-logout for abandoned sessions |
 
+#### Token Revocation Strategy (v1.5)
+
+Token revocation is handled via a **cached approach** rather than synchronous Redis lookups:
+
+**Architecture**:
+1. When a token is revoked, it is written to Redis with key `revoked:{jti}` and TTL matching token expiry
+2. The MCP Gateway maintains an **in-memory cache** (`Set<JTI>`) of revoked tokens
+3. Background task syncs from Redis every 2 seconds (configurable)
+4. Token validation checks the local cache (O(1)) instead of Redis
+
+**Trade-offs**:
+| Aspect | Benefit | Cost |
+|--------|---------|------|
+| Latency | Removes 5-15ms Redis RTT per request | N/A |
+| Availability | Redis failure doesn't block auth | Stale cache used during outage |
+| Revocation Delay | N/A | Up to 2-second window for revoked tokens |
+
+**Fail-Open Behavior**: When Redis is unavailable, the system uses the last known cache state and logs a warning. This is acceptable because:
+- Access tokens have short 5-minute lifetimes
+- The 2-second sync interval means cache is usually fresh
+- Explicit revocation is rare (logout, security incident)
+
+**Configuration**:
+```bash
+TOKEN_REVOCATION_SYNC_MS=2000      # Cache sync interval (default: 2 seconds)
+TOKEN_REVOCATION_FAIL_OPEN=true   # Use stale cache on Redis failure
+```
+
+**See Also**: Architecture Overview Section 9.1 for implementation details.
+
 ### 2.3 Multi-Factor Authentication
 
 **Supported Methods**:

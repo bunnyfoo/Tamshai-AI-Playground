@@ -41,6 +41,8 @@ import {
   getPendingConfirmation,
   deletePendingConfirmation,
   isTokenRevoked,
+  getTokenRevocationStats,
+  stopTokenRevocationSync,
 } from './utils/redis';
 import { scrubPII } from './utils/pii-scrubber';
 import gdprRoutes from './routes/gdpr';
@@ -69,6 +71,13 @@ const config = {
     finance: process.env.MCP_FINANCE_URL || 'http://localhost:3002',
     sales: process.env.MCP_SALES_URL || 'http://localhost:3003',
     support: process.env.MCP_SUPPORT_URL || 'http://localhost:3004',
+  },
+  // v1.5 Performance: Service timeout configuration
+  timeouts: {
+    mcpRead: parseInt(process.env.MCP_READ_TIMEOUT_MS || '5000'),
+    mcpWrite: parseInt(process.env.MCP_WRITE_TIMEOUT_MS || '10000'),
+    claude: parseInt(process.env.CLAUDE_TIMEOUT_MS || '60000'),
+    total: parseInt(process.env.TOTAL_REQUEST_TIMEOUT_MS || '90000'),
   },
   logLevel: process.env.LOG_LEVEL || 'info',
 };
@@ -268,107 +277,166 @@ function getDeniedMCPServers(userRoles: string[]): MCPServerConfig[] {
   );
 }
 
+/**
+ * Query result with timeout status for partial response handling
+ */
+interface MCPQueryResult {
+  server: string;
+  data: unknown;
+  status: 'success' | 'timeout' | 'error';
+  error?: string;
+  durationMs?: number;
+}
+
+/**
+ * Query an MCP server with configurable timeout (v1.5 Performance)
+ *
+ * Implements per-service timeouts with graceful degradation.
+ * See: docs/architecture/overview.md Section 9.2
+ */
 async function queryMCPServer(
   server: MCPServerConfig,
   query: string,
   userContext: UserContext,
   cursor?: string,  // Pagination cursor for subsequent pages
-  autoPaginate: boolean = true  // Automatically fetch all pages
-): Promise<{ server: string; data: unknown; error?: string }> {
+  autoPaginate: boolean = true,  // Automatically fetch all pages
+  isWriteOperation: boolean = false  // Use longer timeout for writes
+): Promise<MCPQueryResult> {
+  const startTime = Date.now();
+  const timeout = isWriteOperation ? config.timeouts.mcpWrite : config.timeouts.mcpRead;
+
   try {
     const allData: unknown[] = [];
     let currentCursor = cursor;
     let pageCount = 0;
     const maxPages = 10;  // Safety limit to prevent infinite loops
 
-    do {
-      const response = await axios.post(
-        `${server.url}/query`,
-        {
-          query,
-          userContext: {
-            userId: userContext.userId,
-            username: userContext.username,
-            email: userContext.email,  // Include email for user lookup
-            roles: userContext.roles,
+    // Create AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      do {
+        const response = await axios.post(
+          `${server.url}/query`,
+          {
+            query,
+            userContext: {
+              userId: userContext.userId,
+              username: userContext.username,
+              email: userContext.email,  // Include email for user lookup
+              roles: userContext.roles,
+            },
+            ...(currentCursor && { cursor: currentCursor }),
           },
-          ...(currentCursor && { cursor: currentCursor }),
-        },
-        {
-          timeout: 30000,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': userContext.userId,
-            'X-User-Roles': userContext.roles.join(','),
-          },
-        }
-      );
-
-      const mcpResponse = response.data as MCPToolResponse;
-
-      // Accumulate data
-      if (isSuccessResponse(mcpResponse) && Array.isArray(mcpResponse.data)) {
-        allData.push(...mcpResponse.data);
-        pageCount++;
-
-        // Check for more pages
-        if (autoPaginate && mcpResponse.metadata?.hasMore && mcpResponse.metadata?.nextCursor && pageCount < maxPages) {
-          currentCursor = mcpResponse.metadata.nextCursor;
-          logger.info(`Auto-paginating ${server.name}, fetched page ${pageCount}, ${allData.length} records so far`);
-        } else {
-          // No more pages or auto-pagination disabled
-          if (allData.length > 0) {
-            // Return aggregated data
-            return {
-              server: server.name,
-              data: {
-                status: 'success',
-                data: allData,
-                metadata: {
-                  returnedCount: allData.length,
-                  totalCount: allData.length,
-                  pagesRetrieved: pageCount,
-                },
-              },
-            };
+          {
+            timeout: timeout,
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-User-ID': userContext.userId,
+              'X-User-Roles': userContext.roles.join(','),
+            },
           }
-          break;
+        );
+
+        const mcpResponse = response.data as MCPToolResponse;
+
+        // Accumulate data
+        if (isSuccessResponse(mcpResponse) && Array.isArray(mcpResponse.data)) {
+          allData.push(...mcpResponse.data);
+          pageCount++;
+
+          // Check for more pages
+          if (autoPaginate && mcpResponse.metadata?.hasMore && mcpResponse.metadata?.nextCursor && pageCount < maxPages) {
+            currentCursor = mcpResponse.metadata.nextCursor;
+            logger.info(`Auto-paginating ${server.name}, fetched page ${pageCount}, ${allData.length} records so far`);
+          } else {
+            // No more pages or auto-pagination disabled
+            if (allData.length > 0) {
+              // Return aggregated data
+              return {
+                server: server.name,
+                status: 'success',
+                data: {
+                  status: 'success',
+                  data: allData,
+                  metadata: {
+                    returnedCount: allData.length,
+                    totalCount: allData.length,
+                    pagesRetrieved: pageCount,
+                  },
+                },
+                durationMs: Date.now() - startTime,
+              };
+            }
+            break;
+          }
+        } else {
+          // Non-array response or error, return as-is
+          return {
+            server: server.name,
+            status: 'success',
+            data: response.data,
+            durationMs: Date.now() - startTime,
+          };
         }
-      } else {
-        // Non-array response or error, return as-is
+      } while (autoPaginate && pageCount < maxPages);
+
+      // Return aggregated data if we exited the loop normally
+      if (allData.length > 0) {
         return {
           server: server.name,
-          data: response.data,
+          status: 'success',
+          data: {
+            status: 'success',
+            data: allData,
+            metadata: {
+              returnedCount: allData.length,
+              totalCount: allData.length,
+              pagesRetrieved: pageCount,
+            },
+          },
+          durationMs: Date.now() - startTime,
         };
       }
-    } while (autoPaginate && pageCount < maxPages);
 
-    // Return aggregated data if we exited the loop normally
-    if (allData.length > 0) {
       return {
         server: server.name,
-        data: {
-          status: 'success',
-          data: allData,
-          metadata: {
-            returnedCount: allData.length,
-            totalCount: allData.length,
-            pagesRetrieved: pageCount,
-          },
-        },
+        status: 'success',
+        data: null,
+        durationMs: Date.now() - startTime,
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+
+    // Check if this was a timeout (AbortError or ECONNABORTED)
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' ||
+        error.name === 'CanceledError' ||
+        (axios.isAxiosError(error) && error.code === 'ECONNABORTED'))
+    ) {
+      logger.warn(`MCP server ${server.name} timeout after ${durationMs}ms (limit: ${timeout}ms)`);
+      return {
+        server: server.name,
+        status: 'timeout',
+        data: null,
+        error: `Service did not respond within ${timeout}ms`,
+        durationMs,
       };
     }
 
+    logger.error(`MCP server ${server.name} error after ${durationMs}ms:`, error);
     return {
       server: server.name,
-      data: null,
-    };
-  } catch (error) {
-    logger.error(`MCP server ${server.name} error:`, error);
-    return {
-      server: server.name,
+      status: 'error',
       data: null,
       error: error instanceof Error ? error.message : 'Unknown error',
+      durationMs,
     };
   }
 }
@@ -547,18 +615,40 @@ try {
 
 // Health check (no auth required)
 app.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'healthy',
+  const tokenRevocationStats = getTokenRevocationStats();
+  const isHealthy = tokenRevocationStats.isHealthy;
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
     version: '0.1.0',
+    components: {
+      tokenRevocationCache: {
+        status: tokenRevocationStats.isHealthy ? 'healthy' : 'degraded',
+        cacheSize: tokenRevocationStats.cacheSize,
+        lastSyncMs: Date.now() - tokenRevocationStats.lastSyncTime,
+        consecutiveFailures: tokenRevocationStats.consecutiveFailures,
+      },
+    },
   });
 });
 
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'healthy',
+  const tokenRevocationStats = getTokenRevocationStats();
+  const isHealthy = tokenRevocationStats.isHealthy;
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
     version: '0.1.0',
+    components: {
+      tokenRevocationCache: {
+        status: tokenRevocationStats.isHealthy ? 'healthy' : 'degraded',
+        cacheSize: tokenRevocationStats.cacheSize,
+        lastSyncMs: Date.now() - tokenRevocationStats.lastSyncTime,
+        consecutiveFailures: tokenRevocationStats.consecutiveFailures,
+      },
+    },
   });
 });
 
@@ -674,8 +764,21 @@ app.post('/api/ai/query', authMiddleware, aiQueryLimiter, async (req: Request, r
     );
     const mcpResults = await Promise.all(mcpPromises);
 
-    // Send to Claude with context
-    const aiResponse = await sendToClaudeWithContext(query, mcpResults, userContext);
+    // v1.5: Separate successful from failed results
+    const successfulResults = mcpResults.filter((r) => r.status === 'success');
+    const failedResults = mcpResults.filter((r) => r.status !== 'success');
+
+    // Log any partial response issues
+    if (failedResults.length > 0) {
+      logger.warn('Partial response in non-streaming query', {
+        requestId,
+        failed: failedResults.map((r) => ({ server: r.server, status: r.status, error: r.error })),
+        successful: successfulResults.map((r) => r.server),
+      });
+    }
+
+    // Send to Claude with context (only successful results)
+    const aiResponse = await sendToClaudeWithContext(query, successfulResults, userContext);
 
     const durationMs = Date.now() - startTime;
 
@@ -687,21 +790,31 @@ app.post('/api/ai/query', authMiddleware, aiQueryLimiter, async (req: Request, r
       username: userContext.username,
       roles: userContext.roles,
       query: scrubPII(query),  // Scrub PII from query before logging
-      mcpServersAccessed: accessibleServers.map((s) => s.name),
+      mcpServersAccessed: successfulResults.map((r) => r.server),
       mcpServersDenied: deniedServers.map((s) => s.name),
       responseSuccess: true,
       durationMs,
     };
     logger.info('Audit log:', auditLog);
 
+    // v1.5: Include partial response warnings in metadata
+    const responseWarnings = failedResults.map((r) => ({
+      server: r.server,
+      status: r.status,
+      message: r.error,
+    }));
+
     res.json({
       requestId,
       conversationId: conversationId || uuidv4(),
       response: aiResponse,
+      status: failedResults.length > 0 ? 'partial' : 'success',
       metadata: {
-        dataSourcesQueried: accessibleServers.map((s) => s.name),
+        dataSourcesQueried: successfulResults.map((r) => r.server),
+        dataSourcesFailed: failedResults.map((r) => r.server),
         processingTimeMs: durationMs,
       },
+      ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
     });
   } catch (error) {
     logger.error('AI query error:', error);
@@ -761,6 +874,41 @@ async function handleStreamingQuery(
       queryMCPServer(server, query, userContext, cursor)
     );
     const mcpResults = await Promise.all(mcpPromises);
+
+    // v1.5: Detect timeouts and send service unavailability warnings
+    const successfulResults = mcpResults.filter((r) => r.status === 'success');
+    const timedOutResults = mcpResults.filter((r) => r.status === 'timeout');
+    const errorResults = mcpResults.filter((r) => r.status === 'error');
+
+    // Send SSE events for service unavailability (v1.5 partial response)
+    if (timedOutResults.length > 0 || errorResults.length > 0) {
+      const warnings = [
+        ...timedOutResults.map((r) => ({
+          server: r.server,
+          code: 'TIMEOUT',
+          message: r.error || 'Service did not respond in time',
+        })),
+        ...errorResults.map((r) => ({
+          server: r.server,
+          code: 'ERROR',
+          message: r.error || 'Service error',
+        })),
+      ];
+
+      res.write(`data: ${JSON.stringify({
+        type: 'service_unavailable',
+        warnings,
+        successfulServers: successfulResults.map((r) => r.server),
+        failedServers: [...timedOutResults, ...errorResults].map((r) => r.server),
+      })}\n\n`);
+
+      logger.warn('Partial response due to service failures', {
+        requestId,
+        timedOut: timedOutResults.map((r) => r.server),
+        errors: errorResults.map((r) => r.server),
+        successful: successfulResults.map((r) => r.server),
+      });
+    }
 
     // v1.4: Check for pagination metadata and pending confirmations
     const paginationInfo: { server: string; hasMore: boolean; nextCursor?: string; hint?: string }[] = [];
@@ -1393,11 +1541,34 @@ async function validateKeycloakConnectivity(): Promise<void> {
 async function startServer(): Promise<void> {
   await validateKeycloakConnectivity();
 
-  app.listen(config.port, () => {
+  const server = app.listen(config.port, () => {
     logger.info(`MCP Gateway listening on port ${config.port}`);
     logger.info(`Keycloak URL: ${config.keycloak.url}`);
     logger.info(`Configured MCP servers: ${Object.keys(config.mcpServers).join(', ')}`);
   });
+
+  // Graceful shutdown handling
+  const shutdown = (signal: string) => {
+    logger.info(`${signal} received, shutting down gracefully...`);
+
+    // Stop token revocation background sync
+    stopTokenRevocationSync();
+    logger.info('Token revocation sync stopped');
+
+    server.close(() => {
+      logger.info('HTTP server closed');
+      process.exit(0);
+    });
+
+    // Force exit if graceful shutdown takes too long
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 startServer().catch((error) => {

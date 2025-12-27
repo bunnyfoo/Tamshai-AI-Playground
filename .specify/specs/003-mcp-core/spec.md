@@ -650,8 +650,73 @@ res.setHeader('X-Accel-Buffering', 'no');
 res.setHeader('Cache-Control', 'no-cache');
 ```
 
+## 8. Performance Optimizations (v1.5)
+
+### 8.1 Cached Token Revocation
+
+**Problem**: Synchronous Redis call on every request creates latency and SPOF.
+
+**Implementation Tasks**:
+- [ ] Create `CachedTokenRevocation` class in `src/security/token-revocation.ts`
+- [ ] Implement background sync with configurable interval (default: 2 seconds)
+- [ ] Use `Set<string>` for O(1) local cache lookups
+- [ ] Add graceful degradation on Redis connection failure
+- [ ] Add `TOKEN_REVOCATION_SYNC_MS` environment variable
+- [ ] Update `isTokenRevoked()` to use cached lookup
+- [ ] Add metrics for cache hit rate and sync latency
+- [ ] Add unit tests for cache behavior
+- [ ] Add integration tests for revocation propagation delay
+
+**Configuration**:
+```typescript
+// Environment variables
+TOKEN_REVOCATION_SYNC_MS=2000  // Cache refresh interval (default: 2 seconds)
+TOKEN_REVOCATION_FAIL_OPEN=true  // Continue on Redis failure (default: true)
+```
+
+**Trade-off**: Maximum 2-second window where revoked tokens may still be accepted.
+
+### 8.2 Service Timeouts
+
+**Problem**: Slow MCP servers block entire request; no partial response support.
+
+**Implementation Tasks**:
+- [ ] Create `ServiceTimeoutConfig` interface in `src/config.ts`
+- [ ] Add per-service timeout configuration
+- [ ] Implement `queryMCPServerWithTimeout()` using `AbortController`
+- [ ] Add partial response aggregation for multi-server queries
+- [ ] Add `status: "partial"` response type with warnings array
+- [ ] Add SSE event for service unavailability (`type: "service_unavailable"`)
+- [ ] Add `MCP_READ_TIMEOUT_MS` environment variable (default: 5000)
+- [ ] Add `MCP_WRITE_TIMEOUT_MS` environment variable (default: 10000)
+- [ ] Add `CLAUDE_TIMEOUT_MS` environment variable (default: 60000)
+- [ ] Add unit tests for timeout behavior
+- [ ] Add integration tests for partial response handling
+
+**Configuration**:
+```typescript
+// Environment variables
+MCP_READ_TIMEOUT_MS=5000      // Read operation timeout
+MCP_WRITE_TIMEOUT_MS=10000    // Write operation timeout
+CLAUDE_TIMEOUT_MS=60000       // Claude API timeout
+TOTAL_REQUEST_TIMEOUT_MS=90000  // Hard cap for entire request
+```
+
+**Partial Response Format**:
+```json
+{
+  "status": "partial",
+  "data": { "hr": {...}, "finance": {...} },
+  "warnings": [
+    { "server": "mcp-sales", "code": "TIMEOUT", "message": "Service did not respond" }
+  ]
+}
+```
+
 ## Status
 **COMPLETE ✅** - Full v1.4 implementation (1,170 lines in `services/mcp-gateway/src/index.ts`). All features implemented: JWT validation, token revocation, role-based routing, SSE streaming (GET + POST), truncation warning injection, human-in-the-loop confirmations, and comprehensive integration tests.
+
+**v1.5 Performance Optimizations**: IN PROGRESS - Redis caching and service timeouts documented, implementation pending.
 
 ## Architecture Version
 **Based on**: Architecture v1.4 (December 2025)

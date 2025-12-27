@@ -631,7 +631,268 @@ describe('Role-Based Access Control', () => {
 
 ---
 
-## 9. Risk Assessment
+## 9. Performance Architecture
+
+### 9.1 Token Revocation Caching (v1.5)
+
+**Problem**: The original design called Redis `isTokenRevoked()` for every authenticated request, creating a synchronous dependency that adds network latency and makes Redis a Single Point of Failure (SPOF). Under the "Fail Secure" policy, a Redis outage would take down the entire AI system.
+
+**Solution**: Implement a local in-memory cache with periodic background refresh.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                Token Revocation Architecture (v1.5)              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌──────────────┐      ┌─────────────────┐     ┌──────────┐    │
+│   │   Request    │      │  MCP Gateway    │     │  Redis   │    │
+│   │  (with JWT)  │      │                 │     │  Cache   │    │
+│   └──────┬───────┘      │  ┌───────────┐  │     └────┬─────┘    │
+│          │              │  │ In-Memory │  │          │          │
+│          │              │  │   Cache   │  │          │          │
+│          │              │  │ (Set<JTI>)│  │          │          │
+│          │              │  └─────┬─────┘  │          │          │
+│          │ 1. Check     │        │        │          │          │
+│          │    Token     │        │        │          │          │
+│          │─────────────>│ 2. Local       │          │          │
+│          │              │    Lookup      │          │          │
+│          │              │    (O(1))      │          │          │
+│          │              │        │        │          │          │
+│          │ 3. Fast      │        │        │          │          │
+│          │    Response  │        │        │          │          │
+│          │<─────────────│        │        │          │          │
+│          │              │        │        │          │          │
+│          │              │        │ 4. Background Sync │          │
+│          │              │        │    (every 2 sec)   │          │
+│          │              │        │───────────────────>│          │
+│          │              │        │                    │          │
+│          │              │        │ 5. KEYS revoked:*  │          │
+│          │              │        │<───────────────────│          │
+│          │              │        │                    │          │
+│          │              └────────┼────────┘           │          │
+│                                  │                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Cache Strategy**:
+- **Sync Interval**: 2 seconds (configurable via `TOKEN_REVOCATION_SYNC_MS`)
+- **Cache Structure**: `Set<string>` containing revoked token JTIs
+- **Fallback**: On Redis connection failure, use last known cache state (fail-open with warning log)
+- **Trade-off**: Maximum 2-second window where a revoked token may still be accepted
+
+**Implementation**:
+```typescript
+class CachedTokenRevocation {
+  private revokedTokens: Set<string> = new Set();
+  private lastSync: number = 0;
+  private syncIntervalMs: number;
+  private syncInProgress: boolean = false;
+
+  constructor(syncIntervalMs = 2000) {
+    this.syncIntervalMs = syncIntervalMs;
+    // Start background sync
+    this.startBackgroundSync();
+  }
+
+  async isRevoked(jti: string): Promise<boolean> {
+    // Fast path: local cache lookup O(1)
+    return this.revokedTokens.has(jti);
+  }
+
+  private startBackgroundSync(): void {
+    setInterval(async () => {
+      if (this.syncInProgress) return;
+      this.syncInProgress = true;
+      try {
+        const keys = await redis.keys('revoked:*');
+        this.revokedTokens = new Set(keys.map(k => k.replace('revoked:', '')));
+        this.lastSync = Date.now();
+      } catch (error) {
+        logger.warn('Redis sync failed, using stale cache', { error });
+      } finally {
+        this.syncInProgress = false;
+      }
+    }, this.syncIntervalMs);
+  }
+}
+```
+
+**Benefits**:
+| Metric | Before (v1.4) | After (v1.5) |
+|--------|---------------|--------------|
+| Latency per request | +5-15ms (Redis RTT) | <0.1ms (local Set) |
+| Redis SPOF | Yes (fail-secure blocks all) | No (graceful degradation) |
+| Redis load | 1 call per request | 1 call per 2 seconds |
+
+### 9.2 Gateway Service Timeouts (v1.5)
+
+**Problem**: The gateway waits for the slowest downstream MCP service to complete before proceeding. A slow or hung service blocks the entire request, and auto-pagination can turn a single query into multiple serial HTTP requests.
+
+**Solution**: Implement per-service timeouts with partial response handling.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              Gateway Timeout Architecture (v1.5)                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│                    ┌─────────────────┐                           │
+│                    │   MCP Gateway   │                           │
+│                    │  (Orchestrator) │                           │
+│                    └────────┬────────┘                           │
+│                             │                                    │
+│          ┌──────────────────┼──────────────────┐                 │
+│          │                  │                  │                 │
+│          ▼                  ▼                  ▼                 │
+│   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐           │
+│   │   MCP HR    │   │ MCP Finance │   │  MCP Sales  │           │
+│   │  (healthy)  │   │   (slow)    │   │  (timeout)  │           │
+│   └──────┬──────┘   └──────┬──────┘   └──────┬──────┘           │
+│          │                 │                 │                   │
+│   ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐           │
+│   │  Response   │   │  Response   │   │   TIMEOUT   │           │
+│   │   200ms     │   │   4800ms    │   │   5000ms    │           │
+│   └─────────────┘   └─────────────┘   └─────────────┘           │
+│          │                 │                 │                   │
+│          └─────────────────┼─────────────────┘                   │
+│                            │                                     │
+│                            ▼                                     │
+│              ┌───────────────────────────┐                       │
+│              │     Partial Response      │                       │
+│              │  • HR data: ✓ included    │                       │
+│              │  • Finance: ✓ included    │                       │
+│              │  • Sales: ⚠ unavailable   │                       │
+│              └───────────────────────────┘                       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Timeout Configuration**:
+| Service Type | Timeout | Rationale |
+|--------------|---------|-----------|
+| MCP Server (read) | 5 seconds | Most queries complete in <1s |
+| MCP Server (write) | 10 seconds | Writes may have DB transactions |
+| Claude API | 60 seconds | Multi-step reasoning can be slow |
+| Total Request | 90 seconds | Hard cap including retries |
+
+**Implementation**:
+```typescript
+interface ServiceTimeoutConfig {
+  mcpReadTimeout: number;    // 5000ms
+  mcpWriteTimeout: number;   // 10000ms
+  claudeTimeout: number;     // 60000ms
+  totalTimeout: number;      // 90000ms
+}
+
+async function queryMCPServerWithTimeout(
+  server: MCPServer,
+  query: MCPQuery,
+  signal: AbortSignal
+): Promise<MCPResponse> {
+  const timeout = query.isWrite ? config.mcpWriteTimeout : config.mcpReadTimeout;
+  const controller = new AbortController();
+
+  // Create timeout that aborts the request
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  // Link to parent signal (total request timeout)
+  signal.addEventListener('abort', () => controller.abort());
+
+  try {
+    const response = await axios.post(server.url, query, {
+      signal: controller.signal,
+      timeout: timeout
+    });
+    return { server: server.name, status: 'success', data: response.data };
+  } catch (error) {
+    if (error.name === 'AbortError' || error.code === 'ECONNABORTED') {
+      logger.warn('MCP server timeout', { server: server.name, timeout });
+      return {
+        server: server.name,
+        status: 'timeout',
+        data: null,
+        message: `${server.name} did not respond within ${timeout}ms`
+      };
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+**Partial Response Handling**:
+When some services timeout, the gateway returns available data with warnings:
+
+```json
+{
+  "status": "partial",
+  "data": {
+    "hr": { "employees": [...] },
+    "finance": { "budget": {...} }
+  },
+  "warnings": [
+    {
+      "server": "mcp-sales",
+      "code": "TIMEOUT",
+      "message": "Sales data unavailable - service did not respond in time"
+    }
+  ],
+  "metadata": {
+    "successfulServers": ["mcp-hr", "mcp-finance"],
+    "failedServers": ["mcp-sales"],
+    "totalDurationMs": 5023
+  }
+}
+```
+
+### 9.3 PII Masking Architecture Decision
+
+**Decision**: PII masking is performed at the **application layer** (MCP Gateway), NOT at the database layer.
+
+**Rationale**:
+
+1. **Multi-Database Consistency**: The system uses PostgreSQL, MongoDB, and Elasticsearch. Implementing masking logic in each database (PostgreSQL views, MongoDB aggregation pipelines, Elasticsearch scripted fields) would require:
+   - 3x code maintenance
+   - Different syntax and capabilities per database
+   - Testing across all database types
+
+2. **AI Context Awareness**: When Claude receives masked data, it needs to understand WHAT was masked:
+   ```json
+   {
+     "employee": "John Smith",
+     "salary": "[MASKED: Confidential - requires hr-write role]",
+     "ssn": "[MASKED: PII - not available via AI]"
+   }
+   ```
+   Database-level masking cannot inject context-aware placeholder messages.
+
+3. **Audit Trail Integrity**: Application-layer masking allows logging WHAT was masked for each request:
+   ```json
+   {
+     "requestId": "abc123",
+     "maskedFields": ["salary", "ssn", "home_address"],
+     "maskingReason": "user lacks hr-write role"
+   }
+   ```
+
+4. **Dynamic Role-Based Masking**: Masking rules depend on the requesting user's roles, which are in the JWT token. Database-layer masking would require:
+   - Passing session variables to database (adds latency)
+   - Complex RLS policies for field-level masking
+   - Different implementations per database
+
+5. **Claude API Integration**: The MCP Gateway's PII scrubber (`pii-scrubber.ts`) also masks PII in audit logs sent to Claude, ensuring sensitive data never reaches the external API. Database-level masking cannot protect this layer.
+
+**Trade-off Acknowledged**: Sensitive data does transit through application memory before masking. This is mitigated by:
+- TLS encryption in transit
+- Short-lived processing (no persistence)
+- Memory cleared after request completion
+- Container isolation in production
+
+**See Also**: `services/mcp-gateway/src/utils/pii-scrubber.ts` for implementation.
+
+---
+
+## 10. Risk Assessment
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
