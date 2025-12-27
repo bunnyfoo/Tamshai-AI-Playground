@@ -864,22 +864,37 @@ describe('RBAC Integration Tests', () => {
 
 ### Environment Variables
 
-**File**: `infrastructure/docker/.env`
+> **SECURITY WARNING - DEVELOPMENT ONLY**
+>
+> The credentials shown below are **DEFAULT VALUES FOR LOCAL DEVELOPMENT ONLY**.
+> They are intentionally simple for developer convenience.
+>
+> **FOR PRODUCTION:**
+> - Use GCP Secret Manager (see `infrastructure/terraform/main.tf`)
+> - All secrets are auto-generated and fetched at runtime
+> - Never commit real secrets to git
+> - See `010-security-compliance/spec.md` for production guidance
+
+**File**: `infrastructure/docker/.env` (copy from `.env.example`)
 
 ```bash
+# ============================================================
+# LOCAL DEVELOPMENT CREDENTIALS - DO NOT USE IN PRODUCTION
+# ============================================================
+
 # Keycloak Configuration
 KEYCLOAK_ADMIN=admin
-KEYCLOAK_ADMIN_PASSWORD=admin
-KEYCLOAK_DB_PASSWORD=[REDACTED-DEV-PASSWORD]
+KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}  # Override via env
+KEYCLOAK_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-changeme}
 
 # Database Credentials
-POSTGRES_PASSWORD=[REDACTED-DEV-PASSWORD]
-MONGODB_ROOT_PASSWORD=[REDACTED-DEV-PASSWORD]
-MONGODB_PASSWORD=[REDACTED-DEV-PASSWORD]
+POSTGRES_PASSWORD=${TAMSHAI_DB_PASSWORD:-changeme}
+MONGODB_ROOT_PASSWORD=${MONGODB_PASSWORD:-changeme}
+MONGODB_PASSWORD=${MONGODB_PASSWORD:-changeme}
 
 # MCP Gateway
 MCP_GATEWAY_PORT=3100
-CLAUDE_API_KEY=sk-ant-api03-...  # REQUIRED: Get from Anthropic Console
+CLAUDE_API_KEY=  # REQUIRED: Get from https://console.anthropic.com/
 
 # JWT Configuration
 KEYCLOAK_ISSUER=http://keycloak:8080/realms/tamshai
@@ -894,13 +909,23 @@ SUBNET=172.30.0.0/16
 ```
 
 **Critical Variables**:
-- `CLAUDE_API_KEY`: Must be set for AI queries to work
-- `KEYCLOAK_ADMIN_PASSWORD`: Change in production
-- `POSTGRES_PASSWORD`: Change in production
+- `CLAUDE_API_KEY`: **Required** - Get from Anthropic Console, never commit
+- `KEYCLOAK_ADMIN_PASSWORD`: Set via environment variable, not in file
+- `POSTGRES_PASSWORD`: Set via environment variable, not in file
 
 ### Test Users
 
-All users have password: `[REDACTED-DEV-PASSWORD]` and TOTP secret: `[REDACTED-DEV-TOTP]`
+> **SECURITY WARNING - DEVELOPMENT ONLY**
+>
+> These test users exist ONLY in `keycloak/realm-export-dev.json` for local testing.
+> The shared password and TOTP secret are **INTENTIONALLY WEAK** for testing convenience.
+>
+> **PRODUCTION USES:** `keycloak/realm-export.json` (no pre-configured users)
+> - Users created via Keycloak Admin API with strong, unique passwords
+> - Individual TOTP secrets per user
+> - Temporary password on first login
+
+**Development Credentials** (password: `[REDACTED-DEV-PASSWORD]`, TOTP: `[REDACTED-DEV-TOTP]`):
 
 | Username | Role | Position | Access |
 |----------|------|----------|--------|
@@ -913,10 +938,10 @@ All users have password: `[REDACTED-DEV-PASSWORD]` and TOTP secret: `[REDACTED-D
 | marcus.johnson | user | Software Engineer | Self only |
 | frank.davis | intern | IT Intern | Minimal access |
 
-**Login Flow**:
+**Login Flow (Development)**:
 1. Navigate to Keycloak: http://localhost:8180
 2. Login with username/password
-3. Configure TOTP with secret or scan QR code
+3. Configure TOTP with secret `[REDACTED-DEV-TOTP]` or scan QR code
 4. Use generated TOTP code on subsequent logins
 
 ---
