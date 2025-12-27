@@ -37,6 +37,8 @@ tags:
     description: MCP tool proxy endpoints
   - name: Confirmation
     description: Human-in-the-loop confirmations
+  - name: GDPR
+    description: GDPR compliance endpoints (HR admin only)
 
 paths:
   /health:
@@ -328,6 +330,185 @@ paths:
         '503':
           description: MCP server unavailable
 
+  # ===========================================================================
+  # GDPR Compliance Endpoints (v1.5)
+  # ===========================================================================
+
+  /api/admin/gdpr/export:
+    post:
+      summary: Request GDPR data export
+      description: |
+        Initiate a GDPR data export for an employee (Art. 15 - Right of Access).
+        HR representatives only. Exports data from all MCP servers.
+      tags: [GDPR]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GDPRExportRequest'
+      responses:
+        '202':
+          description: Export request accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GDPRExportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requires hr-write role
+
+  /api/admin/gdpr/export/{exportId}/download:
+    get:
+      summary: Download GDPR export
+      description: Download the completed GDPR data export file
+      tags: [GDPR]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Export file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GDPRExportData'
+        '404':
+          description: Export not found or expired
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requires hr-write role
+
+  /api/admin/gdpr/erase:
+    post:
+      summary: Request GDPR data erasure
+      description: |
+        Initiate GDPR data erasure for an employee (Art. 17 - Right to Erasure).
+        HR representatives only. Returns confirmation requirements before execution.
+      tags: [GDPR]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GDPREraseRequest'
+      responses:
+        '200':
+          description: Erasure request created, confirmation required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GDPREraseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requires hr-write role
+
+  /api/admin/gdpr/erase/{erasureId}/confirm:
+    post:
+      summary: Confirm GDPR erasure
+      description: Confirm and execute the GDPR data erasure
+      tags: [GDPR]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: erasureId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              properties:
+                confirmed:
+                  type: boolean
+      responses:
+        '200':
+          description: Erasure completed or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GDPREraseConfirmResponse'
+        '404':
+          description: Erasure request not found or expired
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requires hr-write role
+
+  /api/admin/gdpr/breach:
+    post:
+      summary: Register data breach
+      description: |
+        Register a data breach incident (Art. 33 notification requirement).
+        Tracks 72-hour notification deadline and required actions.
+      tags: [GDPR]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GDPRBreachRequest'
+      responses:
+        '201':
+          description: Breach registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GDPRBreachResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requires hr-write or security-admin role
+
+  /api/admin/gdpr/breach/{breachId}:
+    get:
+      summary: Get breach details
+      description: Get details and status of a registered breach
+      tags: [GDPR]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: breachId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Breach details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GDPRBreachResponse'
+        '404':
+          description: Breach not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Requires hr-write or security-admin role
+
 components:
   securitySchemes:
     bearerAuth:
@@ -499,6 +680,210 @@ components:
           type: string
         requestId:
           type: string
+
+    # GDPR Schemas
+    GDPRExportRequest:
+      type: object
+      required: [employeeId]
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+          description: The employee ID to export data for
+        reason:
+          type: string
+          description: Reason for the export request
+          example: "GDPR Subject Access Request"
+
+    GDPRExportResponse:
+      type: object
+      properties:
+        exportId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [processing, completed, failed]
+        employeeId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        estimatedCompletion:
+          type: string
+          format: date-time
+        downloadUrl:
+          type: string
+          description: URL to download the export when ready
+
+    GDPRExportData:
+      type: object
+      properties:
+        subject:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+        exportDate:
+          type: string
+          format: date-time
+        requestedBy:
+          type: string
+        data:
+          type: object
+          properties:
+            hrData:
+              type: object
+              description: Employee profile and employment data
+            financeData:
+              type: object
+              description: Salary and expense data
+            supportData:
+              type: object
+              description: Support tickets
+            auditLogs:
+              type: array
+              items:
+                type: object
+              description: AI query audit logs (90 days)
+        retentionInfo:
+          type: object
+          description: Information about data retention requirements
+
+    GDPREraseRequest:
+      type: object
+      required: [employeeId]
+      properties:
+        employeeId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          example: "GDPR erasure request - employee offboarded"
+        retainAuditLog:
+          type: boolean
+          default: true
+          description: Keep anonymized audit trail for compliance
+        retainFinancialRecords:
+          type: boolean
+          default: true
+          description: Keep anonymized financial records (tax requirement)
+
+    GDPREraseResponse:
+      type: object
+      properties:
+        erasureId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending_confirmation, processing, completed, failed]
+        employeeId:
+          type: string
+          format: uuid
+        affectedSystems:
+          type: array
+          items:
+            type: string
+          description: Systems that will be affected
+        retentionExceptions:
+          type: array
+          items:
+            type: object
+            properties:
+              system:
+                type: string
+              reason:
+                type: string
+              anonymized:
+                type: boolean
+        confirmationRequired:
+          type: boolean
+        confirmationUrl:
+          type: string
+
+    GDPREraseConfirmResponse:
+      type: object
+      properties:
+        erasureId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed, cancelled]
+        completedAt:
+          type: string
+          format: date-time
+        affectedRecords:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count of records affected per system
+
+    GDPRBreachRequest:
+      type: object
+      required: [breachType, discoveryDate, description]
+      properties:
+        breachType:
+          type: string
+          enum: [unauthorized_access, data_loss, ransomware, disclosure, system_compromise]
+        affectedDataTypes:
+          type: array
+          items:
+            type: string
+            enum: [employee_pii, financial, client_data, credentials, health_data]
+        affectedCount:
+          type: integer
+          description: Estimated number of affected individuals
+        discoveryDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+        containmentActions:
+          type: array
+          items:
+            type: string
+          description: Actions already taken to contain the breach
+
+    GDPRBreachResponse:
+      type: object
+      properties:
+        breachId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [registered, investigating, contained, notified, closed]
+        notificationDeadline:
+          type: string
+          format: date-time
+          description: 72-hour deadline for supervisory authority notification
+        requiredActions:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+              deadline:
+                type: string
+                format: date-time
+              status:
+                type: string
+                enum: [pending, in_progress, completed]
+              template:
+                type: string
+                description: URL to notification template if applicable
+        affectedUserList:
+          type: string
+          description: URL to get list of affected users
 
   responses:
     BadRequest:

@@ -52,38 +52,151 @@ HR data deletion requests may be refused when processing is necessary for:
 - Exercise or defense of legal claims
 - Archiving in the public interest
 
-### 3.3 Subject Access Request (SAR) Workflow
+### 3.3 GDPR Data Export API (Art. 15 - Right of Access)
 
-**Endpoint:** `GET /api/gdpr/export`
+**Endpoint:** `POST /api/admin/gdpr/export`
 
-**Response Format:**
+**Access Control:** HR representatives only (`hr-write` role required)
+
+**Note:** This is an HR-administered process. Data subjects (employees) would be offboarded and cannot request exports online. HR processes GDPR requests on their behalf.
+
+**Request:**
 ```json
 {
-  "subject": {
-    "id": "user-uuid",
-    "name": "John Doe",
-    "email": "john.doe@company.com"
-  },
-  "requestDate": "2025-12-27T00:00:00Z",
-  "data": {
-    "profile": { /* Employee profile */ },
-    "performanceReviews": [ /* Reviews if accessible */ ],
-    "accessLog": [ /* Last 90 days of access */ ],
-    "aiQueries": [ /* AI queries made by user */ ]
-  },
-  "retention": {
-    "payroll": "7 years (legal requirement)",
-    "employment": "Duration + statute of limitations",
-    "performance": "Employment + 3 years"
-  }
+  "employeeId": "uuid",
+  "reason": "GDPR Subject Access Request",
+  "requestedBy": "hr-representative-id"
 }
 ```
 
-**Processing Timeline:**
-- Acknowledgment: Within 3 business days
-- Fulfillment: Within 30 calendar days (extendable to 60 for complex requests)
+**Response:**
+```json
+{
+  "exportId": "uuid",
+  "status": "processing",
+  "employeeId": "uuid",
+  "createdAt": "2025-12-27T00:00:00Z",
+  "estimatedCompletion": "2025-12-27T01:00:00Z",
+  "downloadUrl": "/api/admin/gdpr/export/{exportId}/download"
+}
+```
 
-### 3.4 Data Protection Impact Assessment (DPIA)
+**Export Contents:**
+| Data Source | Data Included | Format |
+|-------------|--------------|--------|
+| MCP-HR | Employee profile, employment history, performance reviews | JSON |
+| MCP-Finance | Salary history, expense reports, tax documents | JSON |
+| MCP-Support | Support tickets created by/about employee | JSON |
+| Audit Logs | AI queries made by employee (last 90 days) | JSON |
+
+**Processing Timeline:**
+- Acknowledgment: Immediate (async processing)
+- Fulfillment: Within 1 hour for standard exports
+- Download available for 7 days
+
+### 3.4 GDPR Data Erasure API (Art. 17 - Right to Erasure)
+
+**Endpoint:** `POST /api/admin/gdpr/erase`
+
+**Access Control:** HR representatives only (`hr-write` role required)
+
+**Request:**
+```json
+{
+  "employeeId": "uuid",
+  "reason": "GDPR erasure request - employee offboarded",
+  "retainAuditLog": true,
+  "retainFinancialRecords": true
+}
+```
+
+**Response:**
+```json
+{
+  "erasureId": "uuid",
+  "status": "pending_confirmation",
+  "employeeId": "uuid",
+  "affectedSystems": ["mcp-hr", "mcp-finance", "mcp-support"],
+  "retentionExceptions": [
+    {"system": "mcp-finance", "reason": "7-year tax retention", "anonymized": true}
+  ],
+  "confirmationRequired": true,
+  "confirmationUrl": "/api/admin/gdpr/erase/{erasureId}/confirm"
+}
+```
+
+**Erasure Behavior:**
+| Data Type | Action | Reason |
+|-----------|--------|--------|
+| Employee profile | Anonymize | Required for org history |
+| Performance reviews | Delete | No retention requirement |
+| Salary records | Anonymize | 7-year tax retention |
+| Support tickets | Anonymize | May contain other PII |
+| AI query logs | Delete | No retention requirement |
+
+**Confirmation Flow:**
+1. HR initiates erasure request
+2. System returns affected data summary
+3. HR confirms with `POST /api/admin/gdpr/erase/{erasureId}/confirm`
+4. System performs erasure/anonymization
+5. Audit log records erasure event
+
+### 3.5 Breach Notification System
+
+**Endpoint:** `POST /api/admin/gdpr/breach`
+
+**Access Control:** HR representatives or Security role (`hr-write` or `security-admin` role)
+
+**Request:**
+```json
+{
+  "breachType": "unauthorized_access",
+  "affectedDataTypes": ["employee_pii", "financial"],
+  "affectedCount": 150,
+  "discoveryDate": "2025-12-27T10:00:00Z",
+  "description": "Unauthorized access to employee records detected",
+  "containmentActions": ["Revoked compromised tokens", "Blocked suspicious IPs"]
+}
+```
+
+**Response:**
+```json
+{
+  "breachId": "uuid",
+  "status": "registered",
+  "notificationDeadline": "2025-12-30T10:00:00Z",
+  "requiredActions": [
+    {
+      "action": "Notify supervisory authority",
+      "deadline": "2025-12-30T10:00:00Z",
+      "status": "pending",
+      "template": "/api/admin/gdpr/breach/{breachId}/template/authority"
+    },
+    {
+      "action": "Assess risk to affected individuals",
+      "deadline": "2025-12-28T10:00:00Z",
+      "status": "pending"
+    }
+  ],
+  "affectedUserList": "/api/admin/gdpr/breach/{breachId}/affected-users"
+}
+```
+
+**Breach Types:**
+- `unauthorized_access` - Unauthorized viewing/copying of data
+- `data_loss` - Data deleted or corrupted
+- `ransomware` - Data encrypted by malicious actor
+- `disclosure` - Data sent to wrong recipient
+- `system_compromise` - System-wide security breach
+
+**72-Hour Notification Workflow:**
+1. Breach registered with discovery timestamp
+2. System calculates 72-hour deadline
+3. Generates notification templates
+4. Tracks completion of required actions
+5. Logs all breach response activities
+
+### 3.6 Data Protection Impact Assessment (DPIA)
 
 A DPIA is required for AI processing of HR data due to:
 - Automated decision-making potential

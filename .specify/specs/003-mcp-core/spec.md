@@ -61,6 +61,12 @@ The Gateway itself doesn't expose tools. It orchestrates calls to downstream MCP
   - `GET /health` - Health check endpoint
   - `POST /api/revoke` - Token revocation endpoint (admin only)
   - `POST /api/confirm/:id` - Human-in-the-loop confirmation endpoint (v1.4)
+  - `POST /api/admin/gdpr/export` - GDPR data export (hr-write only, v1.5)
+  - `GET /api/admin/gdpr/export/:id/download` - Download GDPR export (hr-write only, v1.5)
+  - `POST /api/admin/gdpr/erase` - GDPR data erasure request (hr-write only, v1.5)
+  - `POST /api/admin/gdpr/erase/:id/confirm` - Confirm erasure (hr-write only, v1.5)
+  - `POST /api/admin/gdpr/breach` - Register data breach (hr-write/security-admin, v1.5)
+  - `GET /api/admin/gdpr/breach/:id` - Get breach details (hr-write/security-admin, v1.5)
 
 ## 7. Technical Details
 
