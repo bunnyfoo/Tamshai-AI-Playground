@@ -53,6 +53,25 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We are committ
    cd tests/integration && npm install
    ```
 
+4. **Install pre-commit hooks** (recommended):
+   ```bash
+   # Install pre-commit (Python package)
+   pip install pre-commit
+
+   # Install the git hooks
+   pre-commit install
+
+   # Run hooks on all files (first time)
+   pre-commit run --all-files
+   ```
+
+   Pre-commit hooks automatically:
+   - Detect secrets and API keys (gitleaks)
+   - Lint Dockerfiles (hadolint)
+   - Check YAML/JSON syntax
+   - Detect private keys
+   - Fix trailing whitespace
+
 ## Development Workflow
 
 1. **Create a branch** from `main` for your work
@@ -275,8 +294,29 @@ PRs must include:
 
 ## Security Requirements
 
+### Pre-commit Hooks (Secret Detection)
+
+We use pre-commit hooks to prevent accidental secret commits:
+
+```bash
+# Install and run hooks
+pip install pre-commit
+pre-commit install
+
+# Hooks run automatically on each commit
+# To run manually:
+pre-commit run --all-files
+```
+
+**Detected patterns include:**
+- API keys (Anthropic, AWS, GCP, Azure)
+- Private keys and certificates
+- Passwords in configuration files
+- Database connection strings
+
 ### Before Submitting
 
+- [ ] Pre-commit hooks pass (no secrets detected)
 - [ ] No secrets or credentials in code
 - [ ] No hardcoded API keys or passwords
 - [ ] Sensitive data logged appropriately (redacted)

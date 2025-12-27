@@ -499,3 +499,77 @@ jobs:
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
         continue-on-error: true
+
+  # =============================================================================
+  # Container Security Scanning (Trivy)
+  # =============================================================================
+  container-scan:
+    name: Container - Trivy Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      matrix:
+        image:
+          - name: mcp-gateway
+            path: services/mcp-gateway
+          # Add more images as they are containerized
+          # - name: mcp-hr
+          #   path: services/mcp-hr
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t tamshai/${{ matrix.image.name }}:${{ github.sha }} \
+            ${{ matrix.image.path }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'tamshai/${{ matrix.image.name }}:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # =============================================================================
+  # Pre-commit Hooks Validation
+  # =============================================================================
+  pre-commit:
+    name: Pre-commit - Secret Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+        continue-on-error: true  # Don't fail CI on style issues
