@@ -42,18 +42,19 @@ updates:
     commit-message:
       prefix: "deps(tests)"
 
-  # NPM - Desktop Client
-  - package-ecosystem: "npm"
-    directory: "/clients/desktop"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "desktop"
-    commit-message:
-      prefix: "deps(desktop)"
+  # DEPRECATED: Electron Desktop Client (replaced by Flutter - see ADR-004)
+  # Uncomment if you need to maintain the Electron client
+  # - package-ecosystem: "npm"
+  #   directory: "/clients/desktop"
+  #   schedule:
+  #     interval: "weekly"
+  #     day: "monday"
+  #   open-pull-requests-limit: 5
+  #   labels:
+  #     - "dependencies"
+  #     - "desktop"
+  #   commit-message:
+  #     prefix: "deps(desktop)"
 
   # NPM - Web Client
   - package-ecosystem: "npm"

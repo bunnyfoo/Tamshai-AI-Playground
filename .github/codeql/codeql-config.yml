@@ -14,23 +14,20 @@ paths-ignore:
   # Node modules (third-party dependencies)
   - '**/node_modules/**'
 
-  # React Native Android platform code
-  - 'clients/unified/android/**'
-  - 'clients/desktop/android/**'
+  # DEPRECATED: React Native client (replaced by Flutter - see ADR-005)
+  # Entire directory excluded from scanning
+  - 'clients/unified/**'
+  - 'clients/desktop/**'
 
-  # Flutter Android platform code
+  # Flutter Android platform code (generated, not maintained)
   - 'clients/unified_flutter/android/**'
 
-  # Flutter iOS platform code
+  # Flutter iOS platform code (generated, not maintained)
   - 'clients/unified_flutter/ios/**'
 
   # Flutter build outputs
   - 'clients/unified_flutter/build/**'
   - 'clients/unified_flutter/.dart_tool/**'
-
-  # React Native iOS platform code
-  - 'clients/unified/ios/**'
-  - 'clients/desktop/ios/**'
 
   # Build outputs
   - '**/build/**'
@@ -46,10 +43,11 @@ paths-ignore:
   - '**/*.freezed.dart'
 
 # Paths to explicitly include (our actual source code)
+# Note: clients/unified and clients/desktop are deprecated React Native code
 paths:
   - 'services/**'
-  - 'clients/unified/src/**'
-  - 'clients/desktop/src/**'
+  - 'clients/unified_flutter/lib/**'
+  - 'clients/unified_flutter/test/**'
   - 'tests/**'
   - 'apps/**'
 
