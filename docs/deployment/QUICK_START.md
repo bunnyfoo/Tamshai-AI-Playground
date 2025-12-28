@@ -518,6 +518,8 @@ After successful deployment:
 
 ### VPS Deployment (Hetzner/DigitalOcean)
 
+> **📖 Complete Guide:** For detailed instructions, troubleshooting, and security configuration, see the [VPS Deployment Guide](../../infrastructure/terraform/vps/README.md).
+
 The project includes Terraform configuration for fully automated VPS deployment with **no manual SSH required**.
 
 #### Prerequisites for VPS Deployment
