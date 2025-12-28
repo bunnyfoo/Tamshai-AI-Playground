@@ -44,7 +44,12 @@ class MockRedis {
   }
 
   async keys(pattern: string): Promise<string[]> {
-    const regex = new RegExp(pattern.replace('*', '.*'));
+    // Escape special regex characters except *, then convert * to .*
+    // This prevents regex injection from the pattern parameter
+    const escapedPattern = pattern
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape special regex chars
+      .replace(/\*/g, '.*');  // Convert Redis wildcard to regex
+    const regex = new RegExp(`^${escapedPattern}$`);
     return Array.from(this.store.keys()).filter(key => regex.test(key));
   }
 

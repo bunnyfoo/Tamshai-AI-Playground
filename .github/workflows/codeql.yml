@@ -20,21 +20,21 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@c37a8b7cd97e31de3fcbd9d84c401870edeb8d34 # v3
         with:
           # Only analyze JavaScript and TypeScript
-          # Swift/Java/Kotlin are React Native platform code we don't maintain
+          # Swift/Java/Kotlin are React Native/Flutter platform code we don't maintain
           languages: javascript-typescript
           # Use security-extended for more comprehensive scanning
           queries: security-extended
-
-      # Skip autobuild - JavaScript/TypeScript doesn't need compilation
-      # Autobuild was failing on iOS/Android native code which we don't need to scan
+          # build-mode: none tells CodeQL not to try building the project
+          # This prevents errors from Java/Kotlin code in Flutter's Android directory
+          build-mode: none
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@c37a8b7cd97e31de3fcbd9d84c401870edeb8d34 # v3
         with:
           category: "/language:javascript-typescript"

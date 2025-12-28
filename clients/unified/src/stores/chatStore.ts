@@ -10,13 +10,35 @@ import { ChatMessage } from '../types';
 import * as apiService from '../services/api';
 import { getAccessToken } from './authStore';
 
-// Simple UUID generator (crypto.randomUUID not available in all RN environments)
+/**
+ * Generate a cryptographically secure UUID v4
+ * Uses crypto.getRandomValues() when available for security
+ * Falls back to timestamp + counter for React Native environments without crypto
+ */
+let _counter = 0;
 function generateId(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  // Try crypto.randomUUID first (modern browsers/Node 19+)
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  // Try crypto.getRandomValues (most environments)
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    // Set version (4) and variant (RFC4122)
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  // Fallback: timestamp + counter (for RN environments without crypto)
+  // This is less secure but unique enough for message IDs
+  const timestamp = Date.now().toString(16);
+  const counter = (++_counter).toString(16).padStart(4, '0');
+  const random = Math.random().toString(16).slice(2, 10);
+  return `${timestamp.slice(-8)}-${counter}-4${random.slice(0, 3)}-8${random.slice(3, 6)}-${random}${timestamp.slice(0, 4)}`;
 }
 
 interface ChatState {
