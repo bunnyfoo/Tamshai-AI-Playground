@@ -155,9 +155,14 @@ write_files:
           reverse_proxy web-support:80
         }
 
-        # Main portal (default - must be last)
-        handle {
+        # Web Portal (/app/*)
+        handle_path /app/* {
           reverse_proxy web-portal:80
+        }
+
+        # Corporate website (default - static site at root)
+        handle {
+          reverse_proxy tamshai-website:80
         }
       }
 

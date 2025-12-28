@@ -1,0 +1,264 @@
+/* --- Global Variables & Reset --- */
+:root {
+    --primary-gold: #d4af37; /* Rich metallic gold */
+    --secondary-gold: #f8e7b0; /* Lighter gold for text/hover */
+    --dark-blue: #002a38; /* Deep teal/blue background */
+    --darker-blue: #001a24; /* Darker shade for footer/overlays */
+    --text-light: #e0e0e0; /* Off-white text */
+    --font-heading: 'Cinzel', serif;
+    --font-body: 'Lato', sans-serif;
+    --section-padding: 60px 20px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--dark-blue);
+    color: var(--text-light);
+    line-height: 1.6;
+    /* Set the main background pattern */
+    background-image: url('assets/bg-pattern.png');
+    background-repeat: repeat;
+    background-size: 400px; /* Adjust based on your pattern image size */
+    background-blend-mode: soft-light;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-heading);
+    color: var(--primary-gold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+a {
+    text-decoration: none;
+    color: var(--secondary-gold);
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #fff;
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 2px solid var(--primary-gold);
+    color: var(--primary-gold);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    background-color: var(--primary-gold);
+    color: var(--dark-blue);
+}
+
+.btn-primary {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    background: linear-gradient(45deg, var(--dark-blue), transparent);
+}
+
+.btn-login {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+/* --- Header & Navigation --- */
+header {
+    background-color: rgba(0, 42, 56, 0.95); /* Semi-transparent dark blue */
+    border-bottom: 2px solid var(--primary-gold);
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo a {
+    font-family: var(--font-heading);
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-gold);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-links li {
+    position: relative;
+}
+
+.nav-links a {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+/* Dropdown Menu */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: var(--darker-blue);
+    border: 1px solid var(--primary-gold);
+    min-width: 180px;
+    z-index: 1;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+.dropdown-content a {
+    color: var(--secondary-gold);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    text-transform: none;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.dropdown-content a:last-child {
+    border-bottom: none;
+}
+
+.dropdown-content a:hover {
+    background-color: var(--primary-gold);
+    color: var(--dark-blue);
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* --- Hero Section --- */
+.hero {
+    padding: 80px 20px;
+    text-align: center;
+    /* Dark overlay to make text pop against the background pattern */
+    background: radial-gradient(circle at center, rgba(0,42,56,0.6) 0%, rgba(0,26,36,0.9) 100%);
+}
+
+.hero-emblem {
+    max-width: 200px;
+    margin-bottom: 30px;
+    /* Add a subtle glow effect */
+    filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.5));
+}
+
+.hero h1 {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.mission-statement {
+    font-size: 1.3rem;
+    max-width: 700px;
+    margin: 0 auto 40px;
+    color: var(--secondary-gold);
+}
+
+/* --- Features Section --- */
+.features {
+    padding: var(--section-padding);
+    /* Slightly darker background to separate from hero */
+    background-color: rgba(0, 26, 36, 0.8);
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.feature-box {
+    background: linear-gradient(135deg, rgba(0,42,56,1) 0%, rgba(0,26,36,1) 100%);
+    border: 2px solid var(--primary-gold);
+    border-radius: 8px;
+    padding: 40px 30px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-box:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
+}
+
+.icon-wrapper {
+    margin-bottom: 25px;
+}
+
+.icon-wrapper img {
+    max-width: 80px;
+    /* Colorize the icons to match the gold theme */
+    filter: sepia(1) saturate(3) hue-rotate(10deg) brightness(0.9);
+}
+
+.feature-box h3 {
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.feature-box p {
+    font-size: 1rem;
+    color: var(--text-light);
+}
+
+/* --- Footer --- */
+footer {
+    background-color: var(--darker-blue);
+    border-top: 2px solid var(--primary-gold);
+    padding: 20px 0;
+    text-align: center;
+}
+
+footer p {
+    color: var(--secondary-gold);
+    font-size: 0.9rem;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .nav-links {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+    
+    .mission-statement {
+        font-size: 1.1rem;
+    }
+}

@@ -1,7 +1,7 @@
 # Architecture v1.4 - Quick Start Deployment Guide
 
-**Version**: 1.4.0
-**Last Updated**: December 8, 2025
+**Version**: 1.4.1
+**Last Updated**: December 27, 2025
 **Status**: Ready for Deployment
 
 ---
@@ -10,8 +10,17 @@
 
 Before deploying, ensure you have:
 
-- ✅ Docker Desktop 4.0+ with Docker Compose v2+
-- ✅ Node.js 20+ (for local development)
+### Required Software
+
+| Software | Version | Purpose | Download |
+|----------|---------|---------|----------|
+| **Git** | 2.40+ | Version control | [git-scm.com](https://git-scm.com/downloads) |
+| **Docker Desktop** | 4.0+ | Container runtime | [docker.com](https://www.docker.com/products/docker-desktop/) |
+| **Node.js** | 20 LTS | MCP Gateway, tests | [nodejs.org](https://nodejs.org/) |
+| **Flutter** | 3.24+ | Desktop/mobile client | [flutter.dev](https://docs.flutter.dev/get-started/install) |
+
+### System Requirements
+
 - ✅ 8GB RAM minimum (16GB recommended)
 - ✅ 20GB free disk space
 - ✅ Claude API Key from [Anthropic Console](https://console.anthropic.com/settings/keys)
@@ -95,6 +104,7 @@ After successful startup, access services at:
 
 | Service | URL | Purpose |
 |---------|-----|---------|
+| **Corporate Website** | http://localhost:8080 | Static company website |
 | **MCP Gateway** | http://localhost:3100 | AI orchestration (SSE streaming) |
 | **MCP HR** | http://localhost:3101 | Employee data with RLS |
 | **MCP Finance** | http://localhost:3102 | Financial data with RLS |
@@ -106,6 +116,21 @@ After successful startup, access services at:
 | **MongoDB** | localhost:27018 | Document store |
 | **Elasticsearch** | localhost:9201 | Search engine |
 | **Redis** | localhost:6380 | Confirmation cache |
+
+### VPS Production URLs (Path-Based Routing)
+
+When deployed to VPS with Caddy reverse proxy:
+
+| Path | Service | Description |
+|------|---------|-------------|
+| `/` | tamshai-website | Corporate website (root) |
+| `/auth/*` | Keycloak | Authentication & SSO |
+| `/api/*` | MCP Gateway | AI query API |
+| `/app/*` | Web Portal | Internal web applications |
+| `/hr/*` | Web HR | HR department app |
+| `/finance/*` | Web Finance | Finance department app |
+| `/sales/*` | Web Sales | Sales department app |
+| `/support/*` | Web Support | Support department app |
 
 ---
 
@@ -312,6 +337,95 @@ docker system prune -a
 
 ---
 
+## Flutter Desktop Client
+
+The unified Flutter client provides a cross-platform desktop/mobile interface with:
+- OAuth authentication with Keycloak (PKCE flow)
+- Real-time SSE streaming for AI responses
+- Voice input using system microphone
+- Secure token storage
+- v1.4 features: truncation warnings, HITL confirmations
+
+### Quick Start (Windows)
+
+```bash
+cd clients/unified_flutter
+
+# Install dependencies
+flutter pub get
+
+# Generate code (Freezed models)
+flutter pub run build_runner build --delete-conflicting-outputs
+
+# Run on Windows
+flutter run -d windows
+```
+
+### Platform-Specific Setup
+
+**Windows** (requires Visual Studio 2022 with C++ workload):
+```powershell
+flutter config --enable-windows-desktop
+flutter run -d windows
+```
+
+**macOS**:
+```bash
+xcode-select --install
+sudo gem install cocoapods
+flutter config --enable-macos-desktop
+flutter run -d macos
+```
+
+**Linux**:
+```bash
+sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+flutter config --enable-linux-desktop
+flutter run -d linux
+```
+
+### Android Development Setup
+
+For building the Android mobile app:
+
+1. **Install JDK 17** (Temurin recommended):
+   ```bash
+   # Windows - Download from https://adoptium.net/temurin/releases/?version=17
+   # macOS
+   brew install openjdk@17
+   # Ubuntu/Debian
+   sudo apt install openjdk-17-jdk
+   ```
+
+2. **Install Android SDK**:
+   ```bash
+   # Set environment variables
+   export ANDROID_HOME="$HOME/Android/Sdk"
+   export JAVA_HOME="$HOME/Java/jdk-17.0.17+10"  # Adjust path
+
+   # Install packages
+   $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
+     "platform-tools" "build-tools;34.0.0" "platforms;android-34" "platforms;android-36"
+
+   # Accept licenses
+   $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses
+   ```
+
+3. **Configure Flutter**:
+   ```bash
+   flutter config --android-sdk ~/Android/Sdk
+   flutter config --jdk-dir ~/Java/jdk-17.0.17+10
+   flutter doctor -v
+   ```
+
+4. **Build APK**:
+   ```bash
+   flutter build apk --release
+   # Output: build/app/outputs/flutter-apk/app-release.apk
+   ```
+
+---
+
 ## Development Workflow
 
 ### Local Development (Without Docker)
@@ -373,7 +487,7 @@ After successful deployment:
    - Access: http://localhost:8180
    - Login: admin/admin
    - Import realm: Already done via realm-export.json
-   - Create test users: See test-users.md
+   - Test users: See README.md for credentials
 
 3. ✅ **Test Integration**
    - Get JWT token from Keycloak
@@ -381,16 +495,63 @@ After successful deployment:
    - Verify confirmation flow
    - Check audit logs
 
-4. ✅ **Begin Phase 6: Sample Applications**
-   - Web-based query interface
-   - Approval Card UI
-   - Truncation warning display
+4. ✅ **Run Flutter Desktop Client**
+   ```bash
+   cd clients/unified_flutter
+   flutter pub get
+   flutter pub run build_runner build --delete-conflicting-outputs
+   flutter run -d windows  # or macos, linux
+   ```
+   - Login with test user credentials
+   - Test AI chat with voice input
+   - Verify real-time streaming responses
+
+5. ✅ **Verify Corporate Website**
+   - Access: http://localhost:8080
+   - Check responsive design
+   - Verify navigation links
 
 ---
 
 ## Production Deployment
 
-For production deployment to GCP/AWS:
+### VPS Deployment (Hetzner/DigitalOcean)
+
+The project includes Terraform configuration for automated VPS deployment:
+
+```bash
+cd infrastructure/terraform/vps
+
+# Copy and configure variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your domain, API keys, etc.
+
+# Deploy
+terraform init
+terraform apply
+```
+
+**Features**:
+- Automatic Docker installation via cloud-init
+- Caddy reverse proxy with Let's Encrypt SSL
+- Path-based routing (no subdomains required)
+- Fail2ban security
+- Automated updates via webhook
+
+**Architecture on VPS**:
+```
+Internet → Caddy (HTTPS) → Docker Containers
+                         ├── / → tamshai-website
+                         ├── /auth → Keycloak
+                         ├── /api → MCP Gateway
+                         └── /app → Web Portal
+```
+
+See [VPS Deployment Guide](../../infrastructure/terraform/vps/README.md) for details.
+
+### Cloud Deployment (GCP/AWS)
+
+For enterprise cloud deployment:
 
 1. **Review Security**:
    - Change all default passwords
@@ -426,6 +587,6 @@ See [Production Deployment Guide](./PRODUCTION.md) for details.
 
 ---
 
-*Last Updated: December 8, 2025*
-*Architecture Version: 1.4.0*
+*Last Updated: December 27, 2025*
+*Architecture Version: 1.4.1*
 *All services operational and ready for deployment ✅*

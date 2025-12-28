@@ -22,12 +22,12 @@ Enterprise-grade AI access system enabling secure Claude AI integration with rol
                     │  (TLS/Routing)  │
                     └────────┬────────┘
                              │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-┌───────▼───────┐   ┌────────▼────────┐   ┌──────▼──────┐
-│   Keycloak    │   │   MCP Gateway   │   │  Web Apps   │
-│   (Auth/SSO)  │   │ (AI Orchestrate)│   │  (Portal)   │
-└───────────────┘   └────────┬────────┘   └─────────────┘
+   ┌─────────────────────────┼─────────────────────────┐
+   │            │            │            │            │
+┌──▼──┐   ┌─────▼─────┐  ┌───▼───┐  ┌────▼────┐  ┌────▼────┐
+│ Web │   │ Keycloak  │  │  MCP  │  │  Web    │  │ Flutter │
+│Site │   │ (Auth)    │  │Gateway│  │  Apps   │  │ Client  │
+└─────┘   └───────────┘  └───┬───┘  └─────────┘  └─────────┘
                              │
         ┌────────────────────┼────────────────────┐
         │                    │                    │
@@ -108,6 +108,68 @@ sudo apt-get install clang cmake ninja-build pkg-config \
 flutter config --enable-linux-desktop
 ```
 
+#### Android Development Requirements
+
+For Flutter Android development (mobile app):
+
+1. **Java Development Kit (JDK) 17**
+   - Download from [Adoptium](https://adoptium.net/temurin/releases/?version=17)
+   - Or via command line:
+     ```bash
+     # Windows (PowerShell) - Download and extract to C:\Users\<username>\Java
+     curl -L -o jdk17.zip "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk"
+
+     # macOS
+     brew install openjdk@17
+
+     # Ubuntu/Debian
+     sudo apt install openjdk-17-jdk
+     ```
+
+2. **Android SDK Command-Line Tools**
+   - Download from [Android Developer](https://developer.android.com/studio#command-line-tools-only)
+   - Extract to `Android/Sdk/cmdline-tools/latest/`
+   - Or via command line:
+     ```bash
+     # Windows - Create SDK directory and download
+     mkdir -p ~/Android/Sdk/cmdline-tools
+     curl -o ~/Android/commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip
+     unzip ~/Android/commandlinetools.zip -d ~/Android/Sdk/cmdline-tools
+     mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
+     ```
+
+3. **Install SDK Packages** (requires JAVA_HOME set)
+   ```bash
+   # Set JAVA_HOME (adjust path to your JDK location)
+   export JAVA_HOME="/c/Users/<username>/Java/jdk-17.0.17+10"  # Windows Git Bash
+   # or
+   export JAVA_HOME="$HOME/Java/jdk-17.0.17+10"  # macOS/Linux
+
+   # Install required packages
+   $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
+     "platform-tools" "build-tools;34.0.0" "platforms;android-34" "platforms;android-36"
+
+   # Accept all licenses
+   $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses
+   ```
+
+4. **Configure Flutter**
+   ```bash
+   # Point Flutter to your SDK and JDK
+   flutter config --android-sdk ~/Android/Sdk
+   flutter config --jdk-dir ~/Java/jdk-17.0.17+10
+
+   # Verify setup
+   flutter doctor -v
+   ```
+
+5. **Environment Variables** (add to shell profile)
+   ```bash
+   export ANDROID_HOME="$HOME/Android/Sdk"
+   export JAVA_HOME="$HOME/Java/jdk-17.0.17+10"
+   export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"
+   ```
+
 #### System Requirements
 
 - **RAM**: 8GB minimum, 16GB recommended
@@ -171,6 +233,15 @@ flutter run -d macos
 
 # Run on Linux
 flutter run -d linux
+
+# Run on Android (requires connected device or emulator)
+flutter run -d android
+
+# Build Android APK
+flutter build apk --release
+
+# Build Android App Bundle (for Play Store)
+flutter build appbundle --release
 ```
 
 ### Access Services
@@ -205,6 +276,7 @@ tamshai-enterprise-ai/
 ├── clients/
 │   └── unified_flutter/    # Cross-platform Flutter client
 ├── apps/
+│   ├── tamshai-website/    # Corporate website (static)
 │   └── web/                # Web portal applications
 ├── infrastructure/
 │   ├── docker/             # Docker Compose configs

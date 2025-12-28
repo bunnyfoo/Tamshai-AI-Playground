@@ -34,6 +34,8 @@ services:
         condition: service_healthy
       mcp-gateway:
         condition: service_healthy
+      tamshai-website:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
       interval: 30s
@@ -347,6 +349,24 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - tamshai-network
+
+  # =============================================================================
+  # CORPORATE WEBSITE (Static)
+  # =============================================================================
+  tamshai-website:
+    build:
+      context: ./apps/tamshai-website
+      dockerfile: Dockerfile
+    image: tamshai/website:${IMAGE_TAG:-latest}
+    container_name: tamshai-website
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
       timeout: 3s
       retries: 3
