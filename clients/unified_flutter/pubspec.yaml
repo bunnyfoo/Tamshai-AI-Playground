@@ -39,6 +39,10 @@ dependencies:
   url_launcher: ^6.2.5
   crypto: ^3.0.3
 
+  # Voice Input (v1.5)
+  speech_to_text: ^6.6.0
+  permission_handler: ^11.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

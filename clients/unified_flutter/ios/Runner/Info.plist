@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Voice Input (v1.5) - Microphone Permission -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Tamshai AI uses speech recognition to convert your voice to text for AI queries.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Tamshai AI needs microphone access to enable voice input for AI queries.</string>
 </dict>
 </plist>
