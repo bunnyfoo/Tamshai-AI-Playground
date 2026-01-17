@@ -193,7 +193,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "***REDACTED_PASSWORD***",
+          "value": "SET_VIA_KEYCLOAK_SYNC",
           "temporary": false
         },
         {
