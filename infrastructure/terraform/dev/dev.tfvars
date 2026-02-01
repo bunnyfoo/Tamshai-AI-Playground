@@ -24,9 +24,9 @@
 # =============================================================================
 
 environment            = "dev"
-project_root           = "C:/Users/jcorn/tamshai-enterprise-ai"
+project_root           = "C:/Users/jcorn/Tamshai-AI-Playground"
 docker_compose_dir     = "infrastructure/docker"
-docker_compose_project = "tamshai-dev"
+docker_compose_project = "tamshai-playground"
 
 # =============================================================================
 # AUTOMATION SETTINGS

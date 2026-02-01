@@ -10,7 +10,7 @@ _transform: true
 services:
   # MCP Gateway Service
   - name: mcp-gateway-service
-    url: http://mcp-gateway:3100
+    url: http://mcp-gateway:3110
     connect_timeout: 60000
     write_timeout: 60000
     read_timeout: 60000
@@ -104,10 +104,10 @@ plugins:
   - name: cors
     config:
       origins:
-        - http://localhost:3100
-        - http://localhost:4000
-        - http://localhost:4001
-        - http://localhost:4002
+        - http://localhost:3110
+        - http://localhost:4010
+        - http://localhost:4011
+        - http://localhost:4012
         - tamshai-ai://*
         - com.tamshai.ai://*
       methods:
@@ -199,5 +199,5 @@ upstreams:
         unhealthy:
           http_failures: 3
     targets:
-      - target: mcp-gateway:3100
+      - target: mcp-gateway:3110
         weight: 100
