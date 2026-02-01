@@ -11,7 +11,7 @@ variable "environment" {
 variable "project_root" {
   description = "Absolute path to project root"
   type        = string
-  default     = "C:/Users/jcorn/tamshai-enterprise-ai"
+  default     = "C:/Users/jcorn/Tamshai-AI-Playground"
 }
 
 variable "docker_compose_dir" {
@@ -140,7 +140,7 @@ variable "gemini_api_key" {
 variable "docker_compose_project" {
   description = "Docker Compose project name"
   type        = string
-  default     = "tamshai-dev"
+  default     = "tamshai-playground"
 }
 
 variable "auto_start_services" {

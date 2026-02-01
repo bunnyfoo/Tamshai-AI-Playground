@@ -5,34 +5,34 @@
 #   Dev:   docker compose up -d (uses defaults)
 #   Stage: CADDYFILE=./Caddyfile.stage docker compose up -d
 #
-# PORT ALLOCATION (avoiding conflicts with existing MCP dev environment on 8443):
-#   - Keycloak:      8180 (moved from 8080 to avoid common conflicts)
-#   - Kong Proxy:    8100 (moved from 8000)
-#   - Kong Admin:    8101 (moved from 8001)
-#   - MCP Gateway:   3100 (moved from 3000)
-#   - MCP HR:        3101
-#   - MCP Finance:   3102
-#   - MCP Sales:     3103
-#   - MCP Support:   3104
-#   - MCP Journey:   3105 (project history agent)
-#   - Web Portal:    4000 (frontend app)
-#   - Web HR:        4001 (frontend app)
-#   - Web Finance:   4002 (frontend app)
-#   - Web Sales:     4003 (frontend app)
-#   - Web Support:   4004 (frontend app)
-#   - Caddy:         443/80 (HTTPS reverse proxy for tamshai.local)
-#   - Website:       8080 (corporate static site - also via Caddy at /)
-#   - PostgreSQL:    5433 (moved from 5432 to avoid local postgres conflicts)
-#   - MongoDB:       27018 (moved from 27017)
-#   - Elasticsearch: 9201 (moved from 9200)
-#   - MinIO API:     9100 (moved from 9000)
-#   - MinIO Console: 9101 (moved from 9001 - shares with Kong Admin, access via different path)
-#   - Redis:         6380 (token revocation list)
-#   - Vault:         8200 (secrets management)
+# PORT ALLOCATION (tamshai-playground - offset from tamshai-dev to avoid conflicts):
+#   - Keycloak:      8190 (tamshai-dev uses 8180)
+#   - Kong Proxy:    8110 (tamshai-dev uses 8100)
+#   - Kong Admin:    8111 (tamshai-dev uses 8101)
+#   - MCP Gateway:   3110 (tamshai-dev uses 3100)
+#   - MCP HR:        3111 (tamshai-dev uses 3101)
+#   - MCP Finance:   3112 (tamshai-dev uses 3102)
+#   - MCP Sales:     3113 (tamshai-dev uses 3103)
+#   - MCP Support:   3114 (tamshai-dev uses 3104)
+#   - MCP Journey:   3115 (tamshai-dev uses 3105)
+#   - Web Portal:    4010 (tamshai-dev uses 4000)
+#   - Web HR:        4011 (tamshai-dev uses 4001)
+#   - Web Finance:   4012 (tamshai-dev uses 4002)
+#   - Web Sales:     4013 (tamshai-dev uses 4003)
+#   - Web Support:   4014 (tamshai-dev uses 4004)
+#   - Caddy:         8443/8090 (tamshai-dev uses 443/80)
+#   - Website:       8085 (tamshai-dev uses 8080)
+#   - PostgreSQL:    5443 (tamshai-dev uses 5433)
+#   - MongoDB:       27028 (tamshai-dev uses 27018)
+#   - Elasticsearch: 9211 (tamshai-dev uses 9201)
+#   - MinIO API:     9110 (tamshai-dev uses 9100)
+#   - MinIO Console: 9112 (tamshai-dev uses 9102)
+#   - Redis:         6390 (tamshai-dev uses 6380)
+#   - Vault:         8210 (tamshai-dev uses 8200)
 #
-# NETWORK: Uses 172.30.0.0/16 subnet (avoiding 172.28.0.0/16 used by mcp-network)
+# NETWORK: Uses 172.31.0.0/16 subnet (tamshai-dev uses 172.30.0.0/16, mcp-network uses 172.28.0.0/16)
 
-name: ${COMPOSE_PROJECT_NAME:-tamshai-dev}
+name: ${COMPOSE_PROJECT_NAME:-tamshai-playground}
 
 services:
   # =============================================================================
@@ -43,7 +43,7 @@ services:
     container_name: tamshai-redis
     command: redis-server --appendonly yes
     ports:
-      - "6380:6379"
+      - "6390:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -67,7 +67,7 @@ services:
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
       VAULT_ADDR: http://127.0.0.1:8200
     ports:
-      - "8200:8200"
+      - "8210:8200"
     volumes:
       - vault_data:/vault/data
       - ./vault/config:/vault/config:ro
@@ -108,8 +108,8 @@ services:
     image: caddy:2-alpine
     container_name: tamshai-caddy
     ports:
-      - "443:443"
-      - "80:80"
+      - "8443:443"
+      - "8090:80"
     volumes:
       - ${CADDYFILE:-./Caddyfile.dev}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -164,7 +164,7 @@ services:
       - ${KEYCLOAK_REALM:-../../keycloak/realm-export-dev.json}:/opt/keycloak/data/import/realm-export.json:ro
       - ../keycloak/themes/tamshai:/opt/keycloak/themes/tamshai:ro
     ports:
-      - "8180:8080"
+      - "8190:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -195,8 +195,8 @@ services:
     volumes:
       - ./kong/kong.yml:/etc/kong/kong.yml:ro
     ports:
-      - "8100:8000"   # Proxy (mapped to 8100 on host)
-      - "8101:8001"   # Admin API (mapped to 8101 on host)
+      - "8110:8000"   # Proxy (mapped to 8110 on host)
+      - "8111:8001"   # Admin API (mapped to 8111 on host)
     depends_on:
       keycloak:
         condition: service_healthy
@@ -214,7 +214,7 @@ services:
     container_name: tamshai-mcp-gateway
     environment:
       NODE_ENV: development
-      PORT: 3100
+      PORT: 3110
       # v1.4: JWT validation
       # KEYCLOAK_URL: Used for container-to-container communication (includes /auth prefix)
       KEYCLOAK_URL: http://keycloak:8080/auth
@@ -231,13 +231,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       # MCP server URLs
-      MCP_HR_URL: http://mcp-hr:3101
-      MCP_FINANCE_URL: http://mcp-finance:3102
-      MCP_SALES_URL: http://mcp-sales:3103
-      MCP_SUPPORT_URL: http://mcp-support:3104
+      MCP_HR_URL: http://mcp-hr:3111
+      MCP_FINANCE_URL: http://mcp-finance:3112
+      MCP_SALES_URL: http://mcp-sales:3113
+      MCP_SUPPORT_URL: http://mcp-support:3114
       LOG_LEVEL: info
     ports:
-      - "3100:3100"
+      - "3110:3110"
     depends_on:
       redis:
         condition: service_healthy
@@ -253,7 +253,7 @@ services:
     container_name: tamshai-mcp-hr
     environment:
       NODE_ENV: development
-      PORT: 3101
+      PORT: 3111
       # v1.4: PostgreSQL connection
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -276,7 +276,7 @@ services:
       STAGE_USER_PASSWORD: ${STAGE_USER_PASSWORD:-}
       PROD_USER_PASSWORD: ${PROD_USER_PASSWORD:-}
     ports:
-      - "3101:3101"
+      - "3111:3111"
     depends_on:
       postgres:
         condition: service_healthy
@@ -292,7 +292,7 @@ services:
     container_name: tamshai-mcp-finance
     environment:
       NODE_ENV: development
-      PORT: 3102
+      PORT: 3112
       # v1.4: PostgreSQL connection
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -304,7 +304,7 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
     ports:
-      - "3102:3102"
+      - "3112:3112"
     depends_on:
       postgres:
         condition: service_healthy
@@ -320,7 +320,7 @@ services:
     container_name: tamshai-mcp-sales
     environment:
       NODE_ENV: development
-      PORT: 3103
+      PORT: 3113
       # v1.4: MongoDB connection
       MONGODB_URI: mongodb://tamshai:${MONGODB_PASSWORD:-tamshai_password}@mongodb:27017
       MONGODB_DB: tamshai_sales
@@ -329,7 +329,7 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
     ports:
-      - "3103:3103"
+      - "3113:3113"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -345,7 +345,7 @@ services:
     container_name: tamshai-mcp-support
     environment:
       NODE_ENV: development
-      PORT: 3104
+      PORT: 3114
       # Backend selection: elasticsearch (dev/stage) or mongodb (prod)
       SUPPORT_DATA_BACKEND: elasticsearch
       # v1.4: Elasticsearch connection
@@ -355,7 +355,7 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
     ports:
-      - "3104:3104"
+      - "3114:3114"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -372,18 +372,18 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      PORT: 3105
+      PORT: 3115
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
     ports:
-      - "3105:3105"
+      - "3115:3115"
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3105/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3115/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -399,12 +399,12 @@ services:
       dockerfile: apps/portal/Dockerfile
     container_name: tamshai-web-portal
     environment:
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8180/auth/realms/tamshai-corp
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
-      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3100
+      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "4000:80"
+      - "4010:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -424,12 +424,12 @@ services:
       dockerfile: apps/hr/Dockerfile
     container_name: tamshai-web-hr
     environment:
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8180/auth/realms/tamshai-corp
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
-      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3100
+      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "4001:80"
+      - "4011:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -449,12 +449,12 @@ services:
       dockerfile: apps/finance/Dockerfile
     container_name: tamshai-web-finance
     environment:
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8180/auth/realms/tamshai-corp
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
-      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3100
+      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "4002:80"
+      - "4012:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -474,12 +474,12 @@ services:
       dockerfile: apps/sales/Dockerfile
     container_name: tamshai-web-sales
     environment:
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8180/auth/realms/tamshai-corp
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
-      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3100
+      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "4003:80"
+      - "4013:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -499,12 +499,12 @@ services:
       dockerfile: apps/support/Dockerfile
     container_name: tamshai-web-support
     environment:
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8180/auth/realms/tamshai-corp
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
-      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3100
+      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "4004:80"
+      - "4014:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -527,7 +527,7 @@ services:
       dockerfile: Dockerfile
     container_name: tamshai-website
     ports:
-      - "8080:80"
+      - "8085:80"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
@@ -552,7 +552,7 @@ services:
       - ../../sample-data/hr-data.sql:/docker-entrypoint-initdb.d/02-hr-data.sql:ro
       - ../../sample-data/finance-data.sql:/docker-entrypoint-initdb.d/03-finance-data.sql:ro
     ports:
-      - "5433:5432"
+      - "5443:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -572,7 +572,7 @@ services:
       - mongodb_data:/data/db
       - ../../sample-data/sales-data.js:/docker-entrypoint-initdb.d/sales-data.js:ro
     ports:
-      - "27018:27017"
+      - "27028:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -591,7 +591,7 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     ports:
-      - "9201:9200"
+      - "9211:9200"
     healthcheck:
       test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/9200' && echo 'ES is up'"]
       interval: 10s
@@ -634,8 +634,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9100:9000"
-      - "9102:9001"
+      - "9110:9000"
+      - "9112:9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -784,7 +784,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.30.0.0/16
+        - subnet: 172.31.0.0/16
 
 volumes:
   postgres_data:

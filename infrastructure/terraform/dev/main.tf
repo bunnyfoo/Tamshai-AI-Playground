@@ -29,91 +29,91 @@ locals {
   compose_path = "${var.project_root}/${var.docker_compose_dir}"
   env_file     = "${local.compose_path}/.env"
 
-  # Service URLs for outputs
+  # Service URLs for outputs (tamshai-playground ports - offset from tamshai-dev)
   services = {
     keycloak = {
-      url  = "http://localhost:8180/auth"
-      port = 8180
+      url  = "http://localhost:8190/auth"
+      port = 8190
     }
     kong_proxy = {
-      url  = "http://localhost:8100"
-      port = 8100
+      url  = "http://localhost:8110"
+      port = 8110
     }
     kong_admin = {
-      url  = "http://localhost:8101"
-      port = 8101
+      url  = "http://localhost:8111"
+      port = 8111
     }
     mcp_gateway = {
-      url  = "http://localhost:3100"
-      port = 3100
+      url  = "http://localhost:3110"
+      port = 3110
     }
     mcp_hr = {
-      url  = "http://localhost:3101"
-      port = 3101
+      url  = "http://localhost:3111"
+      port = 3111
     }
     mcp_finance = {
-      url  = "http://localhost:3102"
-      port = 3102
+      url  = "http://localhost:3112"
+      port = 3112
     }
     mcp_sales = {
-      url  = "http://localhost:3103"
-      port = 3103
+      url  = "http://localhost:3113"
+      port = 3113
     }
     mcp_support = {
-      url  = "http://localhost:3104"
-      port = 3104
+      url  = "http://localhost:3114"
+      port = 3114
     }
     mcp_journey = {
-      url  = "http://localhost:3105"
-      port = 3105
+      url  = "http://localhost:3115"
+      port = 3115
     }
     web_portal = {
-      url  = "http://localhost:4000"
-      port = 4000
+      url  = "http://localhost:4010"
+      port = 4010
     }
     web_hr = {
-      url  = "http://localhost:4001"
-      port = 4001
+      url  = "http://localhost:4011"
+      port = 4011
     }
     web_finance = {
-      url  = "http://localhost:4002"
-      port = 4002
+      url  = "http://localhost:4012"
+      port = 4012
     }
     web_sales = {
-      url  = "http://localhost:4003"
-      port = 4003
+      url  = "http://localhost:4013"
+      port = 4013
     }
     web_support = {
-      url  = "http://localhost:4004"
-      port = 4004
+      url  = "http://localhost:4014"
+      port = 4014
     }
     website = {
-      url  = "http://localhost:8080"
-      port = 8080
+      url  = "http://localhost:8085"
+      port = 8085
     }
     postgres = {
-      url  = "postgresql://localhost:5433"
-      port = 5433
+      url  = "postgresql://localhost:5443"
+      port = 5443
     }
     mongodb = {
-      url  = "mongodb://localhost:27018"
-      port = 27018
+      url  = "mongodb://localhost:27028"
+      port = 27028
     }
     redis = {
-      url  = "redis://localhost:6380"
-      port = 6380
+      url  = "redis://localhost:6390"
+      port = 6390
     }
     elasticsearch = {
-      url  = "http://localhost:9201"
-      port = 9201
+      url  = "http://localhost:9211"
+      port = 9211
     }
     minio = {
-      url  = "http://localhost:9100"
-      port = 9100
+      url  = "http://localhost:9110"
+      port = 9110
     }
     caddy = {
-      url  = "https://www.tamshai.local"
-      port = 443
+      url  = "https://localhost:8443"
+      port = 8443
     }
   }
 }
@@ -261,7 +261,7 @@ resource "null_resource" "wait_for_services" {
 
       # Wait for Keycloak
       for i in {1..60}; do
-        if curl -sf http://localhost:8180/health/ready > /dev/null 2>&1; then
+        if curl -sf http://localhost:8190/health/ready > /dev/null 2>&1; then
           echo "Keycloak ready!"
           break
         fi
@@ -281,7 +281,7 @@ resource "null_resource" "wait_for_services" {
 
       # Wait for MCP Gateway
       for i in {1..30}; do
-        if curl -sf http://localhost:3100/health > /dev/null 2>&1; then
+        if curl -sf http://localhost:3110/health > /dev/null 2>&1; then
           echo "MCP Gateway ready!"
           break
         fi
@@ -356,7 +356,7 @@ resource "null_resource" "keycloak_set_passwords" {
 
       # Get admin token
       echo "Authenticating with Keycloak Admin API..."
-      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8180/auth/realms/master/protocol/openid-connect/token" \
+      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8190/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
         -d "password=admin" \
@@ -377,14 +377,14 @@ resource "null_resource" "keycloak_set_passwords" {
         echo "Setting test-user.journey password..."
 
         # Get user ID via REST API
-        USER_ID=$(curl -s "http://localhost:8180/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
+        USER_ID=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
           -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id // empty')
 
         if [ -n "$USER_ID" ]; then
           # Set password via REST API with jq for proper JSON encoding (handles special chars like @)
           PASSWORD_JSON=$(jq -n --arg pass "$TEST_USER_PASSWORD" '{"type":"password","value":$pass,"temporary":false}')
           HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
-            "http://localhost:8180/auth/admin/realms/tamshai-corp/users/$USER_ID/reset-password" \
+            "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/reset-password" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -d "$PASSWORD_JSON")
@@ -407,7 +407,7 @@ resource "null_resource" "keycloak_set_passwords" {
         echo "Setting corporate user passwords..."
 
         # Get all users via REST API
-        ALL_USERS=$(curl -s "http://localhost:8180/auth/admin/realms/tamshai-corp/users?max=500" \
+        ALL_USERS=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users?max=500" \
           -H "Authorization: Bearer $TOKEN")
 
         # Build password JSON once (same for all corporate users)
@@ -421,7 +421,7 @@ resource "null_resource" "keycloak_set_passwords" {
           # Skip test-user.journey (uses TEST_USER_PASSWORD)
           if [ "$USERNAME" != "test-user.journey" ] && [ -n "$USERID" ]; then
             HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
-              "http://localhost:8180/auth/admin/realms/tamshai-corp/users/$USERID/reset-password" \
+              "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USERID/reset-password" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
               -d "$CORP_PASSWORD_JSON")
@@ -482,7 +482,7 @@ resource "null_resource" "keycloak_set_totp" {
 
       # Get admin token
       echo "Getting admin token..."
-      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8180/auth/realms/master/protocol/openid-connect/token" \
+      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8190/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
         -d "password=admin" \
@@ -499,7 +499,7 @@ resource "null_resource" "keycloak_set_totp" {
 
       # Get test-user.journey user ID
       echo "Finding test-user.journey..."
-      USER_RESPONSE=$(curl -s "http://localhost:8180/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
+      USER_RESPONSE=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
         -H "Authorization: Bearer $TOKEN")
 
       USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
@@ -513,12 +513,12 @@ resource "null_resource" "keycloak_set_totp" {
 
       # Delete existing OTP credentials
       echo "Checking existing OTP credentials..."
-      EXISTING_CREDS=$(curl -s "http://localhost:8180/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
+      EXISTING_CREDS=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
         -H "Authorization: Bearer $TOKEN")
 
       for CRED_ID in $(echo "$EXISTING_CREDS" | grep -o '"id":"[^"]*"[^}]*"type":"otp"' | grep -o '"id":"[^"]*' | cut -d'"' -f4); do
         echo "Deleting existing OTP credential: $CRED_ID"
-        curl -s -X DELETE "http://localhost:8180/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials/$CRED_ID" \
+        curl -s -X DELETE "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials/$CRED_ID" \
           -H "Authorization: Bearer $TOKEN"
       done
 
@@ -536,7 +536,7 @@ EOF
 )
 
       HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X POST \
-        "http://localhost:8180/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
+        "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$CREDENTIAL_JSON")
@@ -551,7 +551,7 @@ EOF
       # Clear required actions to prevent TOTP setup prompt
       echo "Clearing required actions..."
       curl -s -X PUT \
-        "http://localhost:8180/auth/admin/realms/tamshai-corp/users/$USER_ID" \
+        "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d '{"requiredActions":[]}' > /dev/null

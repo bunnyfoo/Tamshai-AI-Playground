@@ -74,7 +74,7 @@ tamshai.local, www.tamshai.local {
 
   # MCP Journey (Project History Agent) (/mcp-journey/*)
   handle_path /mcp-journey/* {
-    reverse_proxy mcp-journey:3105
+    reverse_proxy mcp-journey:3115
   }
 
   # Redirect /downloads to portal app (auth handled by PrivateRoute/Keycloak)
