@@ -25,6 +25,8 @@ export interface MCPServerUrlConfig {
   finance: string;
   sales: string;
   support: string;
+  payroll: string;
+  tax: string;
 }
 
 export interface ConfirmationRoutesDependencies {

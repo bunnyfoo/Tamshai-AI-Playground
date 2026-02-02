@@ -37,6 +37,7 @@ import {
   executeUpdateSalary,
   UpdateSalaryInputSchema,
 } from './tools/update-salary';
+import { getOrgChart, GetOrgChartInputSchema } from './tools/get-org-chart';
 import { MCPToolResponse } from './types/response';
 
 dotenv.config();
@@ -359,6 +360,45 @@ app.post('/tools/list_employees', async (req: Request, res: Response) => {
       status: 'error',
       code: 'INTERNAL_ERROR',
       message: 'Failed to list employees',
+    });
+  }
+});
+
+/**
+ * Get Org Chart Tool
+ */
+app.post('/tools/get_org_chart', async (req: Request, res: Response) => {
+  try {
+    const { userContext, rootEmployeeId, maxDepth } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have HR access
+    if (!hasHRAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires HR access (hr-read, hr-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request HR access permissions.',
+      });
+      return;
+    }
+
+    const result = await getOrgChart({ rootEmployeeId, maxDepth }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_org_chart error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get org chart',
     });
   }
 });
