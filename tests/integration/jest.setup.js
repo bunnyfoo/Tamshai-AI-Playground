@@ -306,9 +306,21 @@ beforeAll(async () => {
 
 /**
  * Global teardown - runs once after all tests
+ *
+ * NOTE: In CI mode, we skip restoration because:
+ * 1. Keycloak instance is ephemeral (destroyed after CI run)
+ * 2. afterAll runs after EACH test file, not after all tests
+ * 3. Restoring TOTP mid-run breaks subsequent test files
  */
 afterAll(async () => {
-  // Restore test users to their original state
+  const isCI = process.env.CI === 'true';
+
+  if (isCI) {
+    console.log('\n✅ All integration tests complete (CI mode - skipping user restoration)');
+    return;
+  }
+
+  // Restore test users to their original state (local dev only)
   await restoreTestUsers();
 
   console.log('\n✅ All integration tests complete');
