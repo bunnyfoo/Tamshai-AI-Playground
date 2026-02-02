@@ -5,7 +5,6 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import { LoadingSpinner, ErrorMessage, Card } from '@tamshai/ui';
 import type { TaxSummary } from '../types';
 
 function formatCurrency(amount: number): string {
@@ -83,36 +82,46 @@ export function DashboardPage() {
         )}
       </div>
 
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="spinner mb-4"></div>
+          <p className="text-gray-500">Loading tax data...</p>
+        </div>
+      )}
 
-      {error && <ErrorMessage message={(error as Error).message || 'Failed to load tax summary'} />}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="font-medium text-red-800">Error loading tax summary</p>
+          <p className="text-sm text-red-600 mt-1">{(error as Error).message}</p>
+        </div>
+      )}
 
       {!isLoading && !error && data && (
         <>
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="p-6">
+            <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500">Total Tax Liability</h3>
               <p className="text-2xl font-bold text-gray-900 mt-2">
                 {formatCurrency(data.totalTaxLiability)}
               </p>
-            </Card>
-            <Card className="p-6">
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500">Paid to Date</h3>
               <p className="text-2xl font-bold text-gray-900 mt-2">
                 {formatCurrency(data.paidToDate)}
               </p>
-            </Card>
-            <Card className="p-6">
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500">Remaining Balance</h3>
               <p className="text-2xl font-bold text-gray-900 mt-2">
                 {formatCurrency(data.remainingBalance)}
               </p>
-            </Card>
+            </div>
           </div>
 
           {/* Upcoming Deadlines */}
-          <Card className="p-6">
+          <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Deadlines</h2>
             <div className="space-y-3">
               {data.upcomingDeadlines.map((deadline, index) => (
@@ -125,10 +134,10 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
 
           {/* State Breakdown */}
-          <Card className="p-6">
+          <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">State Tax Breakdown</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -152,10 +161,10 @@ export function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </div>
 
           {/* Recent Filings */}
-          <Card className="p-6">
+          <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Filings</h2>
             <div className="space-y-3">
               {data.recentFilings.map((filing) => (
@@ -170,7 +179,7 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         </>
       )}
     </div>

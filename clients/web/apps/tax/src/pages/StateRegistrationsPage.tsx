@@ -5,7 +5,6 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import { LoadingSpinner, ErrorMessage, Badge, Card } from '@tamshai/ui';
 import type { StateRegistration, TaxApiResponse } from '../types';
 
 function formatDate(dateString: string): string {
@@ -46,18 +45,18 @@ function getStatusLabel(status: string): string {
   }
 }
 
-function getStatusVariant(status: string): string {
+function getStatusClasses(status: string): string {
   switch (status) {
     case 'active':
-      return 'success';
+      return 'bg-green-100 text-green-800';
     case 'pending':
-      return 'warning';
+      return 'bg-yellow-100 text-yellow-800';
     case 'expired':
-      return 'error';
+      return 'bg-red-100 text-red-800';
     case 'revoked':
-      return 'error';
+      return 'bg-red-100 text-red-800';
     default:
-      return 'default';
+      return 'bg-gray-100 text-gray-800';
   }
 }
 
@@ -101,12 +100,22 @@ export function StateRegistrationsPage() {
         <p className="text-gray-500 mt-1">State tax registration status and filing requirements</p>
       </div>
 
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="spinner mb-4"></div>
+          <p className="text-gray-500">Loading registrations...</p>
+        </div>
+      )}
 
-      {error && <ErrorMessage message={(error as Error).message || 'Failed to load registrations'} />}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="font-medium text-red-800">Error loading registrations</p>
+          <p className="text-sm text-red-600 mt-1">{(error as Error).message}</p>
+        </div>
+      )}
 
       {!isLoading && !error && (
-        <Card className="overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -137,9 +146,9 @@ export function StateRegistrationsPage() {
                       {registration.expirationDate ? formatDate(registration.expirationDate) : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={getStatusVariant(registration.status)}>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusClasses(registration.status)}`}>
                         {getStatusLabel(registration.status)}
-                      </Badge>
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-sm">{registration.notes || '-'}</td>
                   </tr>
@@ -147,7 +156,7 @@ export function StateRegistrationsPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );

@@ -5,7 +5,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import { LoadingSpinner, ErrorMessage, ApprovalCard, Card } from '@tamshai/ui';
+import { ApprovalCard } from '@tamshai/ui';
 
 interface Message {
   id: string;
@@ -170,7 +170,7 @@ export function AIQueryPage() {
 
       {/* Example Queries */}
       {messages.length === 0 && (
-        <Card className="p-4 mb-4">
+        <div className="bg-white rounded-lg shadow p-4 mb-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Try asking about:</p>
           <div className="flex flex-wrap gap-2">
             {EXAMPLE_QUERIES.map((example, index) => (
@@ -184,7 +184,7 @@ export function AIQueryPage() {
               </button>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Messages */}
@@ -208,11 +208,17 @@ export function AIQueryPage() {
 
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
-            <LoadingSpinner />
+            <div className="bg-gray-100 rounded-lg px-4 py-2">
+              <div className="spinner"></div>
+            </div>
           </div>
         )}
 
-        {error && <ErrorMessage message={error} />}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
 
         {pendingConfirmation && (
           <ApprovalCard
