@@ -194,16 +194,19 @@ resource "local_file" "docker_env" {
 
     # MCP Gateway
     # Use fetched key from GitHub secrets (CLAUDE_API_KEY), fallback to variable
+    # Note: coalesce fails on all-empty, so we provide "not-set" as final fallback
     claude_api_key = coalesce(
       data.external.github_secrets.result.claude_api_key,
-      var.claude_api_key
+      var.claude_api_key,
+      "not-set"
     )
 
     # MCP Journey (Project History Agent)
     # Use fetched key from GitHub secrets, fallback to variable
-    gemini_api_key = coalesce(
-      data.external.github_secrets.result.gemini_api_key,
-      var.gemini_api_key
+    # Empty string is valid (disables Gemini features)
+    gemini_api_key = try(
+      coalesce(data.external.github_secrets.result.gemini_api_key, var.gemini_api_key),
+      ""
     )
 
     # Environment
