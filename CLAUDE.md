@@ -38,6 +38,33 @@ git config user.email
 
 ---
 
+## GitHub Authentication
+
+**CRITICAL**: Always use these settings for GitHub operations:
+
+| Setting | Value | Notes |
+|---------|-------|-------|
+| **GitHub Account** | `bunnyfoo` | Never use `jcornell3` |
+| **Repository** | `Tamshai-AI-Playground` | Not `Tamshai-AI-Playground-new` |
+| **Token Variable** | `BUNNYFOO_GH_TOKEN` | Never use `GITHUB_TOKEN` |
+
+**Authentication Method**:
+```bash
+# Authenticate via gh CLI (preferred)
+unset GITHUB_TOKEN
+gh auth login --with-token <<< "$BUNNYFOO_GH_TOKEN"
+
+# Verify correct account
+gh api user --jq '.login'  # Must return: bunnyfoo
+```
+
+**NEVER**:
+- Embed tokens in git remote URLs (exposes token in `git remote -v` output)
+- Use `GITHUB_TOKEN` environment variable (points to wrong account)
+- Push to or reference `jcornell3` repositories
+
+---
+
 ## Environment Alignment Goals
 
 **CRITICAL REQUIREMENT**: Dev, Stage, and Prod environments must be aligned so that:
