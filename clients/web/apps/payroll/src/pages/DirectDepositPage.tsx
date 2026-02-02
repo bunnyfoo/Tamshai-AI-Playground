@@ -29,22 +29,6 @@ export default function DirectDepositPage() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading direct deposit settings...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error loading direct deposit settings</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -62,15 +46,31 @@ export default function DirectDepositPage() {
         </button>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading direct deposit settings...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error loading direct deposit settings</p>
+        </div>
+      )}
+
       {/* Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-blue-700 text-sm">
-          Changes take effect for the next pay period. Allow 1-2 pay cycles for new accounts to be verified.
-        </p>
-      </div>
+      {!isLoading && !error && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-700 text-sm">
+            Changes take effect for the next pay period. Allow 1-2 pay cycles for new accounts to be verified.
+          </p>
+        </div>
+      )}
 
       {/* Bank Accounts */}
-      {accounts && accounts.length > 0 ? (
+      {!isLoading && !error && accounts && accounts.length > 0 ? (
         <div className="space-y-4">
           {accounts.map((account) => (
             <div
@@ -128,7 +128,7 @@ export default function DirectDepositPage() {
             </div>
           ))}
         </div>
-      ) : (
+      ) : !isLoading && !error ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-gray-500">No bank accounts configured</p>
           <button
@@ -139,7 +139,7 @@ export default function DirectDepositPage() {
             Add Your First Account
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* Add Account Modal */}
       {isModalOpen && (

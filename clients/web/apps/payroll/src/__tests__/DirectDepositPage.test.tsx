@@ -120,8 +120,9 @@ describe('DirectDepositPage', () => {
       render(<DirectDepositPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('****4567')).toBeInTheDocument();
-        expect(screen.getByText('****8901')).toBeInTheDocument();
+        // Account numbers are displayed with account type, use partial match
+        expect(screen.getByText(/\*{4}4567/)).toBeInTheDocument();
+        expect(screen.getByText(/\*{4}8901/)).toBeInTheDocument();
       });
     });
 

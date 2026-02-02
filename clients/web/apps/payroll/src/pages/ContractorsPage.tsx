@@ -46,22 +46,6 @@ export default function ContractorsPage() {
 
   const contractors1099Required = contractors?.filter((c) => c.ytd_payments >= 600) ?? [];
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading contractors...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error loading contractors</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -86,8 +70,22 @@ export default function ContractorsPage() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading contractors...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error loading contractors</p>
+        </div>
+      )}
+
       {/* 1099 Summary */}
-      {contractors1099Required.length > 0 && (
+      {!isLoading && !error && contractors1099Required.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <p className="text-yellow-800">
             <span className="font-medium">1099 Required</span> - {contractors1099Required.length} contractors require 1099
@@ -128,7 +126,7 @@ export default function ContractorsPage() {
       </div>
 
       {/* Contractors Table */}
-      {contractors && contractors.length > 0 ? (
+      {!isLoading && !error && contractors && contractors.length > 0 ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -194,11 +192,11 @@ export default function ContractorsPage() {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : !isLoading && !error ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-gray-500">No contractors found</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

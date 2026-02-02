@@ -59,22 +59,6 @@ export default function PayRunsPage() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading pay runs...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error loading pay runs</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -127,8 +111,22 @@ export default function PayRunsPage() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading pay runs...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error loading pay runs</p>
+        </div>
+      )}
+
       {/* Pay Runs Table */}
-      {payRuns && payRuns.length > 0 ? (
+      {!isLoading && !error && payRuns && payRuns.length > 0 ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -202,11 +200,11 @@ export default function PayRunsPage() {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : !isLoading && !error ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-gray-500">No pay runs found</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

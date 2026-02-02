@@ -49,22 +49,6 @@ export default function PayStubsPage() {
   const ytdGross = latestStub?.ytd_gross ?? 0;
   const ytdNet = latestStub?.ytd_net ?? 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading pay stubs...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error loading pay stubs</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -105,8 +89,22 @@ export default function PayStubsPage() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading pay stubs...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error loading pay stubs</p>
+        </div>
+      )}
+
       {/* Pay Stubs Table */}
-      {payStubs && payStubs.length > 0 ? (
+      {!isLoading && !error && payStubs && payStubs.length > 0 ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -180,11 +178,11 @@ export default function PayStubsPage() {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : !isLoading && !error ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-gray-500">No pay stubs found</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
