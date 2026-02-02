@@ -169,10 +169,41 @@ data "external" "github_secrets" {
 }
 
 # =============================================================================
+# GITHUB SECRETS VALIDATION
+# =============================================================================
+# All GitHub secrets are REQUIRED. Terraform will fail if any are missing.
+# This ensures the environment is fully configured before deployment.
+#
+# Required secrets:
+#   - DEV_USER_PASSWORD (or STAGE_USER_PASSWORD/PROD_USER_PASSWORD)
+#   - TEST_USER_PASSWORD
+#   - CLAUDE_API_KEY
+# =============================================================================
+
+resource "null_resource" "validate_github_secrets" {
+  lifecycle {
+    precondition {
+      condition     = length(data.external.github_secrets.result.user_password) > 0
+      error_message = "GitHub secret ${upper(var.environment)}_USER_PASSWORD is required but not set. Run: gh secret set ${upper(var.environment)}_USER_PASSWORD --body '<password>'"
+    }
+    precondition {
+      condition     = length(data.external.github_secrets.result.test_user_password) > 0
+      error_message = "GitHub secret TEST_USER_PASSWORD is required but not set. Run: gh secret set TEST_USER_PASSWORD --body '<password>'"
+    }
+    precondition {
+      condition     = length(data.external.github_secrets.result.claude_api_key) > 0
+      error_message = "GitHub secret CLAUDE_API_KEY is required but not set. Run: gh secret set CLAUDE_API_KEY --body '<api-key>'"
+    }
+  }
+}
+
+# =============================================================================
 # ENVIRONMENT FILE GENERATION
 # =============================================================================
 
 resource "local_file" "docker_env" {
+  depends_on = [null_resource.validate_github_secrets]
+
   filename = local.env_file
   content = templatefile("${path.module}/templates/docker.env.tftpl", {
     # Database credentials
@@ -228,7 +259,7 @@ resource "local_file" "docker_env" {
 resource "null_resource" "docker_compose_up" {
   count = var.auto_start_services ? 1 : 0
 
-  depends_on = [local_file.docker_env, null_resource.hosts_file_check]
+  depends_on = [local_file.docker_env, null_resource.hosts_file_check, null_resource.validate_github_secrets]
 
   triggers = {
     env_file_hash = local_file.docker_env.content
@@ -238,7 +269,11 @@ resource "null_resource" "docker_compose_up" {
   }
 
   provisioner "local-exec" {
-    command     = "docker compose build --no-cache && docker compose up -d"
+    # First stop any existing containers and remove volumes to ensure clean state
+    # Then rebuild all images (--no-cache ensures latest source files are used)
+    # Finally start all services
+    # This prevents race conditions and ensures Keycloak imports fresh realm config
+    command     = "docker compose down -v --remove-orphans 2>/dev/null || true && docker compose build --no-cache && docker compose up -d"
     working_dir = local.compose_path
     environment = {
       COMPOSE_PROJECT_NAME = var.docker_compose_project
@@ -256,9 +291,9 @@ resource "null_resource" "wait_for_services" {
     command = <<-EOT
       echo "Waiting for services to be healthy..."
 
-      # Wait for PostgreSQL
+      # Wait for PostgreSQL (tamshai-pg-postgres for playground)
       for i in {1..30}; do
-        if docker exec tamshai-postgres pg_isready -U postgres > /dev/null 2>&1; then
+        if docker exec tamshai-pg-postgres pg_isready -U postgres > /dev/null 2>&1; then
           echo "PostgreSQL ready!"
           break
         fi
@@ -266,7 +301,7 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for Keycloak
+      # Wait for Keycloak (port 8190 for playground)
       for i in {1..60}; do
         if curl -sf http://localhost:8190/health/ready > /dev/null 2>&1; then
           echo "Keycloak ready!"
@@ -276,9 +311,9 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for Kong
+      # Wait for Kong (port 8110 for playground)
       for i in {1..30}; do
-        if curl -sf http://localhost:8100 > /dev/null 2>&1; then
+        if curl -sf http://localhost:8110 > /dev/null 2>&1; then
           echo "Kong ready!"
           break
         fi
@@ -286,7 +321,7 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for MCP Gateway
+      # Wait for MCP Gateway (port 3110 for playground)
       for i in {1..30}; do
         if curl -sf http://localhost:3110/health > /dev/null 2>&1; then
           echo "MCP Gateway ready!"
@@ -296,9 +331,9 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for Caddy (HTTPS proxy)
+      # Wait for Caddy (HTTPS proxy on port 8443 for playground)
       for i in {1..30}; do
-        if curl -sf -k https://localhost > /dev/null 2>&1; then
+        if curl -sf -k https://localhost:8443 > /dev/null 2>&1; then
           echo "Caddy HTTPS ready!"
           break
         fi
@@ -308,7 +343,7 @@ resource "null_resource" "wait_for_services" {
 
       echo "All critical services are healthy!"
       echo ""
-      echo "Access your dev environment at: https://www.tamshai-playground.local"
+      echo "Access your dev environment at: https://www.tamshai-playground.local:8443"
       echo "(Accept the self-signed certificate warning in your browser)"
     EOT
   }

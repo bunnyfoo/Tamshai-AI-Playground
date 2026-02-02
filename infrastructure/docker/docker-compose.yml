@@ -133,12 +133,15 @@ services:
   # IDENTITY PROVIDER
   # =============================================================================
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
+    # Build from Dockerfile.dev to bake realm-export-dev.json into image
+    # This avoids Docker Desktop volume mount sync issues on Windows
+    # Use `docker compose build --no-cache keycloak` to force rebuild with latest realm
+    build:
+      context: ../../keycloak
+      dockerfile: Dockerfile.dev
+    image: tamshai-pg-keycloak:dev
     container_name: tamshai-pg-keycloak
     restart: unless-stopped
-    # Always use --import-realm for realm setup consistency across all environments
-    # Realm is loaded from realm-export-dev.json (dev/stage) or realm-export.json (prod)
-    command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
@@ -156,13 +159,7 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
-    volumes:
-      # KEYCLOAK_REALM env var allows environment-specific realm exports (Phoenix principle)
-      # Default: realm-export-dev.json (local development with test users)
-      # Stage: realm-export-stage.json (set via cloud-init.yaml)
-      # Prod: realm-export.json (set via deploy-to-gcp.yml)
-      - ${KEYCLOAK_REALM:-../../keycloak/realm-export-dev.json}:/opt/keycloak/data/import/realm-export.json:ro
-      - ../keycloak/themes/tamshai:/opt/keycloak/themes/tamshai:ro
+    # No volume mounts for realm - it's baked into the image via Dockerfile.dev
     ports:
       - "8190:8080"
     depends_on:
