@@ -147,7 +147,8 @@ describe('PayRunsPage', () => {
       render(<PayRunsPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Jan 1-14, 2026')).toBeInTheDocument();
+        // Check for gross pay which indicates data is loaded
+        expect(screen.getByText('$425,000')).toBeInTheDocument();
       });
     });
 

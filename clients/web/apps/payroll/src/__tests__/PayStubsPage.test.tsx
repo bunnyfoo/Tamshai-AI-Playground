@@ -165,7 +165,9 @@ describe('PayStubsPage', () => {
       render(<PayStubsPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('$3,653.85')).toBeInTheDocument();
+        // Gross pay appears multiple times - use getAllByText
+        const grossPayElements = screen.getAllByText((content) => content.includes('$3,653.85'));
+        expect(grossPayElements.length).toBeGreaterThan(0);
       });
     });
 
@@ -178,7 +180,9 @@ describe('PayStubsPage', () => {
       render(<PayStubsPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('$2,101.01')).toBeInTheDocument();
+        // Net pay appears multiple times - use getAllByText
+        const netPayElements = screen.getAllByText((content) => content.includes('$2,101.01'));
+        expect(netPayElements.length).toBeGreaterThan(0);
       });
     });
   });

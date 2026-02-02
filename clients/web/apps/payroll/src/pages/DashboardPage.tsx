@@ -36,22 +36,6 @@ export default function DashboardPage() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading payroll data...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error loading payroll data</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -61,6 +45,21 @@ export default function DashboardPage() {
           <p className="text-gray-500 mt-1">Overview of payroll metrics and quick actions</p>
         </div>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading payroll data...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error loading payroll data</p>
+        </div>
+      )}
+
+      {!isLoading && !error && (
+        <>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -148,6 +147,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

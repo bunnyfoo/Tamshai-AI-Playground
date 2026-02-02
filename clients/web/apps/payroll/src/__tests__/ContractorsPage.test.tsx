@@ -180,8 +180,10 @@ describe('ContractorsPage', () => {
       render(<ContractorsPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('active')).toBeInTheDocument();
-        expect(screen.getByText('inactive')).toBeInTheDocument();
+        // Status badges are rendered in the table
+        const activeBadges = screen.getAllByText(/^active$/i);
+        expect(activeBadges.length).toBeGreaterThan(0);
+        expect(screen.getByText(/^inactive$/i)).toBeInTheDocument();
       });
     });
   });
@@ -266,7 +268,8 @@ describe('ContractorsPage', () => {
       render(<ContractorsPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('2 contractors require 1099')).toBeInTheDocument();
+        // The count is displayed as part of a longer message
+        expect(screen.getByText(/2 contractors require 1099/i)).toBeInTheDocument();
       });
     });
   });
