@@ -5,12 +5,12 @@
 # Full-stack Terraform for local Docker Compose development
 # Mimics VPS/production structure but targets Docker Desktop
 #
-# Services Managed (19 total):
+# Services Managed (23 total):
 #   - Infrastructure: PostgreSQL, MongoDB, Redis, Elasticsearch, MinIO
 #   - Identity: Keycloak (via keycloak module)
-#   - API Gateway: Kong
-#   - MCP Servers: Gateway, HR, Finance, Sales, Support (5)
-#   - Web Apps: Portal, HR, Finance, Sales, Support, Website (6)
+#   - API Gateway: Kong, Caddy
+#   - MCP Servers: Gateway, HR, Finance, Sales, Support, Journey, Payroll, Tax (8)
+#   - Web Apps: Portal, HR, Finance, Sales, Support, Payroll, Tax, Website (8)
 #
 # Usage:
 #   cd infrastructure/terraform/dev
@@ -19,6 +19,7 @@
 #   terraform apply -var-file=dev.tfvars
 #
 # Created: 2025-12-30
+# Updated: 2026-02-02 - Added Payroll and Tax modules
 # =============================================================================
 
 # =============================================================================
@@ -67,6 +68,14 @@ locals {
       url  = "http://localhost:3115"
       port = 3115
     }
+    mcp_payroll = {
+      url  = "http://localhost:3116"
+      port = 3116
+    }
+    mcp_tax = {
+      url  = "http://localhost:3117"
+      port = 3117
+    }
     web_portal = {
       url  = "http://localhost:4010"
       port = 4010
@@ -86,6 +95,14 @@ locals {
     web_support = {
       url  = "http://localhost:4014"
       port = 4014
+    }
+    web_payroll = {
+      url  = "http://localhost:4015"
+      port = 4015
+    }
+    web_tax = {
+      url  = "http://localhost:4016"
+      port = 4016
     }
     website = {
       url  = "http://localhost:8085"
