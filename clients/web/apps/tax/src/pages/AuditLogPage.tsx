@@ -5,7 +5,6 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import { LoadingSpinner, ErrorMessage, Badge, Card } from '@tamshai/ui';
 import type { AuditLogEntry, TaxApiResponse } from '../types';
 
 function formatTimestamp(timestamp: string): string {
@@ -37,22 +36,22 @@ function getActionLabel(action: string): string {
   }
 }
 
-function getActionVariant(action: string): string {
+function getActionClasses(action: string): string {
   switch (action) {
     case 'create':
-      return 'success';
+      return 'bg-green-100 text-green-800';
     case 'update':
-      return 'info';
+      return 'bg-blue-100 text-blue-800';
     case 'delete':
-      return 'error';
+      return 'bg-red-100 text-red-800';
     case 'submit':
-      return 'warning';
+      return 'bg-yellow-100 text-yellow-800';
     case 'approve':
-      return 'success';
+      return 'bg-green-100 text-green-800';
     case 'reject':
-      return 'error';
+      return 'bg-red-100 text-red-800';
     default:
-      return 'default';
+      return 'bg-gray-100 text-gray-800';
   }
 }
 
@@ -98,12 +97,22 @@ export function AuditLogPage() {
         <p className="text-gray-500 mt-1">Compliance audit trail for tax activities</p>
       </div>
 
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="spinner mb-4"></div>
+          <p className="text-gray-500">Loading audit log...</p>
+        </div>
+      )}
 
-      {error && <ErrorMessage message={(error as Error).message || 'Failed to load audit log'} />}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="font-medium text-red-800">Error loading audit log</p>
+          <p className="text-sm text-red-600 mt-1">{(error as Error).message}</p>
+        </div>
+      )}
 
       {!isLoading && !error && (
-        <Card className="overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -123,9 +132,9 @@ export function AuditLogPage() {
                       {formatTimestamp(log.timestamp)}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={getActionVariant(log.action)}>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getActionClasses(log.action)}`}>
                         {getActionLabel(log.action)}
-                      </Badge>
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-gray-900">
                       {getEntityTypeLabel(log.entityType)}
@@ -142,7 +151,7 @@ export function AuditLogPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );

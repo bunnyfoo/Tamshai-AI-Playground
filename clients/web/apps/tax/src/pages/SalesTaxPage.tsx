@@ -5,7 +5,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import { LoadingSpinner, ErrorMessage, TruncationWarning, Card } from '@tamshai/ui';
+import { TruncationWarning } from '@tamshai/ui';
 import type { SalesTaxRate, TaxApiResponse } from '../types';
 
 function formatPercent(rate: number): string {
@@ -49,15 +49,15 @@ export function SalesTaxPage() {
         <p className="text-gray-500 mt-1">State-by-state sales tax rates and jurisdiction information</p>
       </div>
 
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (<div className="flex flex-col items-center justify-center py-12"><div className="spinner mb-4"></div><p className="text-gray-500">Loading...</p></div>)}
 
-      {error && <ErrorMessage message={(error as Error).message || 'Failed to load tax rates'} />}
+      {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4"><p className="font-medium text-red-800">Error</p><p className="text-sm text-red-600 mt-1">{(error as Error).message}</p></div>}
 
       {!isLoading && !error && (
         <>
           {truncated && warning && <TruncationWarning message={warning} />}
 
-          <Card className="overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -86,7 +86,7 @@ export function SalesTaxPage() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </div>
         </>
       )}
     </div>
