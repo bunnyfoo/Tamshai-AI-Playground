@@ -31,6 +31,8 @@ describe('Confirmation Routes', () => {
     finance: 'http://localhost:3002',
     sales: 'http://localhost:3003',
     support: 'http://localhost:3004',
+    payroll: 'http://localhost:3006',
+    tax: 'http://localhost:3007',
   };
 
   beforeEach(() => {
@@ -340,7 +342,7 @@ describe('Confirmation Routes', () => {
         'Invalid MCP server in pending action',
         expect.objectContaining({
           attemptedServer: 'invalid-server',
-          validServers: ['hr', 'finance', 'sales', 'support'],
+          validServers: ['hr', 'finance', 'sales', 'support', 'payroll', 'tax'],
         })
       );
 

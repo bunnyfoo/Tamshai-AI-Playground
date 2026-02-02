@@ -75,6 +75,8 @@ const config = {
     finance: process.env.MCP_FINANCE_URL || 'http://localhost:3002',
     sales: process.env.MCP_SALES_URL || 'http://localhost:3003',
     support: process.env.MCP_SUPPORT_URL || 'http://localhost:3004',
+    payroll: process.env.MCP_PAYROLL_URL || 'http://localhost:3006',
+    tax: process.env.MCP_TAX_URL || 'http://localhost:3007',
   },
   // v1.5 Performance: Service timeout configuration
   timeouts: {
@@ -174,6 +176,18 @@ const mcpServerConfigs: MCPServerConfig[] = [
     url: config.mcpServers.support,
     requiredRoles: ['support-read', 'support-write', 'executive'],
     description: 'Support data including tickets, knowledge base',
+  },
+  {
+    name: 'payroll',
+    url: config.mcpServers.payroll,
+    requiredRoles: ['payroll-read', 'payroll-write', 'hr-read', 'hr-write', 'executive'],
+    description: 'Payroll data including pay stubs, deductions, tax withholdings',
+  },
+  {
+    name: 'tax',
+    url: config.mcpServers.tax,
+    requiredRoles: ['tax-read', 'tax-write', 'finance-read', 'finance-write', 'executive'],
+    description: 'Tax data including sales tax, quarterly estimates, annual filings',
   },
 ];
 

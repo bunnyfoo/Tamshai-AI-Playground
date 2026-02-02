@@ -672,6 +672,8 @@ services:
       - ../../infrastructure/database/payroll/sample-data.sql:/docker-entrypoint-initdb.d/05-payroll-data.sql:ro
       - ../../infrastructure/database/tax/schema.sql:/docker-entrypoint-initdb.d/06-tax-schema.sql:ro
       - ../../infrastructure/database/tax/sample-data.sql:/docker-entrypoint-initdb.d/07-tax-data.sql:ro
+      - ../../infrastructure/database/hr/time-off-schema.sql:/docker-entrypoint-initdb.d/08-hr-time-off-schema.sql:ro
+      - ../../infrastructure/database/hr/time-off-sample-data.sql:/docker-entrypoint-initdb.d/09-hr-time-off-data.sql:ro
     ports:
       - "5443:5432"
     healthcheck:
