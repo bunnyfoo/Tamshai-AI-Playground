@@ -372,14 +372,6 @@ export default function LandingPage() {
           </Link>
         </div>
 
-        {/* Info Banner */}
-        <div className="mt-8 alert-info">
-          <h4 className="font-semibold mb-1">Architecture v1.4 Features</h4>
-          <p className="text-sm">
-            All applications support Server-Sent Events (SSE) streaming,
-            human-in-the-loop confirmations, and truncation warnings.
-          </p>
-        </div>
       </main>
     </div>
   );
