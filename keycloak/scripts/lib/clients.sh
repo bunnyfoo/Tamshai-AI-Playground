@@ -158,7 +158,7 @@ get_mcp_gateway_client_json() {
         "https://$domain/api/*"
     ],
     "webOrigins": ["+"],
-    "fullScopeAllowed": false,
+    "fullScopeAllowed": true,
     "defaultClientScopes": ["openid", "profile", "email", "roles"]
 }
 EOF

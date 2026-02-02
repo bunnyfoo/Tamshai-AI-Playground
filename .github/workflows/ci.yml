@@ -517,14 +517,14 @@ jobs:
           # Wait for PostgreSQL to be ready
           timeout 30 bash -c 'until docker exec postgres pg_isready -U keycloak -d keycloak; do sleep 1; done'
 
-      - name: Start Keycloak with Realm Import
+      - name: Start Keycloak
         env:
           KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
         run: |
+          # Start Keycloak WITHOUT realm import - Terraform will create everything
           docker run -d \
             --name keycloak \
             --network keycloak-network \
-            -v "$(pwd)/keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm-export.json:ro" \
             -e KEYCLOAK_ADMIN=admin \
             -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
             -e KC_DB=postgres \
@@ -535,7 +535,7 @@ jobs:
             -e KC_HOSTNAME_STRICT_HTTPS=false \
             -e KC_HTTP_ENABLED=true \
             -p 8180:8080 \
-            quay.io/keycloak/keycloak:24.0 start-dev --import-realm
+            quay.io/keycloak/keycloak:24.0 start-dev
 
           # Wait for Keycloak to be ready (can take 60-90 seconds)
           echo "Waiting for Keycloak to start..."
@@ -556,100 +556,56 @@ jobs:
             sleep 3
           done
 
-      - name: Run Keycloak Sync (create clients and configure realm)
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: "1.10.3"
+
+      - name: Configure Keycloak with Terraform
         env:
           KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
-          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        working-directory: infrastructure/terraform/keycloak
         run: |
-          echo "=== Running sync-realm.sh to configure Keycloak ==="
+          echo "=== Configuring Keycloak with Terraform ==="
 
-          # Fix line endings before copying (CI runs on Linux so tr works)
-          mkdir -p /tmp/keycloak-scripts/lib
-          tr -d '\r' < keycloak/scripts/sync-realm.sh > /tmp/keycloak-scripts/sync-realm.sh
-          chmod +x /tmp/keycloak-scripts/sync-realm.sh
-          for f in keycloak/scripts/lib/*.sh; do
-            tr -d '\r' < "$f" > "/tmp/keycloak-scripts/lib/$(basename $f)"
-            chmod +x "/tmp/keycloak-scripts/lib/$(basename $f)"
-          done
+          # Initialize Terraform
+          terraform init
 
-          # Copy cleaned scripts into the Keycloak container
-          docker cp /tmp/keycloak-scripts/sync-realm.sh keycloak:/tmp/sync-realm.sh
-          docker cp /tmp/keycloak-scripts/lib keycloak:/tmp/lib
+          # Apply Terraform configuration
+          # Override ci.tfvars passwords with GitHub secrets for security
+          echo "Creating Keycloak realm, roles, users, and clients with Terraform..."
+          terraform apply -auto-approve \
+            -var-file=environments/ci.tfvars \
+            -var="keycloak_admin_password=${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
+            -var="test_user_password=${DEV_USER_PASSWORD}"
 
-          # Run sync-realm.sh inside Keycloak container
-          # Note: CI Keycloak runs without /auth path prefix (start-dev mode)
-          # Pass DEV_USER_PASSWORD and TEST_USER_PASSWORD to set user passwords
-          docker exec \
-            -e KEYCLOAK_ADMIN=admin \
-            -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
-            -e MCP_HR_SERVICE_CLIENT_SECRET=hr-service-secret \
-            -e KEYCLOAK_URL=http://localhost:8080 \
-            -e DEV_USER_PASSWORD="${DEV_USER_PASSWORD}" \
-            -e TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" \
-            keycloak /tmp/sync-realm.sh dev
+          # Export client secret for integration tests
+          echo "KEYCLOAK_CLIENT_SECRET=$(terraform output -raw mcp_gateway_client_secret)" >> $GITHUB_ENV
 
-          echo "✅ Keycloak sync completed"
+          # Display summary
+          echo "✅ Terraform deployment complete"
+          terraform output realm_name
+          terraform output -json roles_created | jq -r '.[]' | sed 's/^/  - /'
+          echo "Test users: 9 created (alice.chen, bob.martinez, carol.johnson, dan.williams, eve.thompson, frank.davis, nina.patel, marcus.johnson, test-user.journey)"
 
-      # NOTE: Identity sync step removed - corporate users are now pre-provisioned
-      # in realm-export-dev.json with requiredActions: [] to allow direct login.
-      # identity-sync creates users with UPDATE_PASSWORD/CONFIGURE_TOTP required actions
-      # which breaks Resource Owner Password Grant used by CI tests.
-      # See: https://github.com/bunnyfoo/Tamshai-AI-Playground/issues/XXX
-
-      - name: Get Keycloak Client Secret
-        env:
-          KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
+      - name: Verify Keycloak Configuration
         run: |
-          # Get admin token with retry logic
-          for i in {1..5}; do
-            TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8180/realms/master/protocol/openid-connect/token" \
-              -d "client_id=admin-cli" \
-              -d "username=admin" \
-              -d "password=${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
-              -d "grant_type=password")
-
-            TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
-
-            if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
-              echo "✅ Admin token acquired on attempt $i"
-              break
-            fi
-            echo "Attempt $i/5: Failed to get admin token, retrying in 5s..."
-            echo "Response: $TOKEN_RESPONSE"
-            sleep 5
-          done
-
-          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-            echo "❌ Failed to acquire admin token after 5 attempts"
+          # Verify tamshai-corp realm was created by Terraform
+          if curl -sf http://localhost:8180/realms/tamshai-corp > /dev/null 2>&1; then
+            echo "✅ tamshai-corp realm is accessible"
+          else
+            echo "❌ tamshai-corp realm not found"
             exit 1
           fi
 
-          # Get mcp-gateway client UUID
-          CLIENT_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
-            "http://localhost:8180/admin/realms/tamshai-corp/clients?clientId=mcp-gateway")
-          CLIENT_ID=$(echo "$CLIENT_RESPONSE" | jq -r '.[0].id // empty')
-
-          if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
-            echo "❌ mcp-gateway client not found in Keycloak"
-            echo "Response: $CLIENT_RESPONSE"
+          # Client secret was already exported by Terraform step
+          if [ -n "$KEYCLOAK_CLIENT_SECRET" ]; then
+            echo "✅ Client secret available from Terraform output"
+          else
+            echo "❌ Client secret not set"
             exit 1
           fi
-          echo "✅ Found mcp-gateway client: $CLIENT_ID"
-
-          # Get client secret
-          SECRET_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
-            "http://localhost:8180/admin/realms/tamshai-corp/clients/$CLIENT_ID/client-secret")
-          SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.value // empty')
-
-          if [ -z "$SECRET" ] || [ "$SECRET" = "null" ]; then
-            echo "❌ Failed to get client secret"
-            echo "Response: $SECRET_RESPONSE"
-            exit 1
-          fi
-
-          echo "KEYCLOAK_CLIENT_SECRET=$SECRET" >> $GITHUB_ENV
-          echo "✅ Keycloak client secret retrieved successfully"
 
       - name: Setup Node.js for Gateway
         uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
