@@ -559,6 +559,8 @@ jobs:
       - name: Run Keycloak Sync (create clients and configure realm)
         env:
           KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
+          DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
         run: |
           echo "=== Running sync-realm.sh to configure Keycloak ==="
 
@@ -577,44 +579,23 @@ jobs:
 
           # Run sync-realm.sh inside Keycloak container
           # Note: CI Keycloak runs without /auth path prefix (start-dev mode)
+          # Pass DEV_USER_PASSWORD and TEST_USER_PASSWORD to set user passwords
           docker exec \
             -e KEYCLOAK_ADMIN=admin \
             -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
             -e MCP_HR_SERVICE_CLIENT_SECRET=hr-service-secret \
             -e KEYCLOAK_URL=http://localhost:8080 \
+            -e DEV_USER_PASSWORD="${DEV_USER_PASSWORD}" \
+            -e TEST_USER_PASSWORD="${TEST_USER_PASSWORD}" \
             keycloak /tmp/sync-realm.sh dev
 
           echo "✅ Keycloak sync completed"
 
-      - name: Run Identity Sync (provision HR employees as Keycloak users)
-        env:
-          DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
-        run: |
-          echo "=== Running identity-sync to provision users ==="
-
-          # Build identity-sync container
-          docker build -t identity-sync -f services/mcp-hr/Dockerfile.sync services/mcp-hr
-
-          # Run identity-sync connecting to the existing databases
-          # Note: postgres-mcp is on host port 5433, Keycloak on 8180
-          docker run --rm \
-            --network host \
-            -e POSTGRES_HOST=localhost \
-            -e POSTGRES_PORT=5433 \
-            -e POSTGRES_DB=tamshai_hr \
-            -e POSTGRES_USER=tamshai \
-            -e POSTGRES_PASSWORD=$DB_PASSWORD \
-            -e KEYCLOAK_URL=http://localhost:8180 \
-            -e KEYCLOAK_REALM=tamshai-corp \
-            -e KEYCLOAK_CLIENT_ID=mcp-hr-service \
-            -e KEYCLOAK_CLIENT_SECRET=hr-service-secret \
-            -e REDIS_HOST=localhost \
-            -e REDIS_PORT=6379 \
-            -e ENVIRONMENT=dev \
-            -e DEV_USER_PASSWORD="${DEV_USER_PASSWORD}" \
-            identity-sync
-
-          echo "✅ Identity sync completed - HR employees provisioned as Keycloak users"
+      # NOTE: Identity sync step removed - corporate users are now pre-provisioned
+      # in realm-export-dev.json with requiredActions: [] to allow direct login.
+      # identity-sync creates users with UPDATE_PASSWORD/CONFIGURE_TOTP required actions
+      # which breaks Resource Owner Password Grant used by CI tests.
+      # See: https://github.com/bunnyfoo/Tamshai-AI-Playground/issues/XXX
 
       - name: Get Keycloak Client Secret
         env:
