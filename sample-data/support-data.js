@@ -24,7 +24,13 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-30T09:15:00Z"),
     tags: ["authentication", "login", "desktop-app"],
     assigned_to: "dan.williams",
-    resolution: null
+    resolution: null,
+    // SLA fields
+    customer_tier: "standard",
+    sla_target_response_minutes: 60,
+    sla_target_resolution_minutes: 480,
+    first_response_at: new Date("2025-12-30T09:45:00Z"),
+    resolution_deadline: new Date("2025-12-30T17:15:00Z")
   },
   {
     _id: ObjectId("670000000000000000000002"),
@@ -38,7 +44,12 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-30T10:00:00Z"),
     tags: ["performance", "hr", "database"],
     assigned_to: "dan.williams",
-    resolution: null
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 30,
+    sla_target_resolution_minutes: 240,
+    first_response_at: new Date("2025-12-29T14:45:00Z"),
+    resolution_deadline: new Date("2025-12-29T18:30:00Z")
   },
   {
     _id: ObjectId("670000000000000000000003"),
@@ -52,7 +63,13 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-29T15:30:00Z"),
     tags: ["user-management", "finance", "onboarding"],
     assigned_to: "dan.williams",
-    resolution: "User account created and granted finance-read role"
+    resolution: "User account created and granted finance-read role",
+    customer_tier: "standard",
+    sla_target_response_minutes: 120,
+    sla_target_resolution_minutes: 1440,
+    first_response_at: new Date("2025-12-28T12:30:00Z"),
+    resolution_deadline: new Date("2025-12-30T11:00:00Z"),
+    closed_at: new Date("2025-12-29T15:30:00Z")
   },
   {
     _id: ObjectId("670000000000000000000004"),
@@ -66,7 +83,13 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-28T09:00:00Z"),
     tags: ["access-request", "sales", "crm"],
     assigned_to: "dan.williams",
-    resolution: "Denied - user role (manager) does not require sales data access"
+    resolution: "Denied - user role (manager) does not require sales data access",
+    customer_tier: "standard",
+    sla_target_response_minutes: 240,
+    sla_target_resolution_minutes: 2880,
+    first_response_at: new Date("2025-12-28T08:30:00Z"),
+    resolution_deadline: new Date("2025-12-29T16:45:00Z"),
+    closed_at: new Date("2025-12-28T09:00:00Z")
   },
   {
     _id: ObjectId("670000000000000000000005"),
@@ -80,7 +103,12 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-30T08:00:00Z"),
     tags: ["ai", "pagination", "hr"],
     assigned_to: "dan.williams",
-    resolution: null
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 60,
+    sla_target_resolution_minutes: 480,
+    first_response_at: new Date("2025-12-30T08:45:00Z"),
+    resolution_deadline: new Date("2025-12-30T16:00:00Z")
   },
   {
     _id: ObjectId("670000000000000000000006"),
@@ -94,7 +122,13 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-27T11:00:00Z"),
     tags: ["security", "mfa", "totp"],
     assigned_to: "dan.williams",
-    resolution: "Sent new TOTP setup link via secure email"
+    resolution: "Sent new TOTP setup link via secure email",
+    customer_tier: "standard",
+    sla_target_response_minutes: 60,
+    sla_target_resolution_minutes: 480,
+    first_response_at: new Date("2025-12-26T11:15:00Z"),
+    resolution_deadline: new Date("2025-12-26T18:30:00Z"),
+    closed_at: new Date("2025-12-27T11:00:00Z")
   },
   {
     _id: ObjectId("670000000000000000000007"),
@@ -108,7 +142,12 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-30T13:30:00Z"),
     tags: ["finance", "export", "bug"],
     assigned_to: "dan.williams",
-    resolution: null
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 15,
+    sla_target_resolution_minutes: 120,
+    first_response_at: new Date("2025-12-30T13:10:00Z"),
+    resolution_deadline: new Date("2025-12-30T15:00:00Z")
   },
   {
     _id: ObjectId("670000000000000000000008"),
@@ -122,7 +161,12 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-29T18:00:00Z"),
     tags: ["feature-request", "ui", "desktop-app"],
     assigned_to: null,
-    resolution: null
+    resolution: null,
+    customer_tier: "standard",
+    sla_target_response_minutes: 480,
+    sla_target_resolution_minutes: 10080,
+    first_response_at: null,
+    resolution_deadline: new Date("2026-01-05T18:00:00Z")
   },
   {
     _id: ObjectId("670000000000000000000009"),
@@ -136,7 +180,12 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-30T07:30:00Z"),
     tags: ["dashboard", "executive", "bug"],
     assigned_to: "dan.williams",
-    resolution: null
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 30,
+    sla_target_resolution_minutes: 240,
+    first_response_at: new Date("2025-12-30T07:45:00Z"),
+    resolution_deadline: new Date("2025-12-30T11:30:00Z")
   },
   {
     _id: ObjectId("670000000000000000000010"),
@@ -150,7 +199,13 @@ db.tickets.insertMany([
     updated_at: new Date("2025-12-26T09:30:00Z"),
     tags: ["authentication", "password", "email"],
     assigned_to: "dan.williams",
-    resolution: "Email server issue fixed, reset link sent"
+    resolution: "Email server issue fixed, reset link sent",
+    customer_tier: "standard",
+    sla_target_response_minutes: 120,
+    sla_target_resolution_minutes: 1440,
+    first_response_at: new Date("2025-12-25T15:30:00Z"),
+    resolution_deadline: new Date("2025-12-27T14:00:00Z"),
+    closed_at: new Date("2025-12-26T09:30:00Z")
   }
 ]);
 
@@ -217,6 +272,11 @@ db.tickets.createIndex({ assigned_to: 1 });
 db.tickets.createIndex({ created_by: 1 });
 db.tickets.createIndex({ created_at: -1 });
 db.tickets.createIndex({ tags: 1 });
+// SLA indexes
+db.tickets.createIndex({ customer_tier: 1 });
+db.tickets.createIndex({ resolution_deadline: 1 });
+db.tickets.createIndex({ first_response_at: 1 });
+db.tickets.createIndex({ closed_at: -1 });
 
 // Print summary
 print("=== Support Data Loaded ===");
