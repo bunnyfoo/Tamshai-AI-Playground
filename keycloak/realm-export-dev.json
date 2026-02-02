@@ -94,6 +94,14 @@
         "description": "Read access to legal data (contracts, compliance)"
       },
       {
+        "name": "payroll-read",
+        "description": "Read access to payroll data (pay stubs, tax withholdings, benefits)"
+      },
+      {
+        "name": "payroll-write",
+        "description": "Full access to payroll data (process payroll, manage contractors)"
+      },
+      {
         "name": "manager",
         "description": "Manager role - can view direct reports data"
       },
@@ -110,7 +118,8 @@
             "it-read",
             "marketing-read",
             "operations-read",
-            "legal-read"
+            "legal-read",
+            "payroll-read"
           ]
         }
       }
@@ -138,6 +147,14 @@
       "realmRoles": [
         "finance-read",
         "finance-write"
+      ]
+    },
+    {
+      "name": "Payroll-Team",
+      "path": "/Payroll-Team",
+      "realmRoles": [
+        "payroll-read",
+        "payroll-write"
       ]
     },
     {

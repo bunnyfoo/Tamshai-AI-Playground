@@ -3,10 +3,10 @@
 ## Project Overview
 
 **Project**: Tamshai Corp Enterprise AI Access System
-**Version**: 1.4 (December 2025)
+**Version**: 1.5 (February 2026)
 **Type**: Microservices Architecture with AI Orchestration
 **Primary Language**: TypeScript/Node.js
-**Status**: VPS Staging Deployed - MCP Gateway Refactoring in Progress
+**Status**: App Ecosystem Expansion - Payroll Module Implementation
 
 ### Purpose
 
@@ -187,20 +187,17 @@ curl http://localhost:8100/api/health    # Kong Gateway
 Scripts for managing services in dev and stage environments. All scripts are idempotent and safe to run multiple times.
 
 ```bash
-# Check service status (dev or stage)
+# Check service status
 ./scripts/infra/status.sh dev            # Check local dev services
-./scripts/infra/status.sh stage          # Check stage VPS services
 
 # Deploy services
 ./scripts/infra/deploy.sh dev            # Deploy all dev services
 ./scripts/infra/deploy.sh dev --build    # Rebuild containers
 ./scripts/infra/deploy.sh dev --sync     # Deploy and sync Keycloak
-./scripts/infra/deploy.sh dev --reseed   # Reload all sample data (Finance, Sales, Support)
-./scripts/infra/deploy.sh stage          # Deploy to stage VPS
+./scripts/infra/deploy.sh dev --reseed   # Reload all sample data (Finance, Sales, Support, Payroll)
 
 # Keycloak management
 ./scripts/infra/keycloak.sh sync dev     # Sync Keycloak clients/config
-./scripts/infra/keycloak.sh sync stage   # Sync stage Keycloak
 ./scripts/infra/keycloak.sh status dev   # Check Keycloak status
 ./scripts/infra/keycloak.sh clients dev  # List all clients
 ./scripts/infra/keycloak.sh users dev    # List all users
@@ -209,12 +206,10 @@ Scripts for managing services in dev and stage environments. All scripts are ide
 
 # MCP health check
 ./scripts/mcp/health-check.sh dev        # Check all MCP servers
-./scripts/mcp/health-check.sh stage      # Check stage MCP servers
 
 # MCP server restart
 ./scripts/mcp/restart.sh dev             # Restart all MCP servers
 ./scripts/mcp/restart.sh dev gateway     # Restart only MCP Gateway
-./scripts/mcp/restart.sh stage all       # Restart all on stage
 
 # Database backup/restore
 ./scripts/db/backup.sh dev               # Backup all databases
@@ -253,42 +248,15 @@ Scripts for managing services in dev and stage environments. All scripts are ide
 # Container rebuild (stop containers, preserve infrastructure)
 ./scripts/infra/rebuild.sh dev            # Stop dev containers
 ./scripts/infra/rebuild.sh dev --volumes  # Remove data volumes (DESTRUCTIVE)
-./scripts/infra/rebuild.sh stage          # Stop stage containers
 
 # Environment teardown (DESTROYS infrastructure via Terraform)
 ./scripts/infra/teardown.sh dev           # Terraform destroy dev environment
-./scripts/infra/teardown.sh stage         # Terraform destroy VPS (IRREVERSIBLE!)
-./scripts/infra/teardown.sh stage --force # Destroy without confirmation (DANGEROUS)
 
 # Database backup (alternative location)
 ./scripts/infra/backup.sh                # Backup all databases
 ./scripts/infra/backup.sh postgres       # Backup PostgreSQL only
 ./scripts/infra/backup.sh mongodb        # Backup MongoDB
 ```
-
-**Environment Variables for Stage Scripts:**
-```bash
-export VPS_HOST="<your-vps-ip>"          # VPS IP address (get from Terraform output)
-export VPS_SSH_USER="root"               # SSH user
-export KEYCLOAK_ADMIN_PASSWORD="xxx"     # For Keycloak admin commands
-```
-
-> **Important: VPS_HOST vs VPS_DOMAIN**
->
-> These variables serve different purposes due to Cloudflare proxy configuration:
->
-> | Variable | Purpose | Value | Why |
-> |----------|---------|-------|-----|
-> | `VPS_HOST` | SSH connections (port 22) | Raw IP address (e.g., `203.0.113.100`) | Cloudflare cannot proxy SSH traffic |
-> | `VPS_DOMAIN` | OAuth redirect URIs | Domain (e.g., `vps.tamshai.com`) | HTTPS traffic routes through Cloudflare |
-> | `VITE_STAGE_HOST` | Browser hostname detection | IP address | Matches URL bar when accessing via IP |
->
-> **Never use `vps.tamshai.com` for SSH** - it will timeout because Cloudflare only proxies HTTP/HTTPS (ports 80/443).
-
-> **IMPORTANT FOR CLAUDE CODE**: Do NOT attempt direct SSH to the VPS. The SSH private key is stored ONLY in GitHub Secrets (`VPS_SSH_KEY`) and is not available locally. All stage/VPS operations must be done through:
-> 1. **GitHub Actions workflows** (deploy-vps.yml) - trigger via `gh workflow run`
-> 2. **User-initiated SSH** - ask the user to run SSH commands manually
-> 3. **Web endpoints** - use `curl` or `WebFetch` to check HTTPS endpoints
 
 ### MCP Gateway Development
 
@@ -316,33 +284,6 @@ npm test
 # Integration tests (requires running services)
 npm run test:integration
 ```
-
-### Flutter Unified Client Development
-
-```bash
-cd clients/unified_flutter
-
-# Get dependencies
-flutter pub get
-
-# Generate Freezed/JSON serialization code
-flutter pub run build_runner build --delete-conflicting-outputs
-
-# Run on Windows (debug)
-flutter run -d windows
-
-# Build Windows release
-flutter build windows --release
-
-# Run tests
-flutter test
-```
-
-**Key Flutter Files**:
-- `lib/core/auth/` - OAuth service, secure storage, auth state
-- `lib/core/api/` - Dio HTTP client with auth interceptor
-- `lib/features/chat/` - Chat UI, SSE streaming, message handling
-- `lib/features/home/` - Home screen, user profile display
 
 ---
 
@@ -883,6 +824,7 @@ sysctl vm.max_map_count
 | MCP Support | 3104 | Support MCP |
 | MCP Journey | 3105 | Project History Agent |
 | MCP Payroll | 3106 | Payroll MCP |
+| Web Payroll | 4005 | Payroll Web App |
 | PostgreSQL | 5433 | Relational DB |
 | MongoDB | 27018 | Document DB |
 | Elasticsearch | 9201 | Search Engine |
@@ -972,85 +914,6 @@ docker compose up -d
 **Network**: `tamshai-network` (172.30.0.0/16)
 **Volumes**: Named volumes for data persistence
 
-### VPS Staging (Current)
-
-**Status**: ✅ **Deployed and Running**
-**Platform**: Hetzner Cloud
-**Location**: Hillsboro, Oregon (hil datacenter)
-**Server**: CPX31 (4 vCPU, 8GB RAM)
-**IP**: Set via `VPS_HOST` environment variable (get from Terraform: `terraform output -raw vps_ip`)
-**Domain**: `vps.tamshai.com` (Cloudflare-proxied)
-
-**Deployment Method**: Terraform + cloud-init
-**Files**:
-- `infrastructure/terraform/vps/main.tf` - Hetzner Cloud infrastructure
-- `infrastructure/cloud-init/cloud-init.yaml` - Automated VPS provisioning
-- `.github/workflows/deploy-vps.yml` - CI/CD deployment pipeline
-
-**Services Deployed**:
-- MCP Gateway (Port 3100)
-- Keycloak (Port 8080)
-- PostgreSQL, MongoDB, Redis
-- Caddy reverse proxy (HTTPS via Cloudflare)
-
-**Deployment Commands**:
-```bash
-cd infrastructure/terraform/vps
-terraform init
-terraform plan
-terraform apply
-
-# IMPORTANT: After terraform apply (especially destroy+apply), update SSH secret:
-gh secret set VPS_SSH_KEY < infrastructure/terraform/vps/.keys/deploy_key
-
-# Then deploy via GitHub Actions
-gh workflow run deploy-vps.yml --ref main
-```
-
-**VPS Teardown and Redeploy (Full Reprovision)**:
-
-Use this process to completely destroy and recreate the VPS. This is useful when:
-- Cloud-init changes need to be applied
-- The VPS is in an unrecoverable state
-- A fresh environment is needed
-
-```bash
-# Step 1: Navigate to VPS terraform directory
-cd infrastructure/terraform/vps
-
-# Step 2: Destroy the existing VPS (DESTRUCTIVE - removes all data)
-terraform destroy -auto-approve
-# This destroys: VPS, firewall, SSH keys, passwords
-# Takes ~30 seconds
-
-# Step 3: Reprovision a new VPS
-terraform apply -auto-approve
-# This creates: new VPS, firewall, SSH keys, generates new passwords
-# Takes ~30-60 seconds
-# NOTE: Terraform automatically updates the GitHub VPS_SSH_KEY secret
-
-# Step 4: Wait for cloud-init to complete on the VPS (~5-10 minutes)
-# Cloud-init installs Docker, clones repo, and starts initial services
-
-# Step 5: Trigger the deployment workflow
-gh workflow run deploy-vps.yml --ref main
-
-# Step 6: Monitor deployment progress
-gh run list --workflow=deploy-vps.yml --limit 5
-gh run watch  # Watch the latest run
-```
-
-**Important Notes**:
-- The VPS IP may change after reprovisioning (check terraform output)
-- Terraform automatically updates `VPS_SSH_KEY` GitHub secret during apply
-- The deploy-vps workflow handles Keycloak sync and identity provisioning
-- Cloud-init logs: `ssh root@<VPS_IP> 'cat /var/log/cloud-init-output.log'`
-
-**Access**:
-- API Gateway: `https://vps.tamshai.com/api`
-- Keycloak: `https://vps.tamshai.com/auth`
-- Health Check: `https://vps.tamshai.com/health`
-
 ### Production (Planned)
 
 **Platform**: Google Cloud Platform (GCP)
@@ -1070,46 +933,59 @@ gh run watch  # Watch the latest run
 
 ## Current Development Status
 
-### Active Work: MCP Gateway Refactoring
+### Active Work: App Ecosystem Expansion
 
-**Objective**: Increase test coverage from 31% to 70%+ by refactoring 1,533-line `index.ts` monolith.
+Transform sample applications into enterprise-grade modules with unified UX, adding Payroll and Tax modules. All employees are US-based remote workers across multiple states, supporting a SaaS-focused financial/LLC management services enterprise.
 
-**Documentation**: `.specify/specs/003-mcp-gateway/REFACTORING_PLAN.md` (3,477 lines)
+**Plan File**: `.claude/plans/playful-zooming-willow.md`
 
-**Status**: Ready for implementation by QA Lead
-**Timeline**: 5 weeks (4 phases + optional error handler)
-**Review Status**: ✅ All 3 review rounds complete (Tech Lead, QA Lead, Final Review)
+### Implementation Phases
 
-**Critical Implementation Requirements**:
-1. 🔴 **Client disconnect handling** in Phase 3 (prevents $570/month Anthropic API waste)
-2. 🔴 **HTTP mocking with nock** in Phase 4.2 (prevents flaky CI, 8x faster tests)
-3. 🔴 **JWTValidator singleton** in Phase 2 (prevents JWKS cache bypass)
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Specification Reorganization | ⏳ Planned |
+| Phase 2 | App Enhancements (HR, Finance, Sales, Support) | ⏳ Planned |
+| Phase 3.1 | **Payroll Module** | ✅ **Complete** |
+| Phase 3.2 | Tax Module | ⏳ Planned |
+| Phase 4 | Data Layer Expansion | ⏳ Planned |
+| Phase 5 | TDD Implementation Strategy | ✅ In Use |
+| Phase 6 | E2E Testing & Journey Validation | ⏳ Planned |
 
-**Target Metrics**:
-- Overall coverage: 31% → 60%+ (diff: 90%+)
-- Type coverage: 85%+
-- index.ts LOC: 1,533 → <200
+### Phase 3.1 - Payroll Module (Complete)
 
-### Completed Work
+**Payroll Web App** (124 tests passing):
+- Pages: DashboardPage, PayRunsPage, PayStubsPage, ContractorsPage, DirectDepositPage
+- Pages: TaxWithholdingsPage, BenefitsPage, AIQueryPage
+- All pages use conditional rendering pattern for consistent header display
 
-**Phase 1**: ✅ Docker Compose infrastructure, Keycloak SSO, sample data
-**Phase 2**: ✅ JWT validation, token revocation, prompt injection defense
-**Phase 3**: ✅ MCP Gateway implementation, Claude API integration, role-based routing
-**Phase 4**: ✅ MCP Suite servers (complete - 4 servers, 15 tools)
-**Phase 5**: ✅ Sample web apps (GREEN phase complete)
-  - Finance App: InvoicesPage, ExpenseReportsPage, BudgetsPage, DashboardPage, AIQueryPage
-  - Sales App: CustomerDetail, CloseOpportunityModal, PipelineDashboard, OpportunitiesList
-  - Support App: CloseTicketModal (500+ lines), TicketDetail, ArticleDetailPage, DashboardPage
-  - RLS Policies: `tamshai_app` user (no BYPASSRLS), public read policies for reference tables
-**Phase 6**: ✅ Flutter unified desktop client (Windows complete)
-**Phase 7**: ⚠️ Monitoring & alerting (planned)
-**Phase 8**: ✅ VPS staging deployment (Hetzner Cloud)
+**MCP Payroll Server** (port 3106):
+- 8 tools: list_pay_runs, list_pay_stubs, get_pay_stub, list_contractors
+- 4 more: get_tax_withholdings, get_benefits, get_direct_deposit, get_payroll_summary
+- PostgreSQL with RLS, Redis for confirmations, Winston logging
+
+**Database Schema** (`infrastructure/database/payroll/`):
+- 10 tables: employees, pay_runs, pay_stubs, contractors, etc.
+- RLS policies for role-based access
+- Sample data with 8 employees, pay runs, tax withholdings, benefits
+
+**Infrastructure**:
+- Docker: mcp-payroll (3116), web-payroll (4015)
+- Keycloak: payroll-read, payroll-write roles, Payroll-Team group
+- PostgreSQL: tamshai_payroll database
+
+### Next Steps
+
+1. Phase 3.2: Tax Module (TDD RED → GREEN)
+2. Phase 2: Enhance existing apps (HR, Finance, Sales, Support)
+3. Phase 4: Data layer expansion with sample data
+4. Phase 6: Cross-app E2E testing
+
+### Completed Foundation Work
+
+**Phase 1-4**: ✅ Docker Compose, Keycloak SSO, JWT validation, MCP Gateway
+**Phase 5**: ✅ Sample web apps (Finance, Sales, Support)
 **Phase 9**: ✅ Security remediation (Terraform infrastructure)
-  - 10 GCP issues resolved (SSL, logging, encryption, access controls)
-  - 4 VPS issues suppressed with defense-in-depth justifications
-  - Security documentation created (state security, firewall justification)
-  - Remaining: 2-3 low-priority items deferred to Phase 6 (monitoring)
-**Phase 10**: ✅ Documentation (this file, security docs)
+**Phase 10**: ✅ Documentation
 
 ---
 
@@ -1197,26 +1073,12 @@ cd keycloak/scripts
 ./docker-sync-realm.sh dev tamshai-keycloak
 ```
 
-**Stage/VPS (via SSH):**
-```bash
-ssh root@$VPS_HOST  # Use IP address, not domain (Cloudflare can't proxy SSH)
-cd /opt/tamshai
-docker cp keycloak/scripts/sync-realm.sh keycloak:/tmp/
-docker exec keycloak bash -c 'sed -i "s/\r$//" /tmp/sync-realm.sh'
-docker exec -e KEYCLOAK_ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD" \
-  keycloak /tmp/sync-realm.sh stage
-```
-
 ### Keycloak Admin Access
 
 **Local Dev:**
 - URL: http://localhost:8180/auth/admin
 - Username: admin
 - Password: admin
-
-**Stage/Prod:**
-- URL: https://[VPS_IP]/auth/admin
-- Credentials: Stored in Terraform state or secrets manager
 
 ---
 
@@ -1376,45 +1238,26 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 
 ## Current Implementation State
 
-**Last Updated**: 2026-02-02T18:00:00Z
-**Active Phase**: Phase 3.1 - Payroll Module (GREEN Phase Complete)
+**Last Updated**: 2026-02-02
+**Active Phase**: Phase 3.1 Complete - Payroll Module Implemented
 **Working Branch**: main
 
-### Completed in This Session
-- **Payroll Web App** (124 tests passing):
-  - Pages: DashboardPage, PayRunsPage, PayStubsPage, ContractorsPage, DirectDepositPage
-  - Pages: TaxWithholdingsPage, BenefitsPage, AIQueryPage
-  - All pages use conditional rendering pattern for consistent header display
+### Payroll Module Complete
+- ✅ Payroll Web App (124 tests passing)
+- ✅ MCP Payroll Server (port 3106, 8 tools)
+- ✅ Database Schema (10 tables with RLS)
+- ✅ Keycloak Roles (payroll-read, payroll-write)
+- ✅ Docker Integration (mcp-payroll, web-payroll)
 
-- **MCP Payroll Server** (port 3106):
-  - 8 tools: list_pay_runs, list_pay_stubs, get_pay_stub, list_contractors
-  - 4 more: get_tax_withholdings, get_benefits, get_direct_deposit, get_payroll_summary
-  - PostgreSQL with RLS, Redis for confirmations, Winston logging
-  - Dockerfile with multi-stage build, Jest test setup
-
-- **Database Schema** (`infrastructure/database/payroll/`):
-  - 10 tables: employees, pay_runs, pay_stubs, contractors, etc.
-  - RLS policies for role-based access
-  - Sample data with 8 employees, pay runs, tax withholdings, benefits
-
-- **Docker Integration**:
-  - Added mcp-payroll service (port 3116 in docker-compose)
-  - Added tamshai_payroll to POSTGRES_MULTIPLE_DATABASES
-  - Added MCP_PAYROLL_URL to mcp-gateway environment
-
-### Technical Debt Noted
-- Root package-lock.json and clients/web/package-lock.json not committed
-- Keycloak payroll-read/payroll-write roles not yet configured
-- Web Payroll app not yet wired to routing
-
-### Next Steps
-1. Configure Keycloak roles for payroll access
-2. Wire up Payroll web app routing and main entry
-3. Add web-payroll service to docker-compose
-4. Test end-to-end payroll flow
+### Next Phase: Tax Module
+Ready to begin Phase 3.2 - Tax Module implementation using TDD:
+1. Write failing tests (RED phase)
+2. Implement minimal code (GREEN phase)
+3. MCP Tax server (port 3107)
+4. Database schema and sample data
 
 ---
 
 *Last Updated: February 2, 2026*
-*Architecture Version: 1.4 (Flutter Desktop Complete, VPS Staging Deployed, Sample Apps GREEN Phase)*
-*Document Version: 2.3 (Payroll Module TDD RED Phase)*
+*Architecture Version: 1.5 (App Ecosystem Expansion)*
+*Document Version: 3.0 (Payroll Module Complete)*

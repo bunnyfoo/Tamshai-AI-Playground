@@ -219,7 +219,7 @@ assign_user_groups() {
     # Format: username:group1,group2 (group names without leading /)
     local -a user_groups=(
         "eve.thompson:All-Employees,C-Suite"
-        "alice.chen:All-Employees,HR-Department,Managers"
+        "alice.chen:All-Employees,HR-Department,Payroll-Team,Managers"
         "bob.martinez:All-Employees,Finance-Team,Managers"
         "carol.johnson:All-Employees,Sales-Managers"
         "dan.williams:All-Employees,Support-Team,Managers"
