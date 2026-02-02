@@ -212,7 +212,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/HR-Department",
         "/Managers"
       ],
@@ -238,7 +237,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/Finance-Team",
         "/Managers"
       ],
@@ -264,7 +262,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/Sales-Managers"
       ],
       "requiredActions": [],
@@ -289,7 +286,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/Support-Team",
         "/Managers"
       ],
@@ -315,7 +311,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/C-Suite"
       ],
       "requiredActions": [],
@@ -340,7 +335,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/IT-Team"
       ],
       "requiredActions": [],
@@ -365,7 +359,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/Engineering-Managers"
       ],
       "requiredActions": [],
@@ -390,7 +383,6 @@
         }
       ],
       "groups": [
-        "/All-Employees",
         "/Engineering-Team"
       ],
       "requiredActions": [],
@@ -775,7 +767,7 @@
         "https://www.tamshai-playground.local:8443/*"
       ],
       "webOrigins": ["+"],
-      "fullScopeAllowed": false,
+      "fullScopeAllowed": true,
       "defaultClientScopes": [
         "openid",
         "profile",
