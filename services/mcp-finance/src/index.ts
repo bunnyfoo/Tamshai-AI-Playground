@@ -29,6 +29,46 @@ import {
   executeApproveBudget,
   ApproveBudgetInputSchema,
 } from './tools/approve-budget';
+import {
+  rejectBudget,
+  executeRejectBudget,
+  RejectBudgetInputSchema,
+} from './tools/reject-budget';
+import {
+  deleteBudget,
+  executeDeleteBudget,
+  DeleteBudgetInputSchema,
+} from './tools/delete-budget';
+import {
+  approveInvoice,
+  executeApproveInvoice,
+  ApproveInvoiceInputSchema,
+} from './tools/approve-invoice';
+import {
+  payInvoice,
+  executePayInvoice,
+  PayInvoiceInputSchema,
+} from './tools/pay-invoice';
+import {
+  approveExpenseReport,
+  executeApproveExpenseReport,
+  ApproveExpenseReportInputSchema,
+} from './tools/approve-expense-report';
+import {
+  rejectExpenseReport,
+  executeRejectExpenseReport,
+  RejectExpenseReportInputSchema,
+} from './tools/reject-expense-report';
+import {
+  reimburseExpenseReport,
+  executeReimburseExpenseReport,
+  ReimburseExpenseReportInputSchema,
+} from './tools/reimburse-expense-report';
+import {
+  deleteExpenseReport,
+  executeDeleteExpenseReport,
+  DeleteExpenseReportInputSchema,
+} from './tools/delete-expense-report';
 import { MCPToolResponse } from './types/response';
 
 dotenv.config();
@@ -432,11 +472,11 @@ app.post('/tools/delete_invoice', async (req: Request, res: Response) => {
 });
 
 /**
- * Approve Budget Tool (v1.4 with confirmation)
+ * Approve Invoice Tool (v1.4 with confirmation)
  */
-app.post('/tools/approve_budget', async (req: Request, res: Response) => {
+app.post('/tools/approve_invoice', async (req: Request, res: Response) => {
   try {
-    const { userContext, budgetId, approvedAmount } = req.body;
+    const { userContext, invoiceId, approverNotes } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -458,7 +498,85 @@ app.post('/tools/approve_budget', async (req: Request, res: Response) => {
       return;
     }
 
-    const result = await approveBudget({ budgetId, approvedAmount }, userContext);
+    const result = await approveInvoice({ invoiceId, approverNotes }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('approve_invoice error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to approve invoice',
+    });
+  }
+});
+
+/**
+ * Pay Invoice Tool (v1.4 with confirmation)
+ */
+app.post('/tools/pay_invoice', async (req: Request, res: Response) => {
+  try {
+    const { userContext, invoiceId, paymentDate, paymentReference, paymentNotes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have Finance access
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await payInvoice({ invoiceId, paymentDate, paymentReference, paymentNotes }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('pay_invoice error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to pay invoice',
+    });
+  }
+});
+
+/**
+ * Approve Budget Tool (v1.5 with confirmation)
+ */
+app.post('/tools/approve_budget', async (req: Request, res: Response) => {
+  try {
+    const { userContext, budgetId, approverNotes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have Finance access
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await approveBudget({ budgetId, approverNotes }, userContext);
     res.json(result);
   } catch (error) {
     logger.error('approve_budget error:', error);
@@ -466,6 +584,236 @@ app.post('/tools/approve_budget', async (req: Request, res: Response) => {
       status: 'error',
       code: 'INTERNAL_ERROR',
       message: 'Failed to approve budget',
+    });
+  }
+});
+
+/**
+ * Reject Budget Tool (v1.5 with confirmation)
+ */
+app.post('/tools/reject_budget', async (req: Request, res: Response) => {
+  try {
+    const { userContext, budgetId, rejectionReason } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have Finance access
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await rejectBudget({ budgetId, rejectionReason }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('reject_budget error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to reject budget',
+    });
+  }
+});
+
+/**
+ * Delete Budget Tool (v1.5 with confirmation)
+ */
+app.post('/tools/delete_budget', async (req: Request, res: Response) => {
+  try {
+    const { userContext, budgetId, reason } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have Finance access
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await deleteBudget({ budgetId, reason }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('delete_budget error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to delete budget',
+    });
+  }
+});
+
+/**
+ * Approve Expense Report Tool (v1.5 with confirmation)
+ */
+app.post('/tools/approve_expense_report', async (req: Request, res: Response) => {
+  try {
+    const { userContext, expenseId, approverNotes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await approveExpenseReport({ expenseId, approverNotes }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('approve_expense_report error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to approve expense report',
+    });
+  }
+});
+
+/**
+ * Reject Expense Report Tool (v1.5 with confirmation)
+ */
+app.post('/tools/reject_expense_report', async (req: Request, res: Response) => {
+  try {
+    const { userContext, expenseId, rejectionReason } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await rejectExpenseReport({ expenseId, rejectionReason }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('reject_expense_report error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to reject expense report',
+    });
+  }
+});
+
+/**
+ * Reimburse Expense Report Tool (v1.5 with confirmation)
+ */
+app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) => {
+  try {
+    const { userContext, expenseId, paymentReference, paymentNotes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await reimburseExpenseReport({ expenseId, paymentReference, paymentNotes }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('reimburse_expense_report error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to reimburse expense report',
+    });
+  }
+});
+
+/**
+ * Delete Expense Report Tool (v1.5 with confirmation)
+ */
+app.post('/tools/delete_expense_report', async (req: Request, res: Response) => {
+  try {
+    const { userContext, expenseId, reason } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await deleteExpenseReport({ expenseId, reason }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('delete_expense_report error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to delete expense report',
     });
   }
 });
@@ -505,8 +853,40 @@ app.post('/execute', async (req: Request, res: Response) => {
         result = await executeDeleteInvoice(data, userContext);
         break;
 
+      case 'approve_invoice':
+        result = await executeApproveInvoice(data, userContext);
+        break;
+
+      case 'pay_invoice':
+        result = await executePayInvoice(data, userContext);
+        break;
+
       case 'approve_budget':
         result = await executeApproveBudget(data, userContext);
+        break;
+
+      case 'reject_budget':
+        result = await executeRejectBudget(data, userContext);
+        break;
+
+      case 'delete_budget':
+        result = await executeDeleteBudget(data, userContext);
+        break;
+
+      case 'approve_expense_report':
+        result = await executeApproveExpenseReport(data, userContext);
+        break;
+
+      case 'reject_expense_report':
+        result = await executeRejectExpenseReport(data, userContext);
+        break;
+
+      case 'reimburse_expense_report':
+        result = await executeReimburseExpenseReport(data, userContext);
+        break;
+
+      case 'delete_expense_report':
+        result = await executeDeleteExpenseReport(data, userContext);
         break;
 
       default:

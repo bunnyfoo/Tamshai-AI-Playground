@@ -1,13 +1,14 @@
 /**
- * Approve Budget Tool (v1.5 with Human-in-the-Loop Confirmation)
+ * Reject Budget Tool (v1.5 with Human-in-the-Loop Confirmation)
  *
- * Approves a pending budget, changing its status from PENDING_APPROVAL to APPROVED.
+ * Rejects a pending budget, changing its status from PENDING_APPROVAL to REJECTED.
  * Uses human-in-the-loop confirmation (Section 5.6).
  *
  * Features:
  * - Permission check (finance-write or executive)
- * - Status validation (only PENDING_APPROVAL budgets can be approved)
- * - Audit trail (approved_by, approved_at)
+ * - Status validation (only PENDING_APPROVAL budgets can be rejected)
+ * - Rejection reason required
+ * - Audit trail
  */
 
 import { z } from 'zod';
@@ -28,50 +29,43 @@ import {
 import { storePendingConfirmation } from '../utils/redis';
 
 /**
- * Input schema for approve_budget tool
+ * Input schema for reject_budget tool
  */
-export const ApproveBudgetInputSchema = z.object({
+export const RejectBudgetInputSchema = z.object({
   budgetId: z.string().min(1, 'Budget ID is required'),
-  approverNotes: z.string().max(500).optional(),
+  rejectionReason: z.string().min(10, 'Rejection reason must be at least 10 characters').max(500),
 });
 
-export type ApproveBudgetInput = z.infer<typeof ApproveBudgetInputSchema>;
+export type RejectBudgetInput = z.infer<typeof RejectBudgetInputSchema>;
 
 /**
- * Check if user has permission to approve budgets
+ * Check if user has permission to reject budgets
  */
-function hasApprovePermission(roles: string[]): boolean {
+function hasRejectPermission(roles: string[]): boolean {
   return roles.includes('finance-write') || roles.includes('executive');
 }
 
 /**
- * Approve budget tool - Returns pending_confirmation for user approval
+ * Reject budget tool - Returns pending_confirmation for user approval
  *
  * This is a write operation that requires:
  * 1. finance-write or executive role
  * 2. User confirmation (v1.4 - Section 5.6)
  * 3. Budget must be in PENDING_APPROVAL status
- *
- * Flow:
- * 1. Check permissions
- * 2. Verify budget exists and get details
- * 3. Check business rules (must be PENDING_APPROVAL)
- * 4. Generate confirmation ID
- * 5. Store pending action in Redis (5-minute TTL)
- * 6. Return pending_confirmation response
+ * 4. Rejection reason must be provided
  */
-export async function approveBudget(
-  input: ApproveBudgetInput,
+export async function rejectBudget(
+  input: RejectBudgetInput,
   userContext: UserContext
 ): Promise<MCPToolResponse> {
-  return withErrorHandling('approve_budget', async () => {
+  return withErrorHandling('reject_budget', async () => {
     // 1. Check permissions
-    if (!hasApprovePermission(userContext.roles)) {
+    if (!hasRejectPermission(userContext.roles)) {
       return handleInsufficientPermissions('finance-write or executive', userContext.roles);
     }
 
     // Validate input
-    const { budgetId, approverNotes } = ApproveBudgetInputSchema.parse(input);
+    const { budgetId, rejectionReason } = RejectBudgetInputSchema.parse(input);
 
     try {
       // 2. Verify budget exists and get details
@@ -106,14 +100,16 @@ export async function approveBudget(
       // 3. Check if budget is in PENDING_APPROVAL status
       if (budget.status !== 'PENDING_APPROVAL') {
         const suggestedAction = budget.status === 'DRAFT'
-          ? 'This budget must be submitted for approval first.'
+          ? 'This budget has not been submitted for approval yet.'
           : budget.status === 'APPROVED'
-            ? 'This budget has already been approved.'
-            : 'Only PENDING_APPROVAL budgets can be approved.';
+            ? 'This budget has already been approved and cannot be rejected.'
+            : budget.status === 'REJECTED'
+              ? 'This budget has already been rejected.'
+              : 'Only PENDING_APPROVAL budgets can be rejected.';
 
         return createErrorResponse(
           'INVALID_BUDGET_STATUS',
-          `Cannot approve budget "${budget.budget_id || budgetId}" because it is in "${budget.status}" status`,
+          `Cannot reject budget "${budget.budget_id || budgetId}" because it is in "${budget.status}" status`,
           suggestedAction,
           { budgetId, currentStatus: budget.status, requiredStatus: 'PENDING_APPROVAL' }
         );
@@ -123,7 +119,7 @@ export async function approveBudget(
       const confirmationId = uuidv4();
 
       const confirmationData = {
-        action: 'approve_budget',
+        action: 'reject_budget',
         mcpServer: 'finance',
         userId: userContext.userId,
         timestamp: Date.now(),
@@ -134,23 +130,23 @@ export async function approveBudget(
         fiscalYear: budget.fiscal_year,
         budgetedAmount: budget.budgeted_amount,
         status: budget.status,
-        approverNotes: approverNotes || null,
+        rejectionReason,
       };
 
       await storePendingConfirmation(confirmationId, confirmationData, 300);
 
       // 5. Return pending_confirmation response
-      const message = `✅ **Approve Budget for ${budget.department}?**
+      const message = `❌ **Reject Budget for ${budget.department}?**
 
 **Budget ID:** ${budget.budget_id || budgetId}
 **Department:** ${budget.department} (${budget.department_code})
 **Fiscal Year:** ${budget.fiscal_year}
 **Category:** ${budget.category_name || 'General'}
 **Budgeted Amount:** $${Number(budget.budgeted_amount).toLocaleString()}
-**Actual Spent:** $${Number(budget.actual_amount || 0).toLocaleString()}
-${approverNotes ? `**Your Notes:** ${approverNotes}` : ''}
+**Rejection Reason:** ${rejectionReason}
 
-This will change the budget status from PENDING_APPROVAL to APPROVED.`;
+This will change the budget status from PENDING_APPROVAL to REJECTED.
+The submitter will be able to revise and resubmit the budget.`;
 
       return createPendingConfirmationResponse(
         confirmationId,
@@ -158,61 +154,54 @@ This will change the budget status from PENDING_APPROVAL to APPROVED.`;
         confirmationData
       );
     } catch (error) {
-      return handleDatabaseError(error as Error, 'approve_budget');
+      return handleDatabaseError(error as Error, 'reject_budget');
     }
   }) as Promise<MCPToolResponse>;
 }
 
 /**
- * Execute the confirmed approval (called by Gateway after user approval)
- *
- * This function is called by the Gateway's /api/confirm endpoint
- * after the user clicks "Approve" in the UI.
+ * Execute the confirmed rejection (called by Gateway after user approval)
  */
-export async function executeApproveBudget(
+export async function executeRejectBudget(
   confirmationData: Record<string, unknown>,
   userContext: UserContext
 ): Promise<MCPToolResponse> {
-  return withErrorHandling('execute_approve_budget', async () => {
+  return withErrorHandling('execute_reject_budget', async () => {
     const budgetId = confirmationData.budgetId as string;
-    const approverNotes = confirmationData.approverNotes as string | null;
+    const rejectionReason = confirmationData.rejectionReason as string;
 
     try {
-      // Get approver's ID
-      const approverId = userContext.userId;
-
-      // Update budget status to APPROVED
+      // Update budget status to REJECTED
       const result = await queryWithRLS(
         userContext,
         `
         UPDATE finance.department_budgets
-        SET status = 'APPROVED',
-            approved_by = $2,
-            approved_at = NOW(),
-            notes = CASE WHEN $3 IS NOT NULL THEN COALESCE(notes || E'\\n', '') || 'Approver: ' || $3 ELSE notes END,
+        SET status = 'REJECTED',
+            rejection_reason = $2,
             updated_at = NOW()
         WHERE id = $1
           AND status = 'PENDING_APPROVAL'
         RETURNING id, budget_id, department, department_code, fiscal_year, budgeted_amount
         `,
-        [budgetId, approverId, approverNotes]
+        [budgetId, rejectionReason]
       );
 
       if (result.rowCount === 0) {
         return handleBudgetNotFound(budgetId);
       }
 
-      const approved = result.rows[0];
+      const rejected = result.rows[0];
 
       return createSuccessResponse({
         success: true,
-        message: `Budget for ${approved.department} (FY${approved.fiscal_year}) has been approved - $${Number(approved.budgeted_amount).toLocaleString()}`,
-        budgetId: approved.id,
-        budgetDisplayId: approved.budget_id,
-        newStatus: 'APPROVED',
+        message: `Budget for ${rejected.department} (FY${rejected.fiscal_year}) has been rejected - $${Number(rejected.budgeted_amount).toLocaleString()}`,
+        budgetId: rejected.id,
+        budgetDisplayId: rejected.budget_id,
+        newStatus: 'REJECTED',
+        rejectionReason,
       });
     } catch (error) {
-      return handleDatabaseError(error as Error, 'execute_approve_budget');
+      return handleDatabaseError(error as Error, 'execute_reject_budget');
     }
   }) as Promise<MCPToolResponse>;
 }

@@ -38,6 +38,19 @@ import {
   UpdateSalaryInputSchema,
 } from './tools/update-salary';
 import { getOrgChart, GetOrgChartInputSchema } from './tools/get-org-chart';
+import { getTimeOffBalances, GetTimeOffBalancesInputSchema } from './tools/get-time-off-balances';
+import { listTimeOffRequests, ListTimeOffRequestsInputSchema } from './tools/list-time-off-requests';
+import { listTeamTimeOffRequests, ListTeamTimeOffRequestsInputSchema } from './tools/list-team-time-off-requests';
+import {
+  createTimeOffRequest,
+  executeCreateTimeOffRequest,
+  CreateTimeOffRequestInputSchema,
+} from './tools/create-time-off-request';
+import {
+  approveTimeOffRequest,
+  executeApproveTimeOffRequest,
+  ApproveTimeOffRequestInputSchema,
+} from './tools/approve-time-off-request';
 import { MCPToolResponse } from './types/response';
 
 dotenv.config();
@@ -403,6 +416,159 @@ app.post('/tools/get_org_chart', async (req: Request, res: Response) => {
   }
 });
 
+// =============================================================================
+// TIME-OFF MANAGEMENT TOOLS
+// =============================================================================
+
+/**
+ * Get Time-Off Balances Tool
+ */
+app.post('/tools/get_time_off_balances', async (req: Request, res: Response) => {
+  try {
+    const { userContext, employeeId, fiscalYear } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    const result = await getTimeOffBalances({ employeeId, fiscalYear }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_time_off_balances error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get time-off balances',
+    });
+  }
+});
+
+/**
+ * List Time-Off Requests Tool
+ */
+app.post('/tools/list_time_off_requests', async (req: Request, res: Response) => {
+  try {
+    const { userContext, status, startDateFrom, startDateTo, limit, cursor } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    const result = await listTimeOffRequests(
+      { status, startDateFrom, startDateTo, limit, cursor },
+      userContext
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error('list_time_off_requests error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to list time-off requests',
+    });
+  }
+});
+
+/**
+ * List Team Time-Off Requests Tool (Managers)
+ */
+app.post('/tools/list_team_time_off_requests', async (req: Request, res: Response) => {
+  try {
+    const { userContext, status, limit, cursor } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    const result = await listTeamTimeOffRequests({ status, limit, cursor }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('list_team_time_off_requests error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to list team time-off requests',
+    });
+  }
+});
+
+/**
+ * Create Time-Off Request Tool (with confirmation)
+ */
+app.post('/tools/create_time_off_request', async (req: Request, res: Response) => {
+  try {
+    const { userContext, typeCode, startDate, endDate, notes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    const result = await createTimeOffRequest(
+      { typeCode, startDate, endDate, notes },
+      userContext
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error('create_time_off_request error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to create time-off request',
+    });
+  }
+});
+
+/**
+ * Approve/Reject Time-Off Request Tool (Managers, with confirmation)
+ */
+app.post('/tools/approve_time_off_request', async (req: Request, res: Response) => {
+  try {
+    const { userContext, requestId, approved, approverNotes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    const result = await approveTimeOffRequest(
+      { requestId, approved, approverNotes },
+      userContext
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error('approve_time_off_request error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to approve/reject time-off request',
+    });
+  }
+});
+
 /**
  * Delete Employee Tool (v1.4 with confirmation)
  */
@@ -496,6 +662,14 @@ app.post('/execute', async (req: Request, res: Response) => {
 
       case 'update_salary':
         result = await executeUpdateSalary(data, userContext);
+        break;
+
+      case 'create_time_off_request':
+        result = await executeCreateTimeOffRequest(data, userContext);
+        break;
+
+      case 'approve_time_off_request':
+        result = await executeApproveTimeOffRequest(data, userContext);
         break;
 
       default:
