@@ -70,11 +70,18 @@ export interface TimeOffRequest {
  */
 export interface OrgChartNode {
   employee_id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  name: string; // Alias for full_name
+  email: string;
   title: string;
   department: string;
-  profile_photo_url?: string;
+  location: string;
+  level: number;
+  direct_reports_count: number;
   direct_reports: OrgChartNode[];
+  profile_photo_url?: string; // Optional - not returned by API currently
 }
 
 /**

@@ -18,7 +18,7 @@ export default function OrgChartPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
 
-  // Fetch org chart data
+  // Fetch org chart data (API returns OrgChartNode[] array)
   const { data: orgChartResponse, isLoading, error } = useQuery({
     queryKey: ['org-chart'],
     queryFn: async () => {
@@ -31,7 +31,7 @@ export default function OrgChartPage() {
       );
 
       if (!response.ok) throw new Error('Failed to fetch org chart');
-      return response.json() as Promise<APIResponse<OrgChartNode>>;
+      return response.json() as Promise<APIResponse<OrgChartNode[]>>;
     },
   });
 
@@ -54,7 +54,9 @@ export default function OrgChartPage() {
       allIds.add(node.employee_id);
       node.direct_reports.forEach(collectIds);
     };
-    collectIds(orgChartResponse.data);
+    // API returns array of root nodes
+    const roots = orgChartResponse.data;
+    roots.forEach(collectIds);
     setExpandedNodes(allIds);
   }, [orgChartResponse]);
 
@@ -76,7 +78,8 @@ export default function OrgChartPage() {
     return node.direct_reports.some((child) => matchesSearch(child, query));
   }, []);
 
-  const orgChart = orgChartResponse?.data;
+  // API returns array of root nodes (typically one CEO)
+  const orgChartRoots = orgChartResponse?.data;
 
   return (
     <div className="page-container">
@@ -152,20 +155,26 @@ export default function OrgChartPage() {
             <p className="font-medium">Error loading org chart</p>
             <p className="text-sm">{String(error)}</p>
           </div>
-        ) : !orgChart ? (
+        ) : !orgChartRoots || orgChartRoots.length === 0 ? (
           <div className="py-12 text-center text-secondary-600">
             <p>No organization data available</p>
           </div>
         ) : (
           <div className="p-6 min-w-max">
-            <OrgNode
-              node={orgChart}
-              expandedNodes={expandedNodes}
-              onToggle={toggleNode}
-              searchQuery={searchQuery}
-              matchesSearch={matchesSearch}
-              isRoot
-            />
+            {/* Render each root node (typically just one CEO) */}
+            <div className="flex gap-8 justify-center">
+              {orgChartRoots.map((rootNode) => (
+                <OrgNode
+                  key={rootNode.employee_id}
+                  node={rootNode}
+                  expandedNodes={expandedNodes}
+                  onToggle={toggleNode}
+                  searchQuery={searchQuery}
+                  matchesSearch={matchesSearch}
+                  isRoot
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

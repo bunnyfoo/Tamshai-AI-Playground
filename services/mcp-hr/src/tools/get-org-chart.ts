@@ -27,6 +27,7 @@ export interface OrgChartNode {
   first_name: string;
   last_name: string;
   full_name: string;
+  name: string; // Alias for full_name (UI compatibility)
   email: string;
   title: string;
   department: string;
@@ -72,11 +73,13 @@ function buildOrgTree(
     .filter((emp) => emp.manager_id === parentId)
     .map((emp) => {
       const directReports = buildOrgTree(employees, emp.employee_id);
+      const fullName = `${emp.first_name} ${emp.last_name}`;
       return {
         employee_id: emp.employee_id,
         first_name: emp.first_name,
         last_name: emp.last_name,
-        full_name: `${emp.first_name} ${emp.last_name}`,
+        full_name: fullName,
+        name: fullName, // Alias for UI compatibility
         email: emp.email,
         title: emp.title,
         department: emp.department,
