@@ -262,10 +262,13 @@ Main configuration file with defaults. **All sensitive values come from TF_VAR_*
 Set via `scripts/setup-terraform-dev-env.ps1`:
 
 **Required**:
-- `TF_VAR_claude_api_key` - Claude API key (personal, for local dev)
 - `TF_VAR_keycloak_admin_password` - Keycloak admin password
 - `TF_VAR_test_user_password` - Test user passwords
 - `TF_VAR_mcp_gateway_client_secret` - OAuth client secret
+
+**Auto-fetched from GitHub Secrets**:
+- `TAMSHAI_PLAYGROUND_API` - Claude API key (fetched during terraform apply)
+- Override with `TF_VAR_claude_api_key` if needed
 
 **Optional** (have defaults):
 - `TF_VAR_postgres_password` - PostgreSQL password (default: `changeme`)

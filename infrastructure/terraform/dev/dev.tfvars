@@ -75,11 +75,12 @@ redis_password = "" # No password for dev
 # =============================================================================
 # CLAUDE API CONFIGURATION
 # =============================================================================
-# Note: REQUIRED - Set via TF_VAR_claude_api_key
+# Note: Fetched from GitHub Secrets (TAMSHAI_PLAYGROUND_API)
 #
-# claude_api_key - Set via TF_VAR_claude_api_key (REQUIRED)
+# This is automatically fetched from GitHub Secrets during terraform apply.
+# Only set TF_VAR_claude_api_key if you need to override the GitHub Secret.
 #
-# Get your key from: https://console.anthropic.com/settings/keys
+# GitHub Secret: TAMSHAI_PLAYGROUND_API (separate from tamshai-dev's CLAUDE_API_KEY)
 # Format: sk-ant-api03-...
 
 # =============================================================================

@@ -117,9 +117,10 @@ variable "redis_password" {
 # =============================================================================
 
 variable "claude_api_key" {
-  description = "Claude API key for MCP Gateway"
+  description = "Claude API key for MCP Gateway (fallback if TAMSHAI_PLAYGROUND_API not in GitHub Secrets)"
   type        = string
   sensitive   = true
+  default     = "" # Fetched from GitHub Secrets (TAMSHAI_PLAYGROUND_API) - this is a fallback
 }
 
 # =============================================================================
