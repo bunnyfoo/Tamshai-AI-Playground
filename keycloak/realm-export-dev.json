@@ -102,6 +102,14 @@
         "description": "Full access to payroll data (process payroll, manage contractors)"
       },
       {
+        "name": "tax-read",
+        "description": "Read access to tax data (sales tax, quarterly estimates, filings)"
+      },
+      {
+        "name": "tax-write",
+        "description": "Full access to tax data (manage rates, process filings)"
+      },
+      {
         "name": "manager",
         "description": "Manager role - can view direct reports data"
       },
@@ -119,7 +127,8 @@
             "marketing-read",
             "operations-read",
             "legal-read",
-            "payroll-read"
+            "payroll-read",
+            "tax-read"
           ]
         }
       }
@@ -155,6 +164,14 @@
       "realmRoles": [
         "payroll-read",
         "payroll-write"
+      ]
+    },
+    {
+      "name": "Tax-Team",
+      "path": "/Tax-Team",
+      "realmRoles": [
+        "tax-read",
+        "tax-write"
       ]
     },
     {
