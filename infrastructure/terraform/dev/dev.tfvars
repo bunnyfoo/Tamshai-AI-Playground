@@ -75,12 +75,12 @@ redis_password = "" # No password for dev
 # =============================================================================
 # CLAUDE API CONFIGURATION
 # =============================================================================
-# Note: Fetched from GitHub Secrets (TAMSHAI_PLAYGROUND_API)
+# Note: Fetched from GitHub Secrets (CLAUDE_API_KEY)
 #
 # This is automatically fetched from GitHub Secrets during terraform apply.
 # Only set TF_VAR_claude_api_key if you need to override the GitHub Secret.
 #
-# GitHub Secret: TAMSHAI_PLAYGROUND_API (separate from tamshai-dev's CLAUDE_API_KEY)
+# GitHub Secret: CLAUDE_API_KEY (this repo's secret, separate from tamshai-dev)
 # Format: sk-ant-api03-...
 
 # =============================================================================
