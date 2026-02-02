@@ -351,6 +351,9 @@ services:
       SUPPORT_DATA_BACKEND: elasticsearch
       # v1.4: Elasticsearch connection
       ELASTICSEARCH_URL: http://elasticsearch:9200
+      # v1.4: MongoDB connection (for SLA tools - tickets stored in MongoDB)
+      MONGODB_URI: mongodb://tamshai:${MONGODB_PASSWORD:-tamshai_password}@mongodb:27017
+      MONGODB_DB: tamshai_support
       # v1.4: Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -359,6 +362,8 @@ services:
       - "3114:3114"
     depends_on:
       elasticsearch:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
