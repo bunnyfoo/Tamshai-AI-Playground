@@ -173,7 +173,7 @@ Expected:
 **Verification**:
 ```bash
 docker compose exec postgres psql -U tamshai -d tamshai_hr -c \
-  "SELECT first_name, last_name, status FROM hr.employees WHERE email='frank.davis@tamshai.local';"
+  "SELECT first_name, last_name, status FROM hr.employees WHERE email='frank.davis@tamshai-playground.local';"
 ```
 
 **3.2 Reject Confirmation**:

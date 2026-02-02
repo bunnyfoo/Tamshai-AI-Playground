@@ -11,7 +11,7 @@ const testEnv = process.env.TEST_ENV || 'dev';
 // Base URLs per environment
 const envConfig: Record<string, { baseURL: string; ignoreHTTPSErrors: boolean }> = {
   dev: {
-    baseURL: 'https://www.tamshai.local',
+    baseURL: 'https://www.tamshai-playground.local',
     ignoreHTTPSErrors: true, // Self-signed certs in dev
   },
   stage: {
@@ -41,7 +41,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github' as const]] : []),
   ],
   use: {
-    baseURL: envConfig[testEnv]?.baseURL || 'https://www.tamshai.local',
+    baseURL: envConfig[testEnv]?.baseURL || 'https://www.tamshai-playground.local',
     ignoreHTTPSErrors: envConfig[testEnv]?.ignoreHTTPSErrors ?? true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

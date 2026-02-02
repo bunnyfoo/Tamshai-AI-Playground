@@ -108,7 +108,7 @@ describe('Authentication Tests', () => {
 
   test('Non-existent user is rejected', async () => {
     await expect(
-      getAccessToken('nonexistent@tamshai.local', 'password')
+      getAccessToken('nonexistent@tamshai-playground.local', 'password')
     ).rejects.toThrow();
   });
 });

@@ -53,7 +53,7 @@ const TEST_USERS = {
   executive: {
     username: 'eve.thompson',
     password: TEST_PASSWORD,
-    email: 'eve@tamshai.local',
+    email: 'eve@tamshai-playground.local',
     roles: ['executive', 'manager', 'hr-read', 'support-read', 'sales-read', 'finance-read'],
     // Eve is CEO with direct reports: CFO, CTO, COO, VP of Sales
     expectedDirectReports: ['Michael Roberts', 'Sarah Kim', 'James Wilson', 'Carol Johnson'],
@@ -61,7 +61,7 @@ const TEST_USERS = {
   hrManager: {
     username: 'alice.chen',
     password: TEST_PASSWORD,
-    email: 'alice@tamshai.local',
+    email: 'alice@tamshai-playground.local',
     roles: ['hr-read', 'hr-write', 'manager'],
     // Alice is VP of HR with direct report: Jennifer Lee
     expectedDirectReports: ['Jennifer Lee'],
@@ -69,7 +69,7 @@ const TEST_USERS = {
   engineeringManager: {
     username: 'nina.patel',
     password: TEST_PASSWORD,
-    email: 'nina.p@tamshai.local',
+    email: 'nina.p@tamshai-playground.local',
     roles: ['manager'],
     // Nina is Engineering Manager with reports: Marcus Johnson, Sophia Wang, Tyler Scott
     expectedDirectReports: ['Marcus Johnson', 'Sophia Wang', 'Tyler Scott'],
@@ -77,7 +77,7 @@ const TEST_USERS = {
   intern: {
     username: 'frank.davis',
     password: TEST_PASSWORD,
-    email: 'frank@tamshai.local',
+    email: 'frank@tamshai-playground.local',
     roles: [],
     // Frank is an intern with no direct reports
     expectedDirectReports: [],
@@ -85,7 +85,7 @@ const TEST_USERS = {
   financeUser: {
     username: 'bob.martinez',
     password: TEST_PASSWORD,
-    email: 'bob@tamshai.local',
+    email: 'bob@tamshai-playground.local',
     roles: ['finance-read', 'finance-write'],
   },
 };
@@ -743,7 +743,7 @@ describe('Query Error Handling', () => {
         userContext: {
           userId: '00000000-0000-0000-0000-000000000000',
           username: 'nonexistent.user',
-          email: 'nonexistent@tamshai.local', // Email not in HR database
+          email: 'nonexistent@tamshai-playground.local', // Email not in HR database
           roles: ['executive'],
         },
       });
@@ -751,7 +751,7 @@ describe('Query Error Handling', () => {
       expect(response.status).toBe(200);
       expect(response.data.status).toBe('error');
       expect(response.data.code).toBe('USER_NOT_FOUND');
-      expect(response.data.message).toContain('nonexistent@tamshai.local');
+      expect(response.data.message).toContain('nonexistent@tamshai-playground.local');
       expect(response.data.suggestedAction).toBeDefined();
     });
   });

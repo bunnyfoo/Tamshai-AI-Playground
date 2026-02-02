@@ -102,7 +102,7 @@ services:
       - tamshai-network
 
   # =============================================================================
-  # REVERSE PROXY (Caddy - HTTPS for tamshai.local)
+  # REVERSE PROXY (Caddy - HTTPS for tamshai-playground.local)
   # =============================================================================
   caddy:
     image: caddy:2-alpine
@@ -148,7 +148,7 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_password}
       # Hostname configuration for reverse proxy (Caddy)
       # KC_PROXY_HEADERS enables trusting X-Forwarded-* headers from Caddy
-      # KC_HOSTNAME_STRICT=false allows access via multiple hostnames (localhost, tamshai.local)
+      # KC_HOSTNAME_STRICT=false allows access via multiple hostnames (localhost, tamshai-playground.local)
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
@@ -219,7 +219,7 @@ services:
       # KEYCLOAK_URL: Used for container-to-container communication (includes /auth prefix)
       KEYCLOAK_URL: http://keycloak:8080/auth
       # KEYCLOAK_ISSUER: Must match the "iss" claim in JWT tokens (what clients see via Caddy)
-      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-https://www.tamshai.local/auth/realms/tamshai-corp}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-https://www.tamshai-playground.local/auth/realms/tamshai-corp}
       # JWKS_URI: Internal container URL to fetch public keys (includes /auth prefix)
       JWKS_URI: http://keycloak:8080/auth/realms/tamshai-corp/protocol/openid-connect/certs
       KEYCLOAK_REALM: tamshai-corp
