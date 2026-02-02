@@ -1,0 +1,44 @@
+# Multi-stage build for Payroll app
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy workspace configuration
+COPY package*.json ./
+COPY turbo.json ./
+COPY tsconfig.json ./
+
+# Copy all workspace packages
+COPY packages/ ./packages/
+COPY apps/payroll/ ./apps/payroll/
+
+# Install dependencies from lockfile (faster and more reliable)
+RUN npm ci
+# Install platform-specific rollup binary (workaround for npm optional deps issue on Alpine/musl)
+RUN npm install @rollup/rollup-linux-x64-musl --save-optional || true
+
+# Build the Payroll app
+WORKDIR /app/apps/payroll
+RUN npm run build
+
+# Stage 2: Production with Nginx
+FROM nginx:alpine
+
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
+# Copy built assets
+COPY --from=builder /app/apps/payroll/dist /usr/share/nginx/html
+
+# Copy Nginx configuration
+COPY apps/payroll/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
