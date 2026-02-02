@@ -1,0 +1,21 @@
+# Keycloak for Local Development (tamshai-playground)
+# Bakes realm-export-dev.json into the image to avoid Docker Desktop volume mount issues
+#
+# Usage:
+#   docker compose build keycloak  (rebuilds with latest realm export)
+#   docker compose up -d keycloak
+#
+# Why not volume mount?
+#   Docker Desktop on Windows has known issues where mounted files don't reflect
+#   changes made after container creation. By copying the file into the image,
+#   we ensure `docker compose build --no-cache` always includes the latest config.
+
+FROM quay.io/keycloak/keycloak:24.0
+
+# Copy realm export into the image (not mounted as volume)
+# This ensures terraform destroy + apply always uses the latest file
+COPY realm-export-dev.json /opt/keycloak/data/import/realm-export.json
+
+# Default command for dev mode with realm import
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start-dev", "--import-realm"]

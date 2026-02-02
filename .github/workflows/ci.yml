@@ -560,22 +560,55 @@ jobs:
         env:
           KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
         run: |
-          # Get admin token
-          TOKEN=$(curl -s -X POST "http://localhost:8180/realms/master/protocol/openid-connect/token" \
-            -d "client_id=admin-cli" \
-            -d "username=admin" \
-            -d "password=${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
-            -d "grant_type=password" | jq -r '.access_token')
+          # Get admin token with retry logic
+          for i in {1..5}; do
+            TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8180/realms/master/protocol/openid-connect/token" \
+              -d "client_id=admin-cli" \
+              -d "username=admin" \
+              -d "password=${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
+              -d "grant_type=password")
 
-          # Get mcp-gateway client secret
-          CLIENT_ID=$(curl -s -H "Authorization: Bearer $TOKEN" \
-            "http://localhost:8180/admin/realms/tamshai-corp/clients?clientId=mcp-gateway" | jq -r '.[0].id')
+            TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
 
-          SECRET=$(curl -s -H "Authorization: Bearer $TOKEN" \
-            "http://localhost:8180/admin/realms/tamshai-corp/clients/$CLIENT_ID/client-secret" | jq -r '.value')
+            if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+              echo "✅ Admin token acquired on attempt $i"
+              break
+            fi
+            echo "Attempt $i/5: Failed to get admin token, retrying in 5s..."
+            echo "Response: $TOKEN_RESPONSE"
+            sleep 5
+          done
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "❌ Failed to acquire admin token after 5 attempts"
+            exit 1
+          fi
+
+          # Get mcp-gateway client UUID
+          CLIENT_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+            "http://localhost:8180/admin/realms/tamshai-corp/clients?clientId=mcp-gateway")
+          CLIENT_ID=$(echo "$CLIENT_RESPONSE" | jq -r '.[0].id // empty')
+
+          if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
+            echo "❌ mcp-gateway client not found in Keycloak"
+            echo "Response: $CLIENT_RESPONSE"
+            exit 1
+          fi
+          echo "✅ Found mcp-gateway client: $CLIENT_ID"
+
+          # Get client secret
+          SECRET_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+            "http://localhost:8180/admin/realms/tamshai-corp/clients/$CLIENT_ID/client-secret")
+          SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.value // empty')
+
+          if [ -z "$SECRET" ] || [ "$SECRET" = "null" ]; then
+            echo "❌ Failed to get client secret"
+            echo "Response: $SECRET_RESPONSE"
+            exit 1
+          fi
 
           echo "KEYCLOAK_CLIENT_SECRET=$SECRET" >> $GITHUB_ENV
-          echo "✅ Keycloak realm imported, client secret retrieved"
+          echo "✅ Keycloak client secret retrieved successfully"
 
       - name: Setup Node.js for Gateway
         uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v4
