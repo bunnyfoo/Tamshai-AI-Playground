@@ -1,0 +1,96 @@
+/**
+ * Sales Tax Rates Page
+ *
+ * Shows state-by-state sales tax rates.
+ */
+import { useQuery } from '@tanstack/react-query';
+import { useAuth, apiConfig } from '@tamshai/auth';
+import { LoadingSpinner, ErrorMessage, TruncationWarning, Card } from '@tamshai/ui';
+import type { SalesTaxRate, TaxApiResponse } from '../types';
+
+function formatPercent(rate: number): string {
+  return `${rate.toFixed(2)}%`;
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+export function SalesTaxPage() {
+  const { getAccessToken } = useAuth();
+
+  const { data: response, isLoading, error } = useQuery({
+    queryKey: ['sales-tax-rates'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const fetchResponse = await fetch(`${apiConfig.mcpGatewayUrl}/api/tax/sales-tax-rates`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result: TaxApiResponse<SalesTaxRate[]> = await fetchResponse.json();
+      if (result.status === 'error') {
+        throw new Error(result.message);
+      }
+      return result;
+    },
+  });
+
+  const rates = response?.data || [];
+  const truncated = response?.metadata?.truncated;
+  const warning = response?.metadata?.warning;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Sales Tax Rates</h1>
+        <p className="text-gray-500 mt-1">State-by-state sales tax rates and jurisdiction information</p>
+      </div>
+
+      {isLoading && <LoadingSpinner />}
+
+      {error && <ErrorMessage message={(error as Error).message || 'Failed to load tax rates'} />}
+
+      {!isLoading && !error && (
+        <>
+          {truncated && warning && <TruncationWarning message={warning} />}
+
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Base Rate</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Local Rate</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Combined Rate</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Effective Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {rates.map((rate) => (
+                    <tr key={rate.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-900 font-medium">{rate.state}</td>
+                      <td className="px-4 py-3 text-gray-600">{rate.stateCode}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{formatPercent(rate.baseRate)}</td>
+                      <td className="px-4 py-3 text-right text-gray-900">{formatPercent(rate.localRate)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatPercent(rate.combinedRate)}</td>
+                      <td className="px-4 py-3 text-gray-600">{formatDate(rate.effectiveDate)}</td>
+                      <td className="px-4 py-3 text-gray-500 text-sm">{rate.notes || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default SalesTaxPage;

@@ -153,7 +153,7 @@ describe('DashboardPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Contractor Inc')).toBeInTheDocument();
-      expect(screen.getByText('1099')).toBeInTheDocument();
+      expect(screen.getByText('1099 - 2025')).toBeInTheDocument();
     });
   });
 
