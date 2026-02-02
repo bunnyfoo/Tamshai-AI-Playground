@@ -10,7 +10,7 @@ This document describes the **test-user.journey** account, a dedicated test acco
 |-------|-------|-------|
 | **Username** | `test-user.journey` | Unique identifier |
 | **Password** | `[STORED IN GITHUB SECRETS]` | See `TEST_USER_PASSWORD` secret |
-| **Email** | `test-user@tamshai.local` | Test email address |
+| **Email** | `test-user@tamshai-playground.local` | Test email address |
 | **TOTP Secret** | Stored in GitHub Secrets | See [TOTP Secret Management](#totp-secret-management) below |
 | **Employee ID** | `TEST001` | Attribute for tracking |
 | **Department** | `Testing` | Attribute for identification |
@@ -182,8 +182,8 @@ The test user is configured in **all environments**:
 
 ### Dev (Local Development)
 - **Realm Export**: `keycloak/realm-export-dev.json`
-- **Base URL**: `https://www.tamshai.local`
-- **Keycloak URL**: `https://www.tamshai.local/auth`
+- **Base URL**: `https://www.tamshai-playground.local`
+- **Keycloak URL**: `https://www.tamshai-playground.local/auth`
 - **Client ID**: `tamshai-website`
 
 ### Stage (VPS)

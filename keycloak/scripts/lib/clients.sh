@@ -93,8 +93,8 @@ get_tamshai_website_client_json() {
     "protocol": "openid-connect",
     "redirectUris": [
         "http://localhost:8080/*",
-        "https://tamshai.local/*",
-        "https://www.tamshai.local/*",
+        "https://tamshai-playground.local/*",
+        "https://www.tamshai-playground.local/*",
         "https://$vps_domain/*",
         "https://tamshai.com/*",
         "https://www.tamshai.com/*",
@@ -102,8 +102,8 @@ get_tamshai_website_client_json() {
     ],
     "webOrigins": [
         "http://localhost:8080",
-        "https://tamshai.local",
-        "https://www.tamshai.local",
+        "https://tamshai-playground.local",
+        "https://www.tamshai-playground.local",
         "https://$vps_domain",
         "https://tamshai.com",
         "https://www.tamshai.com",
@@ -111,7 +111,7 @@ get_tamshai_website_client_json() {
     ],
     "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:8080/*##https://tamshai.local/*##https://www.tamshai.local/*##https://$vps_domain/*##https://tamshai.com/*##https://www.tamshai.com/*##https://prod.tamshai.com/*"
+        "post.logout.redirect.uris": "http://localhost:8080/*##https://tamshai-playground.local/*##https://www.tamshai-playground.local/*##https://$vps_domain/*##https://tamshai.com/*##https://www.tamshai.com/*##https://prod.tamshai.com/*"
     },
     "defaultClientScopes": ["openid", "profile", "email", "roles"]
 }
@@ -124,7 +124,7 @@ get_mcp_gateway_client_json() {
     local domain
     case "${ENV:-dev}" in
         dev)
-            domain="tamshai.local"
+            domain="tamshai-playground.local"
             ;;
         stage)
             domain="www.tamshai.com"
@@ -211,9 +211,9 @@ get_web_portal_client_json() {
 
     case "${ENV:-dev}" in
         dev)
-            redirect_uris='"http://localhost:4000/*", "https://www.tamshai.local/*", "https://www.tamshai.local/app/*"'
-            web_origins='"http://localhost:4000", "https://www.tamshai.local"'
-            logout_uris="http://localhost:4000/*##https://www.tamshai.local/*"
+            redirect_uris='"http://localhost:4000/*", "https://www.tamshai-playground.local/*", "https://www.tamshai-playground.local/app/*"'
+            web_origins='"http://localhost:4000", "https://www.tamshai-playground.local"'
+            logout_uris="http://localhost:4000/*##https://www.tamshai-playground.local/*"
             ;;
         stage)
             redirect_uris='"http://localhost:4000/*", "https://www.tamshai.com/*", "https://www.tamshai.com/app/*"'
@@ -439,7 +439,7 @@ sync_sample_app_clients() {
     local domain
     case "${ENV:-dev}" in
         dev)
-            domain="tamshai.local"
+            domain="tamshai-playground.local"
             ;;
         stage)
             domain="www.tamshai.com"

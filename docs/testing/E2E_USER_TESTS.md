@@ -182,7 +182,7 @@ npx cross-env TEST_ENV=stage TEST_USER_PASSWORD="..." playwright test login-jour
 
 ```bash
 # Login tests by environment
-npm run test:login:dev    # https://www.tamshai.local
+npm run test:login:dev    # https://www.tamshai-playground.local
 npm run test:login:stage  # https://www.tamshai.com
 npm run test:login:prod   # https://app.tamshai.com
 

@@ -274,7 +274,7 @@ app.use(cors({
       'http://localhost:4001',     // HR app
       'http://localhost:4002',     // Finance app
       // Dev environment
-      'https://www.tamshai.local',
+      'https://www.tamshai-playground.local',
       // Stage environment
       'https://www.tamshai.com',
       // Production environment

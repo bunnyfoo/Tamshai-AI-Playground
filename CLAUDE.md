@@ -158,7 +158,7 @@ This ensures the user can immediately pull and test the changes on their local m
 cd infrastructure/terraform/dev
 terraform init                           # First time only
 terraform apply -var-file=dev.tfvars     # Deploy environment
-# Access at: https://www.tamshai.local
+# Access at: https://www.tamshai-playground.local
 
 # Teardown and redeploy
 terraform destroy -var-file=dev.tfvars   # Stop services
@@ -749,7 +749,7 @@ Browser-based E2E tests with full authentication flow including TOTP.
 **Test Environments**:
 | Environment | App URL | Keycloak URL | TOTP Secret Source |
 |-------------|---------|--------------|-------------------|
-| dev | https://www.tamshai.local | https://www.tamshai.local/auth | Hardcoded (dev only) |
+| dev | https://www.tamshai-playground.local | https://www.tamshai-playground.local/auth | Hardcoded (dev only) |
 | stage | https://www.tamshai.com | https://www.tamshai.com/auth | Environment variable |
 | prod | https://prod.tamshai.com | https://keycloak-fn44nd7wba-uc.a.run.app/auth | Secrets manager |
 

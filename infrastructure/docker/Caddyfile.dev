@@ -1,9 +1,9 @@
 # Tamshai Enterprise AI - Local Development Caddy Configuration
-# HTTPS with self-signed certificates for *.tamshai.local
+# HTTPS with self-signed certificates for *.tamshai-playground.local
 #
 # Prerequisites:
 # 1. Add to hosts file (C:\Windows\System32\drivers\etc\hosts):
-#    127.0.0.1  tamshai.local www.tamshai.local
+#    127.0.0.1  tamshai-playground.local www.tamshai-playground.local
 #
 # 2. Accept the self-signed certificate warning in your browser
 #    OR install mkcert for trusted local certificates
@@ -13,8 +13,8 @@
   local_certs
 }
 
-# HTTPS on tamshai.local and www.tamshai.local
-tamshai.local, www.tamshai.local {
+# HTTPS on tamshai-playground.local and www.tamshai-playground.local
+tamshai-playground.local, www.tamshai-playground.local {
   encode gzip
 
   header {

@@ -37,8 +37,8 @@ interface AppCard {
 function isDeployedEnvironment(hostname: string): boolean {
   // Known deployed hostnames
   const deployedHosts = [
-    'tamshai.local',
-    'www.tamshai.local',
+    'tamshai-playground.local',
+    'www.tamshai-playground.local',
     'tamshai.com',
     'www.tamshai.com',
     'vps.tamshai.com',

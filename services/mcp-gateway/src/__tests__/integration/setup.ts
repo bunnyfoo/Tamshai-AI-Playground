@@ -59,13 +59,13 @@ export function getAdminPoolFinance(): Pool {
 
 // Map userId to email for RLS policy lookups
 const USER_EMAIL_MAP: Record<string, string> = {
-  'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e': 'frank@tamshai.local',
-  'e1000000-0000-0000-0000-000000000052': 'marcus.j@tamshai.local',
-  'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d': 'nina.p@tamshai.local',
-  'f104eddc-21ab-457c-a254-78051ad7ad67': 'alice@tamshai.local',
-  '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1': 'bob@tamshai.local',
-  'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b': 'eve@tamshai.local',
-  'c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c': 'carol@tamshai.local',
+  'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e': 'frank@tamshai-playground.local',
+  'e1000000-0000-0000-0000-000000000052': 'marcus.j@tamshai-playground.local',
+  'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d': 'nina.p@tamshai-playground.local',
+  'f104eddc-21ab-457c-a254-78051ad7ad67': 'alice@tamshai-playground.local',
+  '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1': 'bob@tamshai-playground.local',
+  'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b': 'eve@tamshai-playground.local',
+  'c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c': 'carol@tamshai-playground.local',
 };
 
 /**
@@ -123,7 +123,7 @@ export const TEST_USERS = {
   intern: {
     userId: 'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e',
     username: 'frank.davis',
-    email: 'frank@tamshai.local',
+    email: 'frank@tamshai-playground.local',
     roles: ['user'],
     department: 'IT',
     employeeId: 'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e',
@@ -133,7 +133,7 @@ export const TEST_USERS = {
   employee: {
     userId: 'e1000000-0000-0000-0000-000000000052',
     username: 'marcus.johnson',
-    email: 'marcus.j@tamshai.local',
+    email: 'marcus.j@tamshai-playground.local',
     roles: ['user'],
     department: 'Engineering',
     employeeId: 'e1000000-0000-0000-0000-000000000052',
@@ -143,7 +143,7 @@ export const TEST_USERS = {
   manager: {
     userId: 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d',
     username: 'nina.patel',
-    email: 'nina.p@tamshai.local',
+    email: 'nina.p@tamshai-playground.local',
     roles: ['manager'],
     department: 'Engineering',
     employeeId: 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d',
@@ -153,7 +153,7 @@ export const TEST_USERS = {
   hrRead: {
     userId: 'f104eddc-21ab-457c-a254-78051ad7ad67',
     username: 'alice.chen',
-    email: 'alice@tamshai.local',
+    email: 'alice@tamshai-playground.local',
     roles: ['hr-read'],
     department: 'HR',
     employeeId: 'f104eddc-21ab-457c-a254-78051ad7ad67',
@@ -163,7 +163,7 @@ export const TEST_USERS = {
   hrWrite: {
     userId: 'f104eddc-21ab-457c-a254-78051ad7ad67',
     username: 'alice.chen',
-    email: 'alice@tamshai.local',
+    email: 'alice@tamshai-playground.local',
     roles: ['hr-read', 'hr-write'],
     department: 'HR',
     employeeId: 'f104eddc-21ab-457c-a254-78051ad7ad67',
@@ -173,7 +173,7 @@ export const TEST_USERS = {
   financeRead: {
     userId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1',
     username: 'bob.martinez',
-    email: 'bob@tamshai.local',
+    email: 'bob@tamshai-playground.local',
     roles: ['finance-read'],
     department: 'FIN',  // Use department code as in finance RLS
     employeeId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1',
@@ -183,7 +183,7 @@ export const TEST_USERS = {
   financeWrite: {
     userId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1',
     username: 'bob.martinez',
-    email: 'bob@tamshai.local',
+    email: 'bob@tamshai-playground.local',
     roles: ['finance-read', 'finance-write'],
     department: 'FIN',
     employeeId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1',
@@ -193,7 +193,7 @@ export const TEST_USERS = {
   executive: {
     userId: 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
     username: 'eve.thompson',
-    email: 'eve@tamshai.local',
+    email: 'eve@tamshai-playground.local',
     roles: ['executive'],
     department: 'Executive',
     employeeId: 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
@@ -203,7 +203,7 @@ export const TEST_USERS = {
   sales: {
     userId: 'c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c',
     username: 'carol.johnson',
-    email: 'carol@tamshai.local',
+    email: 'carol@tamshai-playground.local',
     roles: ['sales-read', 'sales-write'],
     department: 'Sales',
     employeeId: 'c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c',
