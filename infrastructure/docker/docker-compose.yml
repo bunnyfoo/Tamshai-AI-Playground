@@ -40,7 +40,7 @@ services:
   # =============================================================================
   redis:
     image: redis:7-alpine
-    container_name: tamshai-redis
+    container_name: tamshai-pg-redis
     command: redis-server --appendonly yes
     ports:
       - "6390:6379"
@@ -59,7 +59,7 @@ services:
   # =============================================================================
   vault:
     image: hashicorp/vault:1.15
-    container_name: tamshai-vault
+    container_name: tamshai-pg-vault
     cap_add:
       - IPC_LOCK
     environment:
@@ -83,7 +83,7 @@ services:
   # Vault initialization (configure secrets engines and policies)
   vault-init:
     image: hashicorp/vault:1.15
-    container_name: tamshai-vault-init
+    container_name: tamshai-pg-vault-init
     depends_on:
       vault:
         condition: service_healthy
@@ -106,7 +106,7 @@ services:
   # =============================================================================
   caddy:
     image: caddy:2-alpine
-    container_name: tamshai-caddy
+    container_name: tamshai-pg-caddy
     ports:
       - "8443:443"
       - "8090:80"
@@ -134,7 +134,7 @@ services:
   # =============================================================================
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
-    container_name: tamshai-keycloak
+    container_name: tamshai-pg-keycloak
     restart: unless-stopped
     # Always use --import-realm for realm setup consistency across all environments
     # Realm is loaded from realm-export-dev.json (dev/stage) or realm-export.json (prod)
@@ -182,7 +182,7 @@ services:
   # =============================================================================
   kong:
     image: kong:3.4
-    container_name: tamshai-kong
+    container_name: tamshai-pg-kong
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
@@ -211,7 +211,7 @@ services:
       context: ../../services/mcp-gateway
       dockerfile: Dockerfile
     image: mcp-gateway:latest
-    container_name: tamshai-mcp-gateway
+    container_name: tamshai-pg-mcp-gateway
     environment:
       NODE_ENV: development
       PORT: 3110
@@ -250,7 +250,7 @@ services:
     build:
       context: ../../services/mcp-hr
       dockerfile: Dockerfile
-    container_name: tamshai-mcp-hr
+    container_name: tamshai-pg-mcp-hr
     environment:
       NODE_ENV: development
       PORT: 3111
@@ -289,7 +289,7 @@ services:
     build:
       context: ../../services/mcp-finance
       dockerfile: Dockerfile
-    container_name: tamshai-mcp-finance
+    container_name: tamshai-pg-mcp-finance
     environment:
       NODE_ENV: development
       PORT: 3112
@@ -317,7 +317,7 @@ services:
     build:
       context: ../../services/mcp-sales
       dockerfile: Dockerfile
-    container_name: tamshai-mcp-sales
+    container_name: tamshai-pg-mcp-sales
     environment:
       NODE_ENV: development
       PORT: 3113
@@ -342,7 +342,7 @@ services:
     build:
       context: ../../services/mcp-support
       dockerfile: Dockerfile
-    container_name: tamshai-mcp-support
+    container_name: tamshai-pg-mcp-support
     environment:
       NODE_ENV: development
       PORT: 3114
@@ -368,7 +368,7 @@ services:
     build:
       context: ../..
       dockerfile: services/mcp-journey/Dockerfile
-    container_name: tamshai-mcp-journey
+    container_name: tamshai-pg-mcp-journey
     restart: unless-stopped
     environment:
       NODE_ENV: development
@@ -397,7 +397,7 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/portal/Dockerfile
-    container_name: tamshai-web-portal
+    container_name: tamshai-pg-web-portal
     environment:
       VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
@@ -422,7 +422,7 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/hr/Dockerfile
-    container_name: tamshai-web-hr
+    container_name: tamshai-pg-web-hr
     environment:
       VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
@@ -447,7 +447,7 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/finance/Dockerfile
-    container_name: tamshai-web-finance
+    container_name: tamshai-pg-web-finance
     environment:
       VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
@@ -472,7 +472,7 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/sales/Dockerfile
-    container_name: tamshai-web-sales
+    container_name: tamshai-pg-web-sales
     environment:
       VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
@@ -497,7 +497,7 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/support/Dockerfile
-    container_name: tamshai-web-support
+    container_name: tamshai-pg-web-support
     environment:
       VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
@@ -525,7 +525,7 @@ services:
     build:
       context: ../../apps/tamshai-website
       dockerfile: Dockerfile
-    container_name: tamshai-website
+    container_name: tamshai-pg-website
     ports:
       - "8085:80"
     healthcheck:
@@ -541,7 +541,7 @@ services:
   # =============================================================================
   postgres:
     image: postgres:16
-    container_name: tamshai-postgres
+    container_name: tamshai-pg-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
@@ -563,7 +563,7 @@ services:
 
   mongodb:
     image: mongo:7
-    container_name: tamshai-mongodb
+    container_name: tamshai-pg-mongodb
     environment:
       MONGO_INITDB_ROOT_USERNAME: tamshai
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-tamshai_password}
@@ -583,7 +583,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: tamshai-elasticsearch
+    container_name: tamshai-pg-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -604,7 +604,7 @@ services:
   # Elasticsearch data seeder (loads support tickets and knowledge base)
   elasticsearch-init:
     image: curlimages/curl:latest
-    container_name: tamshai-elasticsearch-init
+    container_name: tamshai-pg-elasticsearch-init
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -626,7 +626,7 @@ services:
 
   minio:
     image: minio/minio
-    container_name: tamshai-minio
+    container_name: tamshai-pg-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -647,7 +647,7 @@ services:
   # MinIO initialization (create buckets)
   minio-init:
     image: minio/mc
-    container_name: tamshai-minio-init
+    container_name: tamshai-pg-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -674,7 +674,7 @@ services:
   # Phoenix principle: All configuration is idempotent and recreatable from code.
   keycloak-sync:
     image: quay.io/keycloak/keycloak:24.0
-    container_name: tamshai-keycloak-sync
+    container_name: tamshai-pg-keycloak-sync
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
@@ -735,7 +735,7 @@ services:
     build:
       context: ../../services/mcp-hr
       dockerfile: Dockerfile.sync
-    container_name: tamshai-identity-sync
+    container_name: tamshai-pg-identity-sync
     environment:
       # PostgreSQL connection (uses internal Docker network)
       POSTGRES_HOST: postgres
