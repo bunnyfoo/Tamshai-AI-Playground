@@ -63,6 +63,81 @@ export interface KBArticleSummary {
 }
 
 /**
+ * SLA Types
+ */
+export interface SLAPolicy {
+  tier: 'starter' | 'professional' | 'enterprise';
+  tier_label: string;
+  first_response_hours: number;
+  resolution_hours: number;
+  business_hours: string;
+}
+
+export interface SLAStatus {
+  ticket_id: string;
+  ticket_title: string;
+  customer_name: string;
+  customer_tier: string;
+  priority: string;
+  status: string;
+  assigned_to?: string;
+  created_at: string;
+  first_response_at?: string;
+  first_response_met: boolean;
+  resolution_deadline: string;
+  time_remaining_minutes: number;
+  is_breached: boolean;
+  is_at_risk: boolean;
+}
+
+export interface SLASummary {
+  overall_compliance: number;
+  first_response_compliance: number;
+  resolution_compliance: number;
+  tickets_within_sla: number;
+  tickets_breached: number;
+  tickets_at_risk: number;
+  by_tier: {
+    tier: string;
+    compliance: number;
+    total: number;
+    breached: number;
+  }[];
+  breach_reasons: {
+    reason: string;
+    count: number;
+  }[];
+}
+
+/**
+ * Agent Performance Types
+ */
+export interface AgentMetrics {
+  agent_id: string;
+  agent_name: string;
+  period: string;
+  tickets_resolved: number;
+  tickets_assigned: number;
+  avg_resolution_minutes: number;
+  avg_first_response_minutes: number;
+  sla_compliance_percent: number;
+  csat_score: number;
+  csat_responses: number;
+  reopen_rate: number;
+  current_workload: number;
+}
+
+export interface AgentPerformanceSummary {
+  period: string;
+  period_label: string;
+  team_resolved: number;
+  team_avg_resolution_minutes: number;
+  team_sla_compliance: number;
+  team_csat: number;
+  agents: AgentMetrics[];
+}
+
+/**
  * API response wrapper
  */
 export interface APIResponse<T> {

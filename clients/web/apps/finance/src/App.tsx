@@ -4,6 +4,7 @@ import { useAuth } from '@tamshai/auth';
 import { useEffect } from 'react';
 import Layout from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
+import { ARRDashboardPage } from './pages/ARRDashboardPage';
 import { BudgetsPage } from './pages/BudgetsPage';
 import { InvoicesPage } from './pages/InvoicesPage';
 import { ExpenseReportsPage } from './pages/ExpenseReportsPage';
@@ -60,6 +61,7 @@ function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="arr" element={<ARRDashboardPage />} />
         <Route path="budgets" element={<BudgetsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="expense-reports" element={<ExpenseReportsPage />} />

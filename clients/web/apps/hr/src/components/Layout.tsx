@@ -87,6 +87,48 @@ export default function Layout() {
               Employee Directory
             </NavLink>
             <NavLink
+              to="/time-off"
+              className={({ isActive }) =>
+                isActive ? 'nav-link-active' : 'nav-link'
+              }
+            >
+              <svg
+                className="w-4 h-4 inline mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Time Off
+            </NavLink>
+            <NavLink
+              to="/org-chart"
+              className={({ isActive }) =>
+                isActive ? 'nav-link-active' : 'nav-link'
+              }
+            >
+              <svg
+                className="w-4 h-4 inline mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                />
+              </svg>
+              Org Chart
+            </NavLink>
+            <NavLink
               to="/ai-query"
               className={({ isActive }) =>
                 isActive ? 'nav-link-active' : 'nav-link'
