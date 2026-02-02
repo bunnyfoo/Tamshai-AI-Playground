@@ -158,7 +158,9 @@ describe('AnnualFilingsPage', () => {
     renderWithProviders(<AnnualFilingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('1099')).toBeInTheDocument();
+      // Multiple 1099 filings exist
+      const filings1099 = screen.getAllByText('1099');
+      expect(filings1099.length).toBeGreaterThan(0);
       expect(screen.getByText('W-2')).toBeInTheDocument();
       expect(screen.getByText('941')).toBeInTheDocument();
     });

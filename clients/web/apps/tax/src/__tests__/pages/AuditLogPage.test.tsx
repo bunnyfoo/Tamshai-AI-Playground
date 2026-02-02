@@ -126,7 +126,9 @@ describe('AuditLogPage', () => {
     renderWithProviders(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Alice Chen')).toBeInTheDocument();
+      // Alice Chen appears multiple times (created and submitted filing)
+      const aliceEntries = screen.getAllByText('Alice Chen');
+      expect(aliceEntries.length).toBeGreaterThan(0);
       expect(screen.getByText('Bob Martinez')).toBeInTheDocument();
       expect(screen.getByText('Carol Johnson')).toBeInTheDocument();
     });

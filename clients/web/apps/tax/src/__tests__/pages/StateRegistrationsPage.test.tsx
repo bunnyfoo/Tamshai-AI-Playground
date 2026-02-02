@@ -140,7 +140,9 @@ describe('StateRegistrationsPage', () => {
     renderWithProviders(<StateRegistrationsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Sales Tax')).toBeInTheDocument();
+      // Multiple sales tax registrations exist
+      const salesTaxEntries = screen.getAllByText('Sales Tax');
+      expect(salesTaxEntries.length).toBeGreaterThan(0);
       expect(screen.getByText('Franchise Tax')).toBeInTheDocument();
       expect(screen.getByText('Income Tax')).toBeInTheDocument();
     });
