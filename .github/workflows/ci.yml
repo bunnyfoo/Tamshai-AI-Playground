@@ -576,10 +576,12 @@ jobs:
           docker cp /tmp/keycloak-scripts/lib keycloak:/tmp/lib
 
           # Run sync-realm.sh inside Keycloak container
+          # Note: CI Keycloak runs without /auth path prefix (start-dev mode)
           docker exec \
             -e KEYCLOAK_ADMIN=admin \
             -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
             -e MCP_HR_SERVICE_CLIENT_SECRET=hr-service-secret \
+            -e KEYCLOAK_URL=http://localhost:8080 \
             keycloak /tmp/sync-realm.sh dev
 
           echo "✅ Keycloak sync completed"
