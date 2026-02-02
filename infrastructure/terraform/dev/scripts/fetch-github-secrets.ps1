@@ -33,7 +33,7 @@ $output = @{
     "test_user_password" = ""
     "test_user_totp_secret_raw" = ""
     "gemini_api_key" = ""
-    "tamshai_playground_api" = ""
+    "claude_api_key" = ""
 }
 
 try {
@@ -101,10 +101,10 @@ try {
         $output["gemini_api_key"] = (Get-Content $geminiKeyFile -Raw).Trim()
     }
 
-    # Read Tamshai Playground API key (Claude API for playground environment)
-    $playgroundApiFile = Join-Path $tempDir "TAMSHAI_PLAYGROUND_API"
-    if (Test-Path $playgroundApiFile) {
-        $output["tamshai_playground_api"] = (Get-Content $playgroundApiFile -Raw).Trim()
+    # Read Claude API key (for playground environment)
+    $claudeApiFile = Join-Path $tempDir "CLAUDE_API_KEY"
+    if (Test-Path $claudeApiFile) {
+        $output["claude_api_key"] = (Get-Content $claudeApiFile -Raw).Trim()
     }
 
     # Cleanup temp directory

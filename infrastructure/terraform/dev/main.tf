@@ -193,9 +193,9 @@ resource "local_file" "docker_env" {
     redis_password = var.redis_password
 
     # MCP Gateway
-    # Use fetched key from GitHub secrets (TAMSHAI_PLAYGROUND_API), fallback to variable
+    # Use fetched key from GitHub secrets (CLAUDE_API_KEY), fallback to variable
     claude_api_key = coalesce(
-      data.external.github_secrets.result.tamshai_playground_api,
+      data.external.github_secrets.result.claude_api_key,
       var.claude_api_key
     )
 
