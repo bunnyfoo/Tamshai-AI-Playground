@@ -84,6 +84,9 @@ vi.mock('@tamshai/ui', () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// Mock scrollIntoView (not available in jsdom)
+Element.prototype.scrollIntoView = vi.fn();
+
 // Reset mocks before each test
 beforeEach(() => {
   mockFetch.mockReset();
