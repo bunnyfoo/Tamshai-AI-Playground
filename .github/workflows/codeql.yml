@@ -12,8 +12,6 @@ on:
 jobs:
   analyze:
     name: Analyze JavaScript/TypeScript
-    # DISABLED: CodeQL requires GitHub Advanced Security for private repos
-    if: false
     runs-on: ubuntu-latest
     permissions:
       actions: read
