@@ -19,6 +19,7 @@ import { MCPToolResponse, createSuccessResponse, createPendingConfirmationRespon
 import { storePendingConfirmation } from './utils/redis';
 import { ISupportBackend, UserContext } from './database/types';
 import { createSupportBackend } from './database/backend.factory';
+import { getCollection, buildRoleFilter } from './database/connection';
 
 dotenv.config();
 
@@ -357,6 +358,361 @@ async function executeCloseTicket(
 }
 
 // =============================================================================
+// TOOL: get_sla_summary (SLA compliance metrics)
+// =============================================================================
+
+interface SLASummary {
+  overall_compliance: number;
+  tickets_total: number;
+  tickets_within_sla: number;
+  tickets_breached: number;
+  tickets_at_risk: number;
+  by_tier: Array<{ tier: string; compliance: number; count: number }>;
+  by_priority: Array<{ priority: string; compliance: number; count: number }>;
+}
+
+async function getSLASummary(userContext: UserContext): Promise<MCPToolResponse<SLASummary>> {
+  try {
+    const collection = await getCollection('tickets');
+    const roleFilter = buildRoleFilter(userContext);
+    const now = new Date();
+
+    // Get all open/in_progress tickets
+    const pipeline = [
+      { $match: { ...roleFilter, status: { $in: ['open', 'in_progress'] } } },
+      {
+        $addFields: {
+          is_breached: {
+            $cond: [
+              { $and: [{ $ne: ['$resolution_deadline', null] }, { $lt: ['$resolution_deadline', now] }] },
+              true,
+              false
+            ]
+          },
+          is_at_risk: {
+            $cond: [
+              {
+                $and: [
+                  { $ne: ['$resolution_deadline', null] },
+                  { $gt: ['$resolution_deadline', now] },
+                  { $lt: ['$resolution_deadline', new Date(now.getTime() + 2 * 60 * 60 * 1000)] } // 2 hours
+                ]
+              },
+              true,
+              false
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          breached: { $sum: { $cond: ['$is_breached', 1, 0] } },
+          at_risk: { $sum: { $cond: ['$is_at_risk', 1, 0] } }
+        }
+      }
+    ];
+
+    const summary = await collection.aggregate(pipeline).toArray();
+
+    // Get tier breakdown
+    const tierPipeline = [
+      { $match: { ...roleFilter, status: { $in: ['open', 'in_progress', 'resolved', 'closed'] } } },
+      {
+        $addFields: {
+          sla_met: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ['$resolution_deadline', null] },
+                  { $and: [{ $ne: ['$closed_at', null] }, { $lte: ['$closed_at', '$resolution_deadline'] }] },
+                  { $and: [{ $eq: ['$closed_at', null] }, { $in: ['$status', ['open', 'in_progress']] }, { $gte: ['$resolution_deadline', now] }] }
+                ]
+              },
+              true,
+              false
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: { $ifNull: ['$customer_tier', 'unknown'] },
+          total: { $sum: 1 },
+          met: { $sum: { $cond: ['$sla_met', 1, 0] } }
+        }
+      }
+    ];
+
+    const tierBreakdown = await collection.aggregate(tierPipeline).toArray();
+
+    // Get priority breakdown
+    const priorityPipeline = [
+      { $match: { ...roleFilter, status: { $in: ['open', 'in_progress', 'resolved', 'closed'] } } },
+      {
+        $addFields: {
+          sla_met: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ['$resolution_deadline', null] },
+                  { $and: [{ $ne: ['$closed_at', null] }, { $lte: ['$closed_at', '$resolution_deadline'] }] },
+                  { $and: [{ $eq: ['$closed_at', null] }, { $in: ['$status', ['open', 'in_progress']] }, { $gte: ['$resolution_deadline', now] }] }
+                ]
+              },
+              true,
+              false
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$priority',
+          total: { $sum: 1 },
+          met: { $sum: { $cond: ['$sla_met', 1, 0] } }
+        }
+      }
+    ];
+
+    const priorityBreakdown = await collection.aggregate(priorityPipeline).toArray();
+
+    const summaryData = summary[0] || { total: 0, breached: 0, at_risk: 0 };
+    const ticketsWithinSLA = summaryData.total - summaryData.breached;
+
+    const result: SLASummary = {
+      overall_compliance: summaryData.total > 0
+        ? Math.round((ticketsWithinSLA / summaryData.total) * 100)
+        : 100,
+      tickets_total: summaryData.total,
+      tickets_within_sla: ticketsWithinSLA,
+      tickets_breached: summaryData.breached,
+      tickets_at_risk: summaryData.at_risk,
+      by_tier: tierBreakdown.map((t: any) => ({
+        tier: t._id,
+        compliance: t.total > 0 ? Math.round((t.met / t.total) * 100) : 100,
+        count: t.total
+      })),
+      by_priority: priorityBreakdown.map((p: any) => ({
+        priority: p._id,
+        compliance: p.total > 0 ? Math.round((p.met / p.total) * 100) : 100,
+        count: p.total
+      }))
+    };
+
+    return createSuccessResponse(result);
+  } catch (error: any) {
+    logger.error('get_sla_summary error:', error);
+    return createErrorResponse(
+      'DATABASE_ERROR',
+      'Failed to get SLA summary',
+      'Please try again or contact support',
+      { errorMessage: error.message }
+    );
+  }
+}
+
+// =============================================================================
+// TOOL: get_sla_tickets (tickets at risk or breached)
+// =============================================================================
+
+const GetSLATicketsInputSchema = z.object({
+  status: z.enum(['at_risk', 'breached']),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+interface SLATicket {
+  ticket_id: string;
+  title: string;
+  priority: string;
+  status: string;
+  customer_tier: string;
+  assigned_to: string | null;
+  resolution_deadline: string;
+  time_remaining_minutes: number | null;
+  sla_status: 'at_risk' | 'breached';
+}
+
+async function getSLATickets(input: any, userContext: UserContext): Promise<MCPToolResponse<SLATicket[]>> {
+  try {
+    const { status, limit } = GetSLATicketsInputSchema.parse(input);
+
+    const collection = await getCollection('tickets');
+    const roleFilter = buildRoleFilter(userContext);
+    const now = new Date();
+
+    let filter: any = {
+      ...roleFilter,
+      status: { $in: ['open', 'in_progress'] },
+      resolution_deadline: { $ne: null }
+    };
+
+    if (status === 'breached') {
+      filter.resolution_deadline = { $lt: now };
+    } else {
+      // at_risk: deadline is within next 2 hours but not breached
+      filter.resolution_deadline = {
+        $gt: now,
+        $lt: new Date(now.getTime() + 2 * 60 * 60 * 1000)
+      };
+    }
+
+    const tickets = await collection
+      .find(filter)
+      .sort({ resolution_deadline: 1 })
+      .limit(limit)
+      .toArray();
+
+    const results: SLATicket[] = tickets.map((t: any) => {
+      const deadline = new Date(t.resolution_deadline);
+      const timeRemaining = Math.round((deadline.getTime() - now.getTime()) / 60000);
+
+      return {
+        ticket_id: t.ticket_id,
+        title: t.title,
+        priority: t.priority,
+        status: t.status,
+        customer_tier: t.customer_tier || 'unknown',
+        assigned_to: t.assigned_to,
+        resolution_deadline: t.resolution_deadline.toISOString(),
+        time_remaining_minutes: timeRemaining,
+        sla_status: timeRemaining < 0 ? 'breached' : 'at_risk'
+      };
+    });
+
+    return createSuccessResponse(results, {
+      returnedCount: results.length,
+      hasMore: tickets.length >= limit,
+      totalEstimate: tickets.length >= limit ? `${limit}+` : results.length.toString()
+    });
+  } catch (error: any) {
+    logger.error('get_sla_tickets error:', error);
+    return createErrorResponse(
+      'DATABASE_ERROR',
+      'Failed to get SLA tickets',
+      'Please try again or contact support',
+      { errorMessage: error.message }
+    );
+  }
+}
+
+// =============================================================================
+// TOOL: get_agent_metrics (agent performance metrics)
+// =============================================================================
+
+const GetAgentMetricsInputSchema = z.object({
+  period: z.enum(['7d', '30d', '90d']).default('30d'),
+});
+
+interface AgentMetrics {
+  agent_id: string;
+  tickets_resolved: number;
+  avg_resolution_minutes: number;
+  sla_compliance_percent: number;
+}
+
+interface AgentPerformanceSummary {
+  period: string;
+  period_start: string;
+  period_end: string;
+  team_resolved: number;
+  team_avg_resolution_minutes: number;
+  team_sla_compliance: number;
+  agents: AgentMetrics[];
+}
+
+async function getAgentMetrics(input: any, userContext: UserContext): Promise<MCPToolResponse<AgentPerformanceSummary>> {
+  try {
+    const { period } = GetAgentMetricsInputSchema.parse(input);
+
+    const collection = await getCollection('tickets');
+    const roleFilter = buildRoleFilter(userContext);
+    const now = new Date();
+
+    // Calculate period start date
+    const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+    const pipeline = [
+      {
+        $match: {
+          ...roleFilter,
+          status: { $in: ['resolved', 'closed'] },
+          closed_at: { $gte: periodStart },
+          assigned_to: { $ne: null }
+        }
+      },
+      {
+        $addFields: {
+          resolution_minutes: {
+            $divide: [
+              { $subtract: ['$closed_at', '$created_at'] },
+              60000
+            ]
+          },
+          sla_met: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ['$resolution_deadline', null] },
+                  { $lte: ['$closed_at', '$resolution_deadline'] }
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: '$assigned_to',
+          tickets_resolved: { $sum: 1 },
+          total_resolution_minutes: { $sum: '$resolution_minutes' },
+          sla_met_count: { $sum: '$sla_met' }
+        }
+      },
+      { $sort: { tickets_resolved: -1 } }
+    ];
+
+    const agentData = await collection.aggregate(pipeline).toArray();
+
+    const agents: AgentMetrics[] = agentData.map((a: any) => ({
+      agent_id: a._id,
+      tickets_resolved: a.tickets_resolved,
+      avg_resolution_minutes: Math.round(a.total_resolution_minutes / a.tickets_resolved),
+      sla_compliance_percent: Math.round((a.sla_met_count / a.tickets_resolved) * 100)
+    }));
+
+    // Calculate team totals
+    const teamResolved = agents.reduce((sum, a) => sum + a.tickets_resolved, 0);
+    const teamTotalMinutes = agents.reduce((sum, a) => sum + a.avg_resolution_minutes * a.tickets_resolved, 0);
+    const teamSlaMet = agents.reduce((sum, a) => sum + Math.round(a.tickets_resolved * a.sla_compliance_percent / 100), 0);
+
+    const result: AgentPerformanceSummary = {
+      period,
+      period_start: periodStart.toISOString(),
+      period_end: now.toISOString(),
+      team_resolved: teamResolved,
+      team_avg_resolution_minutes: teamResolved > 0 ? Math.round(teamTotalMinutes / teamResolved) : 0,
+      team_sla_compliance: teamResolved > 0 ? Math.round((teamSlaMet / teamResolved) * 100) : 100,
+      agents
+    };
+
+    return createSuccessResponse(result);
+  } catch (error: any) {
+    logger.error('get_agent_metrics error:', error);
+    return createErrorResponse(
+      'DATABASE_ERROR',
+      'Failed to get agent metrics',
+      'Please try again or contact support',
+      { errorMessage: error.message }
+    );
+  }
+}
+
+// =============================================================================
 // ENDPOINTS
 // =============================================================================
 
@@ -515,6 +871,72 @@ app.post('/tools/close_ticket', async (req: Request, res: Response) => {
   }
 
   const result = await closeTicket({ ticketId, resolution }, userContext);
+  res.json(result);
+});
+
+app.post('/tools/get_sla_summary', async (req: Request, res: Response) => {
+  const { userContext } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  // Authorization check - must have Support access
+  if (!hasSupportAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Support access (support-read, support-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Support access permissions.',
+    });
+    return;
+  }
+
+  const result = await getSLASummary(userContext);
+  res.json(result);
+});
+
+app.post('/tools/get_sla_tickets', async (req: Request, res: Response) => {
+  const { userContext, status, limit } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  // Authorization check - must have Support access
+  if (!hasSupportAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Support access (support-read, support-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Support access permissions.',
+    });
+    return;
+  }
+
+  const result = await getSLATickets({ status, limit }, userContext);
+  res.json(result);
+});
+
+app.post('/tools/get_agent_metrics', async (req: Request, res: Response) => {
+  const { userContext, period } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  // Authorization check - must have Support access
+  if (!hasSupportAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Support access (support-read, support-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Support access permissions.',
+    });
+    return;
+  }
+
+  const result = await getAgentMetrics({ period }, userContext);
   res.json(result);
 });
 

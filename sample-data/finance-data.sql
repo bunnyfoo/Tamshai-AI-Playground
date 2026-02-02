@@ -40,6 +40,118 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA finance GRANT ALL ON TABLES TO tamshai_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA finance GRANT ALL ON SEQUENCES TO tamshai_app;
 
 -- =============================================================================
+-- ARR METRICS TABLE (SaaS Key Metrics)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS finance.arr_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    as_of_date DATE NOT NULL UNIQUE,
+    arr DECIMAL(15,2) NOT NULL,
+    mrr DECIMAL(15,2) NOT NULL,
+    net_new_arr DECIMAL(15,2) DEFAULT 0,
+    gross_revenue_retention DECIMAL(5,2) DEFAULT 100,
+    net_revenue_retention DECIMAL(5,2) DEFAULT 100,
+    arpu DECIMAL(12,2) DEFAULT 0,
+    active_subscriptions INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Insert current ARR metrics snapshot (February 2026)
+INSERT INTO finance.arr_metrics (as_of_date, arr, mrr, net_new_arr, gross_revenue_retention, net_revenue_retention, arpu, active_subscriptions)
+VALUES
+    ('2026-02-01', 12500000, 1041667, 250000, 92.5, 108.3, 2500, 5000),
+    ('2026-01-01', 12250000, 1020833, 250000, 93.0, 107.8, 2450, 4950),
+    ('2025-12-01', 12000000, 1000000, 200000, 92.8, 107.5, 2420, 4900),
+    ('2025-11-01', 11800000, 983333, 180000, 92.5, 107.2, 2390, 4850),
+    ('2025-10-01', 11620000, 968333, 170000, 92.3, 107.0, 2360, 4800)
+ON CONFLICT (as_of_date) DO UPDATE SET
+    arr = EXCLUDED.arr,
+    mrr = EXCLUDED.mrr,
+    net_new_arr = EXCLUDED.net_new_arr,
+    gross_revenue_retention = EXCLUDED.gross_revenue_retention,
+    net_revenue_retention = EXCLUDED.net_revenue_retention,
+    arpu = EXCLUDED.arpu,
+    active_subscriptions = EXCLUDED.active_subscriptions;
+
+-- Enable RLS on arr_metrics
+ALTER TABLE finance.arr_metrics ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Finance role can see ARR metrics
+CREATE POLICY arr_metrics_finance_access ON finance.arr_metrics
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%finance-read%'
+        OR current_setting('app.current_user_roles', true) LIKE '%finance-write%'
+    );
+
+-- Policy: Executive role can see ARR metrics
+CREATE POLICY arr_metrics_executive_access ON finance.arr_metrics
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%executive%'
+    );
+
+-- =============================================================================
+-- ARR MOVEMENT TABLE (Monthly Changes)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS finance.arr_movement (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    period VARCHAR(7) NOT NULL,  -- '2026-01'
+    period_label VARCHAR(50) NOT NULL,
+    starting_arr DECIMAL(15,2) NOT NULL,
+    new_arr DECIMAL(15,2) DEFAULT 0,
+    expansion_arr DECIMAL(15,2) DEFAULT 0,
+    churn_arr DECIMAL(15,2) DEFAULT 0,
+    contraction_arr DECIMAL(15,2) DEFAULT 0,
+    net_new_arr DECIMAL(15,2) DEFAULT 0,
+    ending_arr DECIMAL(15,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(period)
+);
+
+-- Insert ARR movement for last 12 months
+INSERT INTO finance.arr_movement (period, period_label, starting_arr, new_arr, expansion_arr, churn_arr, contraction_arr, net_new_arr, ending_arr)
+VALUES
+    ('2026-02', 'February 2026', 12250000, 180000, 120000, -50000, -20000, 230000, 12480000),
+    ('2026-01', 'January 2026', 12000000, 200000, 150000, -100000, -30000, 220000, 12220000),
+    ('2025-12', 'December 2025', 11800000, 150000, 100000, -50000, -20000, 180000, 11980000),
+    ('2025-11', 'November 2025', 11620000, 140000, 90000, -50000, -15000, 165000, 11785000),
+    ('2025-10', 'October 2025', 11450000, 130000, 80000, -40000, -10000, 160000, 11610000),
+    ('2025-09', 'September 2025', 11300000, 120000, 70000, -40000, -10000, 140000, 11440000),
+    ('2025-08', 'August 2025', 11150000, 110000, 80000, -40000, -10000, 140000, 11290000),
+    ('2025-07', 'July 2025', 11000000, 120000, 70000, -40000, -10000, 140000, 11140000),
+    ('2025-06', 'June 2025', 10850000, 130000, 60000, -40000, -10000, 140000, 10990000),
+    ('2025-05', 'May 2025', 10700000, 120000, 70000, -40000, -10000, 140000, 10840000),
+    ('2025-04', 'April 2025', 10550000, 110000, 80000, -40000, -10000, 140000, 10690000),
+    ('2025-03', 'March 2025', 10400000, 120000, 70000, -40000, -10000, 140000, 10540000)
+ON CONFLICT (period) DO UPDATE SET
+    period_label = EXCLUDED.period_label,
+    starting_arr = EXCLUDED.starting_arr,
+    new_arr = EXCLUDED.new_arr,
+    expansion_arr = EXCLUDED.expansion_arr,
+    churn_arr = EXCLUDED.churn_arr,
+    contraction_arr = EXCLUDED.contraction_arr,
+    net_new_arr = EXCLUDED.net_new_arr,
+    ending_arr = EXCLUDED.ending_arr;
+
+-- Enable RLS on arr_movement
+ALTER TABLE finance.arr_movement ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Finance role can see ARR movement
+CREATE POLICY arr_movement_finance_access ON finance.arr_movement
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%finance-read%'
+        OR current_setting('app.current_user_roles', true) LIKE '%finance-write%'
+    );
+
+-- Policy: Executive role can see ARR movement
+CREATE POLICY arr_movement_executive_access ON finance.arr_movement
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%executive%'
+    );
+
+-- =============================================================================
 -- FISCAL YEARS
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS finance.fiscal_years (

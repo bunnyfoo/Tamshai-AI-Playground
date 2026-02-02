@@ -19,6 +19,8 @@ import { listBudgets, ListBudgetsInputSchema } from './tools/list-budgets';
 import { listInvoices, ListInvoicesInputSchema } from './tools/list-invoices';
 import { getExpenseReport, GetExpenseReportInputSchema } from './tools/get-expense-report';
 import { listExpenseReports, ListExpenseReportsInputSchema } from './tools/list-expense-reports';
+import { getArr, GetArrInputSchema } from './tools/get-arr';
+import { getArrMovement, GetArrMovementInputSchema } from './tools/get-arr-movement';
 import {
   deleteInvoice,
   executeDeleteInvoice,
@@ -428,6 +430,84 @@ app.post('/tools/list_expense_reports', async (req: Request, res: Response) => {
       status: 'error',
       code: 'INTERNAL_ERROR',
       message: 'Failed to list expense reports',
+    });
+  }
+});
+
+/**
+ * Get ARR Tool - Returns current ARR metrics
+ */
+app.post('/tools/get_arr', async (req: Request, res: Response) => {
+  try {
+    const { userContext, asOfDate } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have Finance access
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await getArr({ asOfDate }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_arr error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get ARR metrics',
+    });
+  }
+});
+
+/**
+ * Get ARR Movement Tool - Returns ARR waterfall/movement data
+ */
+app.post('/tools/get_arr_movement', async (req: Request, res: Response) => {
+  try {
+    const { userContext, year, months } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have Finance access
+    if (!hasFinanceAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await getArrMovement({ year, months }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_arr_movement error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get ARR movement data',
     });
   }
 });
