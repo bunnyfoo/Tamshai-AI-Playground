@@ -18,22 +18,6 @@ export default function TaxWithholdingsPage() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading tax withholding settings...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Error loading tax withholdings</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -42,7 +26,23 @@ export default function TaxWithholdingsPage() {
         <p className="text-gray-500 mt-1">Manage your federal and state tax elections</p>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Loading tax withholding settings...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">Error loading tax withholdings</p>
+        </div>
+      )}
+
       {/* Federal W-4 */}
+      {!isLoading && !error && (
+        <>
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Federal W-4</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -97,6 +97,8 @@ export default function TaxWithholdingsPage() {
           Update State Tax
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }
