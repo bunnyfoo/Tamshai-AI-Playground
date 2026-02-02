@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import React from 'react';
 import { vi } from 'vitest';
 
 // Mock @tamshai/auth module
@@ -14,6 +15,7 @@ vi.mock('@tamshai/auth', () => ({
       lastName: 'User',
       roles: ['finance-read', 'finance-write'],
     },
+    getAccessToken: () => 'mock-token',
     signIn: vi.fn(),
     signOut: vi.fn(),
     error: null,
@@ -21,6 +23,24 @@ vi.mock('@tamshai/auth', () => ({
   PrivateRoute: ({ children }: { children: React.ReactNode }) => children,
   getUserDisplayName: (ctx: any) => `${ctx?.firstName || ''} ${ctx?.lastName || ''}`.trim() || 'Unknown User',
   getRoleBadges: () => ['finance-read', 'finance-write'],
+  canModifyFinance: () => true,
+  apiConfig: {
+    mcpGatewayUrl: 'http://localhost:3100',
+  },
+}));
+
+// Mock @tamshai/ui module
+vi.mock('@tamshai/ui', () => ({
+  TruncationWarning: ({ message }: { message: string }) => (
+    <div data-testid="truncation-warning">{message}</div>
+  ),
+  ApprovalCard: ({ message, onComplete }: { message: string; onComplete: (success: boolean) => void }) => (
+    <div data-testid="approval-card">
+      <p>{message}</p>
+      <button onClick={() => onComplete(true)}>Approve</button>
+      <button onClick={() => onComplete(false)}>Reject</button>
+    </div>
+  ),
 }));
 
 // Mock window.matchMedia for responsive components
