@@ -33,7 +33,8 @@ on:
   workflow_dispatch:
 
 env:
-  VAULT_ADDR: http://localhost:8200
+  # Port 8210 is the playground port mapping (8210:8200)
+  VAULT_ADDR: http://localhost:8210
   VAULT_TOKEN: dev-root-token
   CLAUDE_API_KEY: sk-ant-test-key-for-ci
 
