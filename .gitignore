@@ -94,9 +94,11 @@ mongodb_data/
 # Elasticsearch data (local)
 elasticsearch_data/
 
-# Claude Code / GitHub Spec Kit
-.claude/
+# Claude Code - ignore local settings but track shared commands
 .claude/settings.local.json
+.claude/projects/
+.claude/todos/
+.claude/.totp-secrets/
 
 # Temporary specification notes
 *.spec.txt
