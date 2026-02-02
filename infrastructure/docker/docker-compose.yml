@@ -15,6 +15,7 @@
 #   - MCP Sales:     3113 (tamshai-dev uses 3103)
 #   - MCP Support:   3114 (tamshai-dev uses 3104)
 #   - MCP Journey:   3115 (tamshai-dev uses 3105)
+#   - MCP Payroll:   3116 (tamshai-dev uses 3106)
 #   - Web Portal:    4010 (tamshai-dev uses 4000)
 #   - Web HR:        4011 (tamshai-dev uses 4001)
 #   - Web Finance:   4012 (tamshai-dev uses 4002)
@@ -232,6 +233,7 @@ services:
       MCP_FINANCE_URL: http://mcp-finance:3112
       MCP_SALES_URL: http://mcp-sales:3113
       MCP_SUPPORT_URL: http://mcp-support:3114
+      MCP_PAYROLL_URL: http://mcp-payroll:3116
       LOG_LEVEL: info
     ports:
       - "3110:3110"
@@ -381,6 +383,39 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3115/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - tamshai-network
+
+  mcp-payroll:
+    build:
+      context: ../../services/mcp-payroll
+      dockerfile: Dockerfile
+    container_name: tamshai-pg-mcp-payroll
+    environment:
+      NODE_ENV: development
+      PORT: 3116
+      # PostgreSQL connection
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: tamshai_payroll
+      POSTGRES_USER: tamshai
+      POSTGRES_PASSWORD: ${TAMSHAI_DB_PASSWORD:-tamshai_password}
+      # Redis for confirmations
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_LEVEL: info
+    ports:
+      - "3116:3116"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3116/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -542,12 +577,14 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
-      POSTGRES_MULTIPLE_DATABASES: keycloak:keycloak:${KEYCLOAK_DB_PASSWORD:-keycloak_password},tamshai_hr:tamshai:${TAMSHAI_DB_PASSWORD:-tamshai_password},tamshai_finance:tamshai:${TAMSHAI_DB_PASSWORD:-tamshai_password}
+      POSTGRES_MULTIPLE_DATABASES: keycloak:keycloak:${KEYCLOAK_DB_PASSWORD:-keycloak_password},tamshai_hr:tamshai:${TAMSHAI_DB_PASSWORD:-tamshai_password},tamshai_finance:tamshai:${TAMSHAI_DB_PASSWORD:-tamshai_password},tamshai_payroll:tamshai:${TAMSHAI_DB_PASSWORD:-tamshai_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/01-init-multiple-databases.sh:ro
       - ../../sample-data/hr-data.sql:/docker-entrypoint-initdb.d/02-hr-data.sql:ro
       - ../../sample-data/finance-data.sql:/docker-entrypoint-initdb.d/03-finance-data.sql:ro
+      - ../../infrastructure/database/payroll/schema.sql:/docker-entrypoint-initdb.d/04-payroll-schema.sql:ro
+      - ../../infrastructure/database/payroll/sample-data.sql:/docker-entrypoint-initdb.d/05-payroll-data.sql:ro
     ports:
       - "5443:5432"
     healthcheck:
