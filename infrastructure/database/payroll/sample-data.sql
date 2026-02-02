@@ -1,0 +1,126 @@
+-- Payroll Sample Data
+-- Sample employees, pay runs, pay stubs, contractors, etc.
+
+-- Clear existing data (for reseeding)
+TRUNCATE payroll.contractor_payments CASCADE;
+TRUNCATE payroll.contractors CASCADE;
+TRUNCATE payroll.direct_deposit_accounts CASCADE;
+TRUNCATE payroll.benefit_deductions CASCADE;
+TRUNCATE payroll.tax_withholdings CASCADE;
+TRUNCATE payroll.pay_stub_deductions CASCADE;
+TRUNCATE payroll.pay_stub_taxes CASCADE;
+TRUNCATE payroll.pay_stub_earnings CASCADE;
+TRUNCATE payroll.pay_stubs CASCADE;
+TRUNCATE payroll.pay_runs CASCADE;
+TRUNCATE payroll.employees CASCADE;
+
+-- Sample Employees
+INSERT INTO payroll.employees (employee_id, first_name, last_name, email, hire_date, department, job_title, employment_type, pay_type, annual_salary, hourly_rate, pay_frequency, status) VALUES
+('11111111-1111-1111-1111-111111111111', 'Alice', 'Chen', 'alice.chen@tamshai.com', '2020-03-15', 'Human Resources', 'VP of HR', 'FULL_TIME', 'SALARY', 150000.00, NULL, 'BI_WEEKLY', 'ACTIVE'),
+('22222222-2222-2222-2222-222222222222', 'Bob', 'Martinez', 'bob.martinez@tamshai.com', '2019-08-01', 'Finance', 'Finance Director', 'FULL_TIME', 'SALARY', 140000.00, NULL, 'BI_WEEKLY', 'ACTIVE'),
+('33333333-3333-3333-3333-333333333333', 'Carol', 'Johnson', 'carol.johnson@tamshai.com', '2021-01-10', 'Sales', 'VP of Sales', 'FULL_TIME', 'SALARY', 160000.00, NULL, 'BI_WEEKLY', 'ACTIVE'),
+('44444444-4444-4444-4444-444444444444', 'Dan', 'Williams', 'dan.williams@tamshai.com', '2020-06-01', 'Support', 'Support Director', 'FULL_TIME', 'SALARY', 130000.00, NULL, 'BI_WEEKLY', 'ACTIVE'),
+('55555555-5555-5555-5555-555555555555', 'Eve', 'Thompson', 'eve.thompson@tamshai.com', '2018-01-01', 'Executive', 'CEO', 'FULL_TIME', 'SALARY', 250000.00, NULL, 'SEMI_MONTHLY', 'ACTIVE'),
+('66666666-6666-6666-6666-666666666666', 'Frank', 'Davis', 'frank.davis@tamshai.com', '2023-06-15', 'IT', 'IT Intern', 'FULL_TIME', 'HOURLY', NULL, 22.50, 'BI_WEEKLY', 'ACTIVE'),
+('77777777-7777-7777-7777-777777777777', 'Grace', 'Kim', 'grace.kim@tamshai.com', '2022-02-01', 'Engineering', 'Senior Developer', 'FULL_TIME', 'SALARY', 135000.00, NULL, 'BI_WEEKLY', 'ACTIVE'),
+('88888888-8888-8888-8888-888888888888', 'Henry', 'Brown', 'henry.brown@tamshai.com', '2021-09-01', 'Marketing', 'Marketing Manager', 'FULL_TIME', 'SALARY', 95000.00, NULL, 'BI_WEEKLY', 'ACTIVE');
+
+-- Sample Pay Runs
+INSERT INTO payroll.pay_runs (pay_run_id, pay_period_start, pay_period_end, pay_date, pay_frequency, status, total_gross, total_net, total_taxes, total_deductions, employer_taxes, employer_benefits, employee_count, processed_at) VALUES
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-01-01', '2026-01-15', '2026-01-20', 'BI_WEEKLY', 'PROCESSED', 85000.00, 59500.00, 17000.00, 8500.00, 6502.50, 4250.00, 8, '2026-01-18 10:00:00'),
+('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '2026-01-16', '2026-01-31', '2026-02-05', 'BI_WEEKLY', 'APPROVED', 86000.00, 60200.00, 17200.00, 8600.00, 6579.00, 4300.00, 8, NULL),
+('cccccccc-cccc-cccc-cccc-cccccccccccc', '2026-02-01', '2026-02-15', '2026-02-20', 'BI_WEEKLY', 'DRAFT', 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0, NULL);
+
+-- Sample Pay Stubs for Alice Chen (Jan 1-15)
+INSERT INTO payroll.pay_stubs (pay_stub_id, employee_id, pay_run_id, pay_period_start, pay_period_end, pay_date, gross_pay, net_pay, total_taxes, total_deductions, hours_worked, overtime_hours, ytd_gross, ytd_net, ytd_taxes) VALUES
+('ps-alice-001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-01-01', '2026-01-15', '2026-01-20', 5769.23, 4038.46, 1153.85, 576.92, 80, 0, 5769.23, 4038.46, 1153.85);
+
+INSERT INTO payroll.pay_stub_earnings (pay_stub_id, earning_type, description, hours, rate, amount) VALUES
+('ps-alice-001', 'REGULAR', 'Salary', NULL, NULL, 5769.23);
+
+INSERT INTO payroll.pay_stub_taxes (pay_stub_id, tax_type, description, amount, ytd_amount) VALUES
+('ps-alice-001', 'FEDERAL', 'Federal Income Tax', 692.31, 692.31),
+('ps-alice-001', 'STATE', 'CA State Tax', 288.46, 288.46),
+('ps-alice-001', 'FICA_SS', 'Social Security', 115.38, 115.38),
+('ps-alice-001', 'FICA_MED', 'Medicare', 57.70, 57.70);
+
+INSERT INTO payroll.pay_stub_deductions (pay_stub_id, deduction_type, description, amount, is_pretax, ytd_amount) VALUES
+('ps-alice-001', 'HEALTH', 'Health Insurance - PPO', 250.00, true, 250.00),
+('ps-alice-001', '401K', '401(k) Contribution (6%)', 346.15, true, 346.15),
+('ps-alice-001', 'DENTAL', 'Dental Insurance', 35.00, true, 35.00);
+
+-- Sample Pay Stub for Bob Martinez (Jan 1-15)
+INSERT INTO payroll.pay_stubs (pay_stub_id, employee_id, pay_run_id, pay_period_start, pay_period_end, pay_date, gross_pay, net_pay, total_taxes, total_deductions, hours_worked, overtime_hours, ytd_gross, ytd_net, ytd_taxes) VALUES
+('ps-bob-001', '22222222-2222-2222-2222-222222222222', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '2026-01-01', '2026-01-15', '2026-01-20', 5384.62, 3769.23, 1076.92, 538.47, 80, 0, 5384.62, 3769.23, 1076.92);
+
+INSERT INTO payroll.pay_stub_earnings (pay_stub_id, earning_type, description, hours, rate, amount) VALUES
+('ps-bob-001', 'REGULAR', 'Salary', NULL, NULL, 5384.62);
+
+INSERT INTO payroll.pay_stub_taxes (pay_stub_id, tax_type, description, amount, ytd_amount) VALUES
+('ps-bob-001', 'FEDERAL', 'Federal Income Tax', 646.15, 646.15),
+('ps-bob-001', 'STATE', 'CA State Tax', 269.23, 269.23),
+('ps-bob-001', 'FICA_SS', 'Social Security', 107.69, 107.69),
+('ps-bob-001', 'FICA_MED', 'Medicare', 53.85, 53.85);
+
+INSERT INTO payroll.pay_stub_deductions (pay_stub_id, deduction_type, description, amount, is_pretax, ytd_amount) VALUES
+('ps-bob-001', 'HEALTH', 'Health Insurance - HMO', 200.00, true, 200.00),
+('ps-bob-001', '401K', '401(k) Contribution (5%)', 269.23, true, 269.23),
+('ps-bob-001', 'HSA', 'Health Savings Account', 100.00, true, 100.00);
+
+-- Sample Tax Withholdings
+INSERT INTO payroll.tax_withholdings (withholding_id, employee_id, federal_filing_status, federal_allowances, federal_additional, state, state_filing_status, state_allowances, effective_date) VALUES
+('tw-alice', '11111111-1111-1111-1111-111111111111', 'MARRIED_FILING_JOINTLY', 2, 0, 'CA', 'Married', 2, '2020-03-15'),
+('tw-bob', '22222222-2222-2222-2222-222222222222', 'SINGLE', 1, 50, 'CA', 'Single', 1, '2019-08-01'),
+('tw-carol', '33333333-3333-3333-3333-333333333333', 'HEAD_OF_HOUSEHOLD', 3, 0, 'CA', 'Head of Household', 2, '2021-01-10'),
+('tw-dan', '44444444-4444-4444-4444-444444444444', 'MARRIED_FILING_JOINTLY', 2, 25, 'WA', NULL, 0, '2020-06-01'),
+('tw-eve', '55555555-5555-5555-5555-555555555555', 'SINGLE', 0, 100, 'CA', 'Single', 0, '2018-01-01'),
+('tw-frank', '66666666-6666-6666-6666-666666666666', 'SINGLE', 0, 0, 'CA', 'Single', 0, '2023-06-15'),
+('tw-grace', '77777777-7777-7777-7777-777777777777', 'MARRIED_FILING_SEPARATELY', 1, 0, 'OR', 'Married Filing Separately', 1, '2022-02-01'),
+('tw-henry', '88888888-8888-8888-8888-888888888888', 'SINGLE', 1, 0, 'TX', NULL, 0, '2021-09-01');
+
+-- Sample Benefit Deductions
+INSERT INTO payroll.benefit_deductions (deduction_id, employee_id, benefit_type, benefit_name, employee_amount, employer_contribution, frequency, is_pretax, effective_date, status) VALUES
+-- Alice's benefits
+('bd-alice-health', '11111111-1111-1111-1111-111111111111', 'health', 'Health Insurance - PPO', 250.00, 500.00, 'PER_PAY_PERIOD', true, '2020-03-15', 'ACTIVE'),
+('bd-alice-401k', '11111111-1111-1111-1111-111111111111', '401k', '401(k) Retirement', 346.15, 173.08, 'PER_PAY_PERIOD', true, '2020-03-15', 'ACTIVE'),
+('bd-alice-dental', '11111111-1111-1111-1111-111111111111', 'dental', 'Dental Insurance', 35.00, 35.00, 'PER_PAY_PERIOD', true, '2020-03-15', 'ACTIVE'),
+-- Bob's benefits
+('bd-bob-health', '22222222-2222-2222-2222-222222222222', 'health', 'Health Insurance - HMO', 200.00, 450.00, 'PER_PAY_PERIOD', true, '2019-08-01', 'ACTIVE'),
+('bd-bob-401k', '22222222-2222-2222-2222-222222222222', '401k', '401(k) Retirement', 269.23, 134.62, 'PER_PAY_PERIOD', true, '2019-08-01', 'ACTIVE'),
+('bd-bob-hsa', '22222222-2222-2222-2222-222222222222', 'hsa', 'Health Savings Account', 100.00, 0.00, 'PER_PAY_PERIOD', true, '2019-08-01', 'ACTIVE'),
+-- Carol's benefits
+('bd-carol-health', '33333333-3333-3333-3333-333333333333', 'health', 'Health Insurance - PPO Family', 450.00, 900.00, 'PER_PAY_PERIOD', true, '2021-01-10', 'ACTIVE'),
+('bd-carol-401k', '33333333-3333-3333-3333-333333333333', '401k', '401(k) Retirement', 615.38, 307.69, 'PER_PAY_PERIOD', true, '2021-01-10', 'ACTIVE'),
+('bd-carol-vision', '33333333-3333-3333-3333-333333333333', 'vision', 'Vision Insurance', 15.00, 15.00, 'PER_PAY_PERIOD', true, '2021-01-10', 'ACTIVE');
+
+-- Sample Direct Deposit Accounts
+INSERT INTO payroll.direct_deposit_accounts (account_id, employee_id, account_type, bank_name, routing_number, account_number, allocation_type, allocation_value, priority, status) VALUES
+('dd-alice-1', '11111111-1111-1111-1111-111111111111', 'CHECKING', 'Chase Bank', '021000021', '123456789012', 'PERCENTAGE', 80, 1, 'ACTIVE'),
+('dd-alice-2', '11111111-1111-1111-1111-111111111111', 'SAVINGS', 'Chase Bank', '021000021', '987654321098', 'REMAINDER', NULL, 2, 'ACTIVE'),
+('dd-bob-1', '22222222-2222-2222-2222-222222222222', 'CHECKING', 'Bank of America', '026009593', '112233445566', 'REMAINDER', NULL, 1, 'ACTIVE'),
+('dd-carol-1', '33333333-3333-3333-3333-333333333333', 'CHECKING', 'Wells Fargo', '121000248', '778899001122', 'FIXED_AMOUNT', 3000.00, 1, 'ACTIVE'),
+('dd-carol-2', '33333333-3333-3333-3333-333333333333', 'SAVINGS', 'Marcus', '124085066', '334455667788', 'REMAINDER', NULL, 2, 'ACTIVE');
+
+-- Sample Contractors
+INSERT INTO payroll.contractors (contractor_id, first_name, last_name, company_name, email, phone, tax_id, city, state, zip_code, status, payment_method, hourly_rate, contract_start_date, contract_end_date, ytd_payments) VALUES
+('con-001', 'John', 'Smith', 'Smith Consulting LLC', 'john.smith@smithconsulting.com', '555-123-4567', '123456789', 'San Francisco', 'CA', '94102', 'ACTIVE', 'ACH', 150.00, '2025-01-01', NULL, 45000.00),
+('con-002', 'Sarah', 'Lee', NULL, 'sarah.lee@freelance.com', '555-987-6543', '987654321', 'Portland', 'OR', '97201', 'ACTIVE', 'ACH', 125.00, '2025-03-15', '2026-03-14', 28750.00),
+('con-003', 'Michael', 'Wang', 'Wang Design Studio', 'michael@wangdesign.com', '555-456-7890', '456789123', 'Seattle', 'WA', '98101', 'ACTIVE', 'CHECK', 100.00, '2024-06-01', NULL, 72000.00),
+('con-004', 'Jennifer', 'Garcia', 'JG Marketing', 'jen@jgmarketing.com', '555-321-9876', '321987654', 'Austin', 'TX', '78701', 'INACTIVE', 'ACH', 175.00, '2024-01-01', '2025-12-31', 87500.00);
+
+-- Sample Contractor Payments
+INSERT INTO payroll.contractor_payments (payment_id, contractor_id, payment_date, amount, description, invoice_number, status, payment_method, processed_at) VALUES
+('cp-001', 'con-001', '2026-01-15', 7500.00, 'Software development - January', 'INV-2026-001', 'PROCESSED', 'ACH', '2026-01-15 10:00:00'),
+('cp-002', 'con-002', '2026-01-15', 5000.00, 'UX consulting - January', 'INV-2026-015', 'PROCESSED', 'ACH', '2026-01-15 10:00:00'),
+('cp-003', 'con-003', '2026-01-20', 4000.00, 'Logo redesign project', 'WD-2026-003', 'PROCESSED', 'CHECK', '2026-01-22 14:00:00'),
+('cp-004', 'con-001', '2026-02-01', 7500.00, 'Software development - February', 'INV-2026-002', 'PENDING', 'ACH', NULL);
+
+-- Update statistics
+ANALYZE payroll.employees;
+ANALYZE payroll.pay_runs;
+ANALYZE payroll.pay_stubs;
+ANALYZE payroll.tax_withholdings;
+ANALYZE payroll.benefit_deductions;
+ANALYZE payroll.direct_deposit_accounts;
+ANALYZE payroll.contractors;
+ANALYZE payroll.contractor_payments;
