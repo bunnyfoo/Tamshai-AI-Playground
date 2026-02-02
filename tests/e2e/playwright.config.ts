@@ -11,7 +11,7 @@ const testEnv = process.env.TEST_ENV || 'dev';
 // Base URLs per environment
 const envConfig: Record<string, { baseURL: string; ignoreHTTPSErrors: boolean }> = {
   dev: {
-    baseURL: 'https://www.tamshai-playground.local',
+    baseURL: 'https://www.tamshai-playground.local:8443',
     ignoreHTTPSErrors: true, // Self-signed certs in dev
   },
   stage: {
@@ -41,7 +41,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github' as const]] : []),
   ],
   use: {
-    baseURL: envConfig[testEnv]?.baseURL || 'https://www.tamshai-playground.local',
+    baseURL: envConfig[testEnv]?.baseURL || 'https://www.tamshai-playground.local:8443',
     ignoreHTTPSErrors: envConfig[testEnv]?.ignoreHTTPSErrors ?? true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -63,7 +63,7 @@ export default defineConfig({
   // Only start web server for dev environment (not for stage/prod/CI)
   webServer: process.env.CI || testEnv !== 'dev' ? undefined : {
     command: 'cd ../../infrastructure/docker && docker compose up -d mcp-gateway',
-    url: 'http://localhost:3100/health',
+    url: 'http://localhost:3110/health',
     reuseExistingServer: true,
     timeout: 120000,
   },
