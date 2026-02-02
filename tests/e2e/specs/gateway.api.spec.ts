@@ -7,8 +7,8 @@ import { test, expect, APIRequestContext } from '@playwright/test';
  * Requires running services: Keycloak, MCP Gateway, Redis
  */
 
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://localhost:8180';
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3100';
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://localhost:8190';
+const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3110';
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
 
 // Test user password from environment variable
