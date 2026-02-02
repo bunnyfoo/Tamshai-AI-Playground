@@ -67,6 +67,16 @@ tamshai-playground.local, www.tamshai-playground.local {
     reverse_proxy web-support:80
   }
 
+  # Payroll App (/payroll/*)
+  handle_path /payroll/* {
+    reverse_proxy web-payroll:80
+  }
+
+  # Tax App (/tax/*)
+  handle_path /tax/* {
+    reverse_proxy web-tax:80
+  }
+
   # Web Portal (/app/*)
   handle_path /app/* {
     reverse_proxy web-portal:80

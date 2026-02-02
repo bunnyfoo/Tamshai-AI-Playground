@@ -41,6 +41,10 @@ export {
   canModifySales,
   canAccessSupport,
   canModifySupport,
+  canAccessPayroll,
+  canModifyPayroll,
+  canAccessTax,
+  canModifyTax,
   getUserDisplayName,
   getRoleBadges,
 } from './utils';

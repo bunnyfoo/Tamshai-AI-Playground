@@ -136,6 +136,34 @@ export function canModifySupport(userContext: UserContext | null): boolean {
 }
 
 /**
+ * Check if user can access Payroll data
+ */
+export function canAccessPayroll(userContext: UserContext | null): boolean {
+  return hasAnyRole(userContext, ['payroll-read', 'payroll-write', 'hr-read', 'hr-write', 'executive']);
+}
+
+/**
+ * Check if user can modify Payroll data
+ */
+export function canModifyPayroll(userContext: UserContext | null): boolean {
+  return hasAnyRole(userContext, ['payroll-write', 'hr-write', 'executive']);
+}
+
+/**
+ * Check if user can access Tax data
+ */
+export function canAccessTax(userContext: UserContext | null): boolean {
+  return hasAnyRole(userContext, ['tax-read', 'tax-write', 'finance-read', 'finance-write', 'executive']);
+}
+
+/**
+ * Check if user can modify Tax data
+ */
+export function canModifyTax(userContext: UserContext | null): boolean {
+  return hasAnyRole(userContext, ['tax-write', 'finance-write', 'executive']);
+}
+
+/**
  * Get user's display name
  */
 export function getUserDisplayName(userContext: UserContext | null): string {

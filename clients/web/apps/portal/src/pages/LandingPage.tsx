@@ -5,6 +5,8 @@ import {
   canAccessFinance,
   canAccessSales,
   canAccessSupport,
+  canAccessPayroll,
+  canAccessTax,
   getUserDisplayName,
   getRoleBadges,
 } from '@tamshai/auth';
@@ -74,6 +76,8 @@ function getAppUrls() {
       finance: '/finance/',
       sales: '/sales/',
       support: '/support/',
+      payroll: '/payroll/',
+      tax: '/tax/',
     };
   }
 
@@ -83,6 +87,8 @@ function getAppUrls() {
     finance: 'http://localhost:4002',
     sales: 'http://localhost:4003',
     support: 'http://localhost:4004',
+    payroll: 'http://localhost:4005',
+    tax: 'http://localhost:4006',
   };
 }
 
@@ -158,6 +164,40 @@ export default function LandingPage() {
       url: appUrls.support,
       canAccess: canAccessSupport(userContext),
       color: 'secondary',
+    },
+    {
+      name: 'Payroll Application',
+      description: 'Pay runs, pay stubs, and contractor management',
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+          />
+        </svg>
+      ),
+      url: appUrls.payroll,
+      canAccess: canAccessPayroll(userContext),
+      color: 'primary',
+    },
+    {
+      name: 'Tax Application',
+      description: 'Tax compliance, filings, and quarterly estimates',
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z"
+          />
+        </svg>
+      ),
+      url: appUrls.tax,
+      canAccess: canAccessTax(userContext),
+      color: 'success',
     },
   ];
 
