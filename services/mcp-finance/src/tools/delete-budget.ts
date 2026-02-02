@@ -1,13 +1,13 @@
 /**
- * Approve Budget Tool (v1.5 with Human-in-the-Loop Confirmation)
+ * Delete Budget Tool (v1.5 with Human-in-the-Loop Confirmation)
  *
- * Approves a pending budget, changing its status from PENDING_APPROVAL to APPROVED.
+ * Deletes a draft budget. Only DRAFT budgets can be deleted.
  * Uses human-in-the-loop confirmation (Section 5.6).
  *
  * Features:
  * - Permission check (finance-write or executive)
- * - Status validation (only PENDING_APPROVAL budgets can be approved)
- * - Audit trail (approved_by, approved_at)
+ * - Status validation (only DRAFT budgets can be deleted)
+ * - Permanent deletion with confirmation
  */
 
 import { z } from 'zod';
@@ -28,50 +28,42 @@ import {
 import { storePendingConfirmation } from '../utils/redis';
 
 /**
- * Input schema for approve_budget tool
+ * Input schema for delete_budget tool
  */
-export const ApproveBudgetInputSchema = z.object({
+export const DeleteBudgetInputSchema = z.object({
   budgetId: z.string().min(1, 'Budget ID is required'),
-  approverNotes: z.string().max(500).optional(),
+  reason: z.string().max(500).optional(),
 });
 
-export type ApproveBudgetInput = z.infer<typeof ApproveBudgetInputSchema>;
+export type DeleteBudgetInput = z.infer<typeof DeleteBudgetInputSchema>;
 
 /**
- * Check if user has permission to approve budgets
+ * Check if user has permission to delete budgets
  */
-function hasApprovePermission(roles: string[]): boolean {
+function hasDeletePermission(roles: string[]): boolean {
   return roles.includes('finance-write') || roles.includes('executive');
 }
 
 /**
- * Approve budget tool - Returns pending_confirmation for user approval
+ * Delete budget tool - Returns pending_confirmation for user approval
  *
  * This is a write operation that requires:
  * 1. finance-write or executive role
  * 2. User confirmation (v1.4 - Section 5.6)
- * 3. Budget must be in PENDING_APPROVAL status
- *
- * Flow:
- * 1. Check permissions
- * 2. Verify budget exists and get details
- * 3. Check business rules (must be PENDING_APPROVAL)
- * 4. Generate confirmation ID
- * 5. Store pending action in Redis (5-minute TTL)
- * 6. Return pending_confirmation response
+ * 3. Budget must be in DRAFT status
  */
-export async function approveBudget(
-  input: ApproveBudgetInput,
+export async function deleteBudget(
+  input: DeleteBudgetInput,
   userContext: UserContext
 ): Promise<MCPToolResponse> {
-  return withErrorHandling('approve_budget', async () => {
+  return withErrorHandling('delete_budget', async () => {
     // 1. Check permissions
-    if (!hasApprovePermission(userContext.roles)) {
+    if (!hasDeletePermission(userContext.roles)) {
       return handleInsufficientPermissions('finance-write or executive', userContext.roles);
     }
 
     // Validate input
-    const { budgetId, approverNotes } = ApproveBudgetInputSchema.parse(input);
+    const { budgetId, reason } = DeleteBudgetInputSchema.parse(input);
 
     try {
       // 2. Verify budget exists and get details
@@ -103,19 +95,21 @@ export async function approveBudget(
 
       const budget = budgetResult.rows[0];
 
-      // 3. Check if budget is in PENDING_APPROVAL status
-      if (budget.status !== 'PENDING_APPROVAL') {
-        const suggestedAction = budget.status === 'DRAFT'
-          ? 'This budget must be submitted for approval first.'
+      // 3. Check if budget is in DRAFT status (only drafts can be deleted)
+      if (budget.status !== 'DRAFT') {
+        const suggestedAction = budget.status === 'PENDING_APPROVAL'
+          ? 'This budget is pending approval. Reject it first if you want to remove it.'
           : budget.status === 'APPROVED'
-            ? 'This budget has already been approved.'
-            : 'Only PENDING_APPROVAL budgets can be approved.';
+            ? 'Approved budgets cannot be deleted. Contact finance administration for archival options.'
+            : budget.status === 'REJECTED'
+              ? 'Rejected budgets cannot be deleted. They are kept for audit purposes.'
+              : 'Only DRAFT budgets can be deleted.';
 
         return createErrorResponse(
-          'INVALID_BUDGET_STATUS',
-          `Cannot approve budget "${budget.budget_id || budgetId}" because it is in "${budget.status}" status`,
+          'CANNOT_DELETE_NON_DRAFT_BUDGET',
+          `Cannot delete budget "${budget.budget_id || budgetId}" because it is in "${budget.status}" status`,
           suggestedAction,
-          { budgetId, currentStatus: budget.status, requiredStatus: 'PENDING_APPROVAL' }
+          { budgetId, currentStatus: budget.status, requiredStatus: 'DRAFT' }
         );
       }
 
@@ -123,7 +117,7 @@ export async function approveBudget(
       const confirmationId = uuidv4();
 
       const confirmationData = {
-        action: 'approve_budget',
+        action: 'delete_budget',
         mcpServer: 'finance',
         userId: userContext.userId,
         timestamp: Date.now(),
@@ -134,23 +128,22 @@ export async function approveBudget(
         fiscalYear: budget.fiscal_year,
         budgetedAmount: budget.budgeted_amount,
         status: budget.status,
-        approverNotes: approverNotes || null,
+        reason: reason || 'No reason provided',
       };
 
       await storePendingConfirmation(confirmationId, confirmationData, 300);
 
       // 5. Return pending_confirmation response
-      const message = `✅ **Approve Budget for ${budget.department}?**
+      const message = `🗑️ **Delete Draft Budget for ${budget.department}?**
 
 **Budget ID:** ${budget.budget_id || budgetId}
 **Department:** ${budget.department} (${budget.department_code})
 **Fiscal Year:** ${budget.fiscal_year}
 **Category:** ${budget.category_name || 'General'}
 **Budgeted Amount:** $${Number(budget.budgeted_amount).toLocaleString()}
-**Actual Spent:** $${Number(budget.actual_amount || 0).toLocaleString()}
-${approverNotes ? `**Your Notes:** ${approverNotes}` : ''}
+${reason ? `**Reason:** ${reason}` : ''}
 
-This will change the budget status from PENDING_APPROVAL to APPROVED.`;
+⚠️ This action will permanently delete this draft budget and cannot be undone.`;
 
       return createPendingConfirmationResponse(
         confirmationId,
@@ -158,61 +151,48 @@ This will change the budget status from PENDING_APPROVAL to APPROVED.`;
         confirmationData
       );
     } catch (error) {
-      return handleDatabaseError(error as Error, 'approve_budget');
+      return handleDatabaseError(error as Error, 'delete_budget');
     }
   }) as Promise<MCPToolResponse>;
 }
 
 /**
- * Execute the confirmed approval (called by Gateway after user approval)
- *
- * This function is called by the Gateway's /api/confirm endpoint
- * after the user clicks "Approve" in the UI.
+ * Execute the confirmed deletion (called by Gateway after user approval)
  */
-export async function executeApproveBudget(
+export async function executeDeleteBudget(
   confirmationData: Record<string, unknown>,
   userContext: UserContext
 ): Promise<MCPToolResponse> {
-  return withErrorHandling('execute_approve_budget', async () => {
+  return withErrorHandling('execute_delete_budget', async () => {
     const budgetId = confirmationData.budgetId as string;
-    const approverNotes = confirmationData.approverNotes as string | null;
 
     try {
-      // Get approver's ID
-      const approverId = userContext.userId;
-
-      // Update budget status to APPROVED
+      // Delete the draft budget
       const result = await queryWithRLS(
         userContext,
         `
-        UPDATE finance.department_budgets
-        SET status = 'APPROVED',
-            approved_by = $2,
-            approved_at = NOW(),
-            notes = CASE WHEN $3 IS NOT NULL THEN COALESCE(notes || E'\\n', '') || 'Approver: ' || $3 ELSE notes END,
-            updated_at = NOW()
+        DELETE FROM finance.department_budgets
         WHERE id = $1
-          AND status = 'PENDING_APPROVAL'
+          AND status = 'DRAFT'
         RETURNING id, budget_id, department, department_code, fiscal_year, budgeted_amount
         `,
-        [budgetId, approverId, approverNotes]
+        [budgetId]
       );
 
       if (result.rowCount === 0) {
         return handleBudgetNotFound(budgetId);
       }
 
-      const approved = result.rows[0];
+      const deleted = result.rows[0];
 
       return createSuccessResponse({
         success: true,
-        message: `Budget for ${approved.department} (FY${approved.fiscal_year}) has been approved - $${Number(approved.budgeted_amount).toLocaleString()}`,
-        budgetId: approved.id,
-        budgetDisplayId: approved.budget_id,
-        newStatus: 'APPROVED',
+        message: `Draft budget for ${deleted.department} (FY${deleted.fiscal_year}) has been deleted - $${Number(deleted.budgeted_amount).toLocaleString()}`,
+        budgetId: deleted.id,
+        budgetDisplayId: deleted.budget_id,
       });
     } catch (error) {
-      return handleDatabaseError(error as Error, 'execute_approve_budget');
+      return handleDatabaseError(error as Error, 'execute_delete_budget');
     }
   }) as Promise<MCPToolResponse>;
 }
