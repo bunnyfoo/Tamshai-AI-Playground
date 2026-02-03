@@ -32,13 +32,15 @@ export interface TimeOffType {
 }
 
 export interface TimeOffBalance {
-  balance_id: string;
-  employee_id: string;
-  type_id: string;
+  balance_id?: string;
+  employee_id?: string;
+  type_id?: string;
   type_name: string;
   type_code: string;
-  year: number;
-  annual_entitlement: number;
+  year?: number;
+  fiscal_year?: number;  // API returns fiscal_year
+  annual_entitlement?: number;
+  entitlement?: number;  // API returns entitlement
   carryover: number;
   used: number;
   pending: number;

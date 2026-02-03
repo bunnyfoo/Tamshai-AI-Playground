@@ -309,7 +309,7 @@ export default function EmployeeProfilePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {balances.map((balance) => (
-                  <div key={balance.balance_id} className="p-4 bg-secondary-50 rounded-lg">
+                  <div key={balance.type_code} className="p-4 bg-secondary-50 rounded-lg">
                     <p className="text-sm font-medium text-secondary-500 uppercase tracking-wide">
                       {balance.type_name}
                     </p>
@@ -319,11 +319,11 @@ export default function EmployeeProfilePage() {
                     <div className="mt-2 w-full bg-secondary-200 rounded-full h-2">
                       <div
                         className="bg-primary-500 h-2 rounded-full"
-                        style={{ width: `${Math.min(100, (balance.available / balance.annual_entitlement) * 100)}%` }}
+                        style={{ width: `${Math.min(100, (balance.available / (balance.entitlement || balance.annual_entitlement || 1)) * 100)}%` }}
                       />
                     </div>
                     <p className="text-xs text-secondary-500 mt-1">
-                      of {balance.annual_entitlement} annual days
+                      of {balance.entitlement || balance.annual_entitlement} annual days
                     </p>
                   </div>
                 ))}
