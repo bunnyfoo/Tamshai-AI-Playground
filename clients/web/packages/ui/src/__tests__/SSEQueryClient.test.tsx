@@ -10,13 +10,19 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { SSEQueryClient } from '../SSEQueryClient';
 
-// Mock the auth module
+// Mock values - declared before jest.mock hoisting
+let mockTokenValue: string | null = 'mock-token-12345';
+let mockGatewayUrl: string = 'http://localhost:3100';
+
+// Mock the auth module - uses getter functions to allow dynamic configuration
 jest.mock('@tamshai/auth', () => ({
   useAuth: () => ({
-    getAccessToken: () => 'mock-token-12345',
+    getAccessToken: () => mockTokenValue,
   }),
   apiConfig: {
-    mcpGatewayUrl: 'http://localhost:3100',
+    get mcpGatewayUrl() {
+      return mockGatewayUrl;
+    },
   },
 }));
 
@@ -68,6 +74,9 @@ describe('SSEQueryClient', () => {
     MockEventSource.instances = [];
     defaultProps.onComplete.mockReset();
     defaultProps.onError.mockReset();
+    // Reset mock defaults
+    mockTokenValue = 'mock-token-12345';
+    mockGatewayUrl = 'http://localhost:3100';
   });
 
   describe('rendering', () => {
@@ -438,6 +447,66 @@ describe('SSEQueryClient', () => {
       await waitFor(() => {
         expect(defaultProps.onComplete).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('authentication errors', () => {
+    it('shows error when not authenticated', async () => {
+      // Mock unauthenticated state
+      mockTokenValue = null;
+
+      render(<SSEQueryClient {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Error: Not authenticated')).toBeInTheDocument();
+      });
+
+      expect(defaultProps.onError).toHaveBeenCalledWith('Not authenticated');
+    });
+
+    it('does not create EventSource when not authenticated', async () => {
+      mockTokenValue = null;
+
+      render(<SSEQueryClient {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Error:/)).toBeInTheDocument();
+      });
+
+      // No EventSource should be created
+      expect(MockEventSource.instances.length).toBe(0);
+    });
+  });
+
+  describe('relative URL construction', () => {
+    it('uses relative URL when mcpGatewayUrl is not set', async () => {
+      // Mock empty gateway URL
+      mockGatewayUrl = '';
+
+      render(<SSEQueryClient {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(MockEventSource.instances.length).toBe(1);
+      });
+
+      const es = MockEventSource.instances[0];
+      // Should use relative path
+      expect(es.url).toMatch(/^\/api\/query\?/);
+      expect(es.url).toContain('q=List+all+employees');
+      expect(es.url).toContain('token=mock-token-12345');
+    });
+
+    it('uses absolute URL when mcpGatewayUrl is set', async () => {
+      mockGatewayUrl = 'http://localhost:3100';
+
+      render(<SSEQueryClient {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(MockEventSource.instances.length).toBe(1);
+      });
+
+      const es = MockEventSource.instances[0];
+      expect(es.url).toContain('http://localhost:3100/api/query');
     });
   });
 });
