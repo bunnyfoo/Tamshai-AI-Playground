@@ -9,7 +9,7 @@ export default function TaxWithholdingsPage() {
     queryKey: ['tax-withholdings'],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/tax-withholdings`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/get_tax_withholdings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch tax withholdings');

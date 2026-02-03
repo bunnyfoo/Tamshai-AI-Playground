@@ -35,12 +35,12 @@ export default function ContractorsPage() {
       const params = new URLSearchParams({ year: yearFilter });
       if (statusFilter !== 'all') params.append('status', statusFilter);
 
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/contractors?${params}`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/list_contractors?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch contractors');
       const result = await response.json();
-      return result.data as Contractor[];
+      return (result.data || []) as Contractor[];
     },
   });
 

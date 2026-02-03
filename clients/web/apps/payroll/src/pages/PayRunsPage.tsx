@@ -50,12 +50,24 @@ export default function PayRunsPage() {
       const params = new URLSearchParams({ year: yearFilter });
       if (statusFilter !== 'all') params.append('status', statusFilter);
 
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/pay-runs?${params}`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/list_pay_runs?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch pay runs');
       const result = await response.json();
-      return result.data as PayRun[];
+      // Map API response fields to expected UI format
+      return (result.data || []).map((run: Record<string, unknown>) => ({
+        pay_run_id: run.pay_run_id,
+        period_start: run.pay_period_start,
+        period_end: run.pay_period_end,
+        pay_date: run.pay_date,
+        employee_count: run.employee_count,
+        gross_pay: parseFloat(String(run.total_gross)) || 0,
+        net_pay: parseFloat(String(run.total_net)) || 0,
+        status: String(run.status).toLowerCase() as PayRunStatus,
+        created_at: run.created_at,
+        updated_at: run.processed_at || run.created_at,
+      })) as PayRun[];
     },
   });
 
