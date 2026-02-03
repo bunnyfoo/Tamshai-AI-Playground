@@ -32,8 +32,8 @@ const createWrapper = () => {
   );
 };
 
-// Mock data
-const mockOrgChart: OrgChartNode = {
+// Mock data - API returns an array of root nodes (typically one CEO)
+const mockOrgChartNode: OrgChartNode = {
   employee_id: 'emp-ceo',
   name: 'Jane CEO',
   title: 'Chief Executive Officer',
@@ -50,6 +50,9 @@ const mockOrgChart: OrgChartNode = {
     },
   ],
 };
+
+// API returns array of OrgChartNode
+const mockOrgChart: OrgChartNode[] = [mockOrgChartNode];
 
 describe('OrgChartPage', () => {
   beforeEach(() => {
