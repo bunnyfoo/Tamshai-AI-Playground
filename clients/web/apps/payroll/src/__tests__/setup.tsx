@@ -78,6 +78,122 @@ vi.mock('@tamshai/ui', () => ({
         <button onClick={onClose}>Close</button>
       </div>
     ) : null,
+  // Wizard component mock for PayRunWizard tests
+  Wizard: ({
+    steps,
+    onComplete,
+    onCancel,
+    title,
+    showBreadcrumbs,
+    submitLabel,
+    submittingLabel,
+    initialData = {},
+  }: any) => {
+    const [currentStep, setCurrentStep] = React.useState(0);
+    const [data, setData] = React.useState(initialData);
+    const [errors, setErrors] = React.useState<any[]>([]);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [completedSteps, setCompletedSteps] = React.useState<Set<number>>(new Set());
+
+    const visibleSteps = steps.filter((step: any) => !step.showIf || step.showIf(data));
+    const step = visibleSteps[currentStep];
+    const isLastStep = currentStep === visibleSteps.length - 1;
+    const nextStepTitle = !isLastStep ? visibleSteps[currentStep + 1]?.title : null;
+
+    const updateData = (updates: Record<string, unknown>) => {
+      setData((prev: any) => ({ ...prev, ...updates }));
+      const updatedFields = Object.keys(updates);
+      setErrors((prev: any[]) => prev.filter((err: any) => !updatedFields.includes(err.field)));
+    };
+
+    const handleNext = async () => {
+      if (step?.validate) {
+        const result = step.validate(data);
+        if (!result.valid) {
+          setErrors(result.errors);
+          return;
+        }
+      }
+      setErrors([]);
+      setCompletedSteps((prev) => new Set([...prev, currentStep]));
+
+      if (isLastStep) {
+        setIsSubmitting(true);
+        try {
+          await onComplete(data);
+        } finally {
+          setIsSubmitting(false);
+        }
+      } else {
+        setCurrentStep((prev) => prev + 1);
+      }
+    };
+
+    const StepComponent = step?.component;
+
+    return (
+      <div role="dialog">
+        {title && <h1>{title}</h1>}
+        {showBreadcrumbs && (
+          <nav aria-label="Wizard progress">
+            <ol>
+              {visibleSteps.map((s: any, i: number) => {
+                const isCompleted = completedSteps.has(i);
+                const isCurrent = i === currentStep;
+                const isFuture = i > currentStep && !completedSteps.has(i);
+                return (
+                  <li
+                    key={s.id}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    aria-disabled={isFuture ? 'true' : undefined}
+                    data-completed={isCompleted ? 'true' : undefined}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => i <= currentStep && setCurrentStep(i)}
+                      disabled={isFuture}
+                    >
+                      {s.title}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+        )}
+        <main>
+          <p>Step {currentStep + 1} of {visibleSteps.length}</p>
+          <h2>{step?.title}</h2>
+          {step?.description && <p>{step.description}</p>}
+          {errors.length > 0 && (
+            <div>
+              {errors.map((err: any, i: number) => (
+                <p key={i}>{err.message}</p>
+              ))}
+            </div>
+          )}
+          {StepComponent && (
+            <StepComponent data={data} updateData={updateData} errors={errors} isActive={true} />
+          )}
+        </main>
+        <footer role="navigation" aria-label="Wizard navigation">
+          {onCancel && <button type="button" onClick={onCancel}>Cancel</button>}
+          {currentStep > 0 && (
+            <button type="button" onClick={() => setCurrentStep((prev) => prev - 1)}>
+              Previous
+            </button>
+          )}
+          <button type="button" onClick={handleNext} disabled={isSubmitting}>
+            {isSubmitting
+              ? submittingLabel || 'Processing...'
+              : isLastStep
+              ? submitLabel || 'Submit'
+              : `Next: ${nextStepTitle}`}
+          </button>
+        </footer>
+      </div>
+    );
+  },
 }));
 
 // Mock fetch globally
