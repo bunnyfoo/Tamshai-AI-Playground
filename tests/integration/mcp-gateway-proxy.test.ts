@@ -321,7 +321,7 @@ describeProxy('MCP Gateway - Support Endpoints', () => {
 // NOTE: Always skipped - MCP Payroll requires local docker-compose setup
 // =============================================================================
 
-describeProxy.skip('MCP Gateway - Payroll Endpoints', () => {
+describe.skip('MCP Gateway - Payroll Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
