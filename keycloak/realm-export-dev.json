@@ -438,7 +438,7 @@
         "department": ["Testing"],
         "title": ["Journey Test Account"]
       },
-      "groups": ["/All-Employees"],
+      "groups": ["/All-Employees", "/C-Suite"],
       "credentials": [
         {
           "type": "password",
