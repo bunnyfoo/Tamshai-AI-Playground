@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { PrivateRoute } from '@tamshai/auth';
 import TicketsPage from './pages/TicketsPage';
+import TicketDetailPage from './pages/TicketDetailPage';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
 import AIQueryPage from './pages/AIQueryPage';
 import CallbackPage from './pages/CallbackPage';
@@ -22,6 +23,7 @@ function App() {
         }
       >
         <Route index element={<TicketsPage />} />
+        <Route path="tickets/:ticketId" element={<TicketDetailPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="knowledge-base" element={<KnowledgeBasePage />} />
         <Route path="knowledge-base/:articleId" element={<ArticleDetailPage />} />

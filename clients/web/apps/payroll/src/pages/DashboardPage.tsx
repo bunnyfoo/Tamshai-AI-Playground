@@ -27,7 +27,7 @@ export default function DashboardPage() {
     queryKey: ['payroll-dashboard'],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/dashboard`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/get_payroll_summary`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch dashboard metrics');
