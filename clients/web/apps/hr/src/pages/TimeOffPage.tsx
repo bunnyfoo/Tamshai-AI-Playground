@@ -160,8 +160,11 @@ export default function TimeOffPage() {
   const requests = requestsResponse?.data || [];
   const isTruncated = requestsResponse?.metadata?.truncated || requestsResponse?.metadata?.hasMore;
 
-  // Calculate total available days
-  const totalAvailable = balances.reduce((sum, b) => sum + b.available, 0);
+  // Calculate total available days (API returns strings, convert to numbers)
+  const totalAvailable = balances.reduce((sum, b) => sum + Number(b.available || 0), 0);
+
+  // Debug: Log state for troubleshooting
+  console.log('TimeOffPage render:', { loadingBalances, balancesError, balancesCount: balances.length, totalAvailable });
 
   return (
     <div className="page-container">
@@ -218,25 +221,29 @@ export default function TimeOffPage() {
             {totalAvailable.toFixed(1)} days
           </div>
         </div>
-        {balances.slice(0, 3).map((balance) => (
-          <div key={balance.type_code} className="card">
-            <div className="text-sm font-medium text-secondary-500 uppercase tracking-wide">
-              {balance.type_name}
+        {balances.slice(0, 3).map((balance) => {
+          const available = Number(balance.available || 0);
+          const entitlement = Number(balance.entitlement || balance.annual_entitlement || 0);
+          return (
+            <div key={balance.type_code} className="card">
+              <div className="text-sm font-medium text-secondary-500 uppercase tracking-wide">
+                {balance.type_name}
+              </div>
+              <div className="text-3xl font-bold text-secondary-900 mt-1">
+                {available.toFixed(1)}
+              </div>
+              <div className="text-sm text-secondary-500 mt-1">
+                of {entitlement} days
+              </div>
+              <div className="mt-2 w-full bg-secondary-200 rounded-full h-2">
+                <div
+                  className="bg-primary-500 h-2 rounded-full"
+                  style={{ width: `${Math.min(100, (available / (entitlement || 1)) * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="text-3xl font-bold text-secondary-900 mt-1">
-              {balance.available.toFixed(1)}
-            </div>
-            <div className="text-sm text-secondary-500 mt-1">
-              of {balance.entitlement || balance.annual_entitlement || 0} days
-            </div>
-            <div className="mt-2 w-full bg-secondary-200 rounded-full h-2">
-              <div
-                className="bg-primary-500 h-2 rounded-full"
-                style={{ width: `${Math.min(100, (balance.available / (balance.entitlement || balance.annual_entitlement || 1)) * 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Tabs */}
