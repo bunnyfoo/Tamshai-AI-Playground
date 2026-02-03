@@ -220,12 +220,12 @@ export default function TimeOffPage() {
               {balance.available.toFixed(1)}
             </div>
             <div className="text-sm text-secondary-500 mt-1">
-              of {balance.entitlement} days
+              of {balance.entitlement || balance.annual_entitlement || 0} days
             </div>
             <div className="mt-2 w-full bg-secondary-200 rounded-full h-2">
               <div
                 className="bg-primary-500 h-2 rounded-full"
-                style={{ width: `${Math.min(100, (balance.available / balance.entitlement) * 100)}%` }}
+                style={{ width: `${Math.min(100, (balance.available / (balance.entitlement || balance.annual_entitlement || 1)) * 100)}%` }}
               />
             </div>
           </div>
@@ -301,7 +301,7 @@ export default function TimeOffPage() {
                 {balances.map((balance) => (
                   <tr key={balance.type_code} className="table-row">
                     <td className="table-cell font-medium">{balance.type_name}</td>
-                    <td className="table-cell text-right">{balance.entitlement}</td>
+                    <td className="table-cell text-right">{balance.entitlement || balance.annual_entitlement || 0}</td>
                     <td className="table-cell text-right">{balance.carryover}</td>
                     <td className="table-cell text-right">{balance.used}</td>
                     <td className="table-cell text-right text-warning-600">{balance.pending}</td>

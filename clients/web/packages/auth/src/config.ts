@@ -6,7 +6,7 @@ import { WebStorageStateStore } from 'oidc-client-ts';
  */
 function getAppBasePath(): string {
   const pathname = window.location.pathname;
-  const appPaths = ['/app', '/hr', '/finance', '/sales', '/support'];
+  const appPaths = ['/app', '/hr', '/finance', '/sales', '/support', '/payroll', '/tax'];
 
   for (const appPath of appPaths) {
     if (pathname.startsWith(appPath)) {
