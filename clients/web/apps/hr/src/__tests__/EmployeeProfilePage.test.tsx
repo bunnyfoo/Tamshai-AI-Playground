@@ -79,7 +79,8 @@ describe('EmployeeProfilePage', () => {
       render(<EmployeeProfilePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Alice Chen')).toBeInTheDocument();
+        // Name may appear in multiple places (header, breadcrumb, etc.)
+        expect(screen.getAllByText('Alice Chen').length).toBeGreaterThan(0);
       });
     });
 
@@ -92,7 +93,8 @@ describe('EmployeeProfilePage', () => {
       render(<EmployeeProfilePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Senior Software Engineer')).toBeInTheDocument();
+        // Title may appear in header and overview section
+        expect(screen.getAllByText('Senior Software Engineer').length).toBeGreaterThan(0);
       });
     });
 
@@ -105,7 +107,8 @@ describe('EmployeeProfilePage', () => {
       render(<EmployeeProfilePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Engineering')).toBeInTheDocument();
+        // Department may appear in header and overview
+        expect(screen.getAllByText('Engineering').length).toBeGreaterThan(0);
       });
     });
 
@@ -118,7 +121,8 @@ describe('EmployeeProfilePage', () => {
       render(<EmployeeProfilePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('active')).toBeInTheDocument();
+        // Status may appear in header and employment tab
+        expect(screen.getAllByText('active').length).toBeGreaterThan(0);
       });
     });
   });
@@ -210,7 +214,8 @@ describe('EmployeeProfilePage', () => {
       render(<EmployeeProfilePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('alice.chen@tamshai.com')).toBeInTheDocument();
+        // Email may appear in contact section and overview
+        expect(screen.getAllByText('alice.chen@tamshai.com').length).toBeGreaterThan(0);
       });
     });
 
@@ -223,7 +228,8 @@ describe('EmployeeProfilePage', () => {
       render(<EmployeeProfilePage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('San Francisco')).toBeInTheDocument();
+        // Location may appear in header and contact info
+        expect(screen.getAllByText('San Francisco').length).toBeGreaterThan(0);
       });
     });
   });
