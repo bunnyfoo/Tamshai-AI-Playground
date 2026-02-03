@@ -212,7 +212,7 @@ export default function TimeOffPage() {
           </div>
         </div>
         {balances.slice(0, 3).map((balance) => (
-          <div key={balance.balance_id} className="card">
+          <div key={balance.type_code} className="card">
             <div className="text-sm font-medium text-secondary-500 uppercase tracking-wide">
               {balance.type_name}
             </div>
@@ -220,12 +220,12 @@ export default function TimeOffPage() {
               {balance.available.toFixed(1)}
             </div>
             <div className="text-sm text-secondary-500 mt-1">
-              of {balance.annual_entitlement} days
+              of {balance.entitlement} days
             </div>
             <div className="mt-2 w-full bg-secondary-200 rounded-full h-2">
               <div
                 className="bg-primary-500 h-2 rounded-full"
-                style={{ width: `${Math.min(100, (balance.available / balance.annual_entitlement) * 100)}%` }}
+                style={{ width: `${Math.min(100, (balance.available / balance.entitlement) * 100)}%` }}
               />
             </div>
           </div>
@@ -299,9 +299,9 @@ export default function TimeOffPage() {
               </thead>
               <tbody className="bg-white divide-y divide-secondary-200">
                 {balances.map((balance) => (
-                  <tr key={balance.balance_id} className="table-row">
+                  <tr key={balance.type_code} className="table-row">
                     <td className="table-cell font-medium">{balance.type_name}</td>
-                    <td className="table-cell text-right">{balance.annual_entitlement}</td>
+                    <td className="table-cell text-right">{balance.entitlement}</td>
                     <td className="table-cell text-right">{balance.carryover}</td>
                     <td className="table-cell text-right">{balance.used}</td>
                     <td className="table-cell text-right text-warning-600">{balance.pending}</td>

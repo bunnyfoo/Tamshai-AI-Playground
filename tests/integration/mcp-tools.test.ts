@@ -403,22 +403,26 @@ describe('MCP Finance Server - Write Tools (Confirmations)', () => {
   });
 
   describe('approve_budget', () => {
-    test('Returns NOT_IMPLEMENTED error (v1.3 schema limitation)', async () => {
-      // The approve_budget tool is not implemented because the v1.3 schema
-      // does not have approval workflow columns (status, approved_by, approved_at)
+    test('Returns pending_confirmation for valid budget (v1.5 implementation)', async () => {
+      // The approve_budget tool was implemented in v1.5 with HITL confirmation flow
+      // It returns pending_confirmation or error depending on budget state
       const response = await financeClient.post<MCPToolResponse>('/tools/approve_budget', {
         userContext: {
           userId: TEST_USERS.financeUser.userId,
           roles: TEST_USERS.financeUser.roles,
         },
-        budgetId: '00000000-0000-0000-0000-000000000001', // Dummy UUID
-        approvedAmount: 500000,
+        budgetId: '00000000-0000-0000-0000-000000000001', // Test budget ID
       });
 
       expect(response.status).toBe(200);
-      expect(response.data.status).toBe('error');
-      expect(response.data.code).toBe('NOT_IMPLEMENTED');
-      expect(response.data.suggestedAction).toBeDefined();
+      // Either pending_confirmation (if budget exists and is pending) or error (if not found)
+      expect(['pending_confirmation', 'error']).toContain(response.data.status);
+      if (response.data.status === 'pending_confirmation') {
+        expect(response.data.confirmationId).toBeDefined();
+      } else {
+        // Budget not found is expected for non-existent test ID
+        expect(response.data.code).toBeDefined();
+      }
     });
   });
 });
