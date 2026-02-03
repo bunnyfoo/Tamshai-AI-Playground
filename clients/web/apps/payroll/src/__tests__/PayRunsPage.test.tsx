@@ -12,7 +12,6 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import PayRunsPage from '../pages/PayRunsPage';
-import type { PayRun } from '../types';
 
 // Mock fetch
 const mockFetch = vi.fn();
@@ -33,31 +32,31 @@ const createWrapper = () => {
   );
 };
 
-// Mock data
-const mockPayRuns: PayRun[] = [
+// Mock data - uses API field names (page maps to UI field names)
+const mockPayRunsApiFormat = [
   {
     pay_run_id: 'pr-001',
-    period_start: '2026-01-01',
-    period_end: '2026-01-14',
+    pay_period_start: '2026-01-01',
+    pay_period_end: '2026-01-14',
     pay_date: '2026-01-17',
     employee_count: 54,
-    gross_pay: 425000,
-    net_pay: 260387.5,
+    total_gross: 425000,
+    total_net: 260387.5,
     status: 'completed',
     created_at: '2026-01-10T10:00:00Z',
-    updated_at: '2026-01-17T08:00:00Z',
+    processed_at: '2026-01-17T08:00:00Z',
   },
   {
     pay_run_id: 'pr-002',
-    period_start: '2026-01-15',
-    period_end: '2026-01-28',
+    pay_period_start: '2026-01-15',
+    pay_period_end: '2026-01-28',
     pay_date: '2026-01-31',
     employee_count: 54,
-    gross_pay: 430000,
-    net_pay: 265000,
+    total_gross: 430000,
+    total_net: 265000,
     status: 'draft',
     created_at: '2026-01-25T10:00:00Z',
-    updated_at: '2026-01-25T10:00:00Z',
+    processed_at: null,
   },
 ];
 
@@ -70,7 +69,7 @@ describe('PayRunsPage', () => {
     test('displays page title', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -81,7 +80,7 @@ describe('PayRunsPage', () => {
     test('displays New Pay Run button', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -102,7 +101,7 @@ describe('PayRunsPage', () => {
     test('displays pay period column', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -115,7 +114,7 @@ describe('PayRunsPage', () => {
     test('displays pay date column', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -128,7 +127,7 @@ describe('PayRunsPage', () => {
     test('displays employees count column', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -141,7 +140,7 @@ describe('PayRunsPage', () => {
     test('displays pay run data when loaded', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -155,7 +154,7 @@ describe('PayRunsPage', () => {
     test('displays gross pay for each run', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -168,7 +167,7 @@ describe('PayRunsPage', () => {
     test('displays net pay for each run', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -183,7 +182,7 @@ describe('PayRunsPage', () => {
     test('displays completed status badge', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -196,7 +195,7 @@ describe('PayRunsPage', () => {
     test('displays draft status badge', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -211,7 +210,7 @@ describe('PayRunsPage', () => {
     test('displays View action for each pay run', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -225,7 +224,7 @@ describe('PayRunsPage', () => {
     test('displays Process action for draft pay runs', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -240,7 +239,7 @@ describe('PayRunsPage', () => {
     test('displays year filter', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
@@ -251,7 +250,7 @@ describe('PayRunsPage', () => {
     test('displays status filter', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: 'success', data: mockPayRuns }),
+        json: () => Promise.resolve({ status: 'success', data: mockPayRunsApiFormat }),
       });
 
       render(<PayRunsPage />, { wrapper: createWrapper() });
