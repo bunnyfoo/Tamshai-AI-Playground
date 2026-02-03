@@ -42,7 +42,7 @@ export interface TaxWithholding {
 export async function getTaxWithholdings(
   input: GetTaxWithholdingsInput,
   userContext: UserContext
-): Promise<MCPToolResponse<TaxWithholding>> {
+): Promise<MCPToolResponse<TaxWithholding | null>> {
   return withErrorHandling('get_tax_withholdings', async () => {
     const validatedInput = GetTaxWithholdingsInputSchema.parse(input);
     const targetEmployeeId = validatedInput.employeeId || userContext.userId;
@@ -80,7 +80,17 @@ export async function getTaxWithholdings(
     const result = await queryWithRLS<TaxWithholding>(userContext, query, [targetEmployeeId]);
 
     if (result.rowCount === 0) {
-      return handleTaxWithholdingNotFound(targetEmployeeId);
+      logger.info('No tax withholdings configured', {
+        employeeId: targetEmployeeId,
+        userId: userContext.userId,
+      });
+
+      // Return success with null data - frontend shows "No withholding configured"
+      return createSuccessResponse(null, {
+        hasMore: false,
+        returnedCount: 0,
+        hint: 'No withholding configured',
+      });
     }
 
     logger.info('Retrieved tax withholdings', {
