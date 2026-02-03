@@ -168,11 +168,12 @@ describe('SLAPage', () => {
       render(<SLAPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Starter')).toBeInTheDocument();
+        // Tier names may appear in multiple places (summary, breakdown, tickets)
+        expect(screen.getAllByText('Starter').length).toBeGreaterThan(0);
       });
 
-      expect(screen.getByText('Professional')).toBeInTheDocument();
-      expect(screen.getByText('Enterprise')).toBeInTheDocument();
+      expect(screen.getAllByText('Professional').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Enterprise').length).toBeGreaterThan(0);
     });
 
     test('displays compliance percentage by tier', async () => {
@@ -233,7 +234,8 @@ describe('SLAPage', () => {
       render(<SLAPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Breached')).toBeInTheDocument();
+        // Multiple tickets can show "Breached" status
+        expect(screen.getAllByText('Breached').length).toBeGreaterThan(0);
       });
     });
 
@@ -388,7 +390,9 @@ describe('SLAPage', () => {
       render(<SLAPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
+        // May have multiple truncation warnings from different data sources
+        const warnings = screen.queryAllByTestId('truncation-warning');
+        expect(warnings.length).toBeGreaterThan(0);
       });
     });
   });
