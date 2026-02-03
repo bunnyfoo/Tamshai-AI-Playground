@@ -44,6 +44,78 @@ Tamshai Corp is a SaaS LLC providing financial management services:
 
 ---
 
+## 2.4 PRIMARY FLOW: Quarterly Filing Review
+
+**Hero Flow**: Review and file quarterly tax returns with audit trail
+
+**Complexity**: Review workflow with export and filing confirmation
+
+**Pattern Reference**: `.specify/research/quaderno-tax-schema.md`
+
+**Flow**:
+1. Navigate to Quarterly Filings, select quarter
+2. Review transaction summary by jurisdiction
+3. Export detailed report (CSV/PDF) for records
+4. Mark as "Reviewed" with reviewer name
+5. File via state portal (external)
+6. Enter confirmation number and mark as "Filed"
+
+**Acceptance Criteria**:
+- [ ] Quarterly summary shows all jurisdictions with activity
+- [ ] Each jurisdiction shows gross sales, taxable sales, tax collected
+- [ ] Export generates Quaderno-compatible schema
+- [ ] "Reviewed" status requires reviewer acknowledgment
+- [ ] "Filed" status requires confirmation number
+- [ ] Audit trail immutable - no editing after filed
+
+**Quaderno-Compatible Export Schema**:
+```typescript
+interface QuarterlyTaxReport {
+  period: { year: number; quarter: number };
+  jurisdictions: JurisdictionSummary[];
+  totals: {
+    grossSales: number;
+    taxableSales: number;
+    exemptSales: number;
+    taxCollected: number;
+  };
+  exportFormats: ['csv', 'pdf', 'json'];
+}
+```
+
+**Test Scenarios**:
+```typescript
+test.describe('Quarterly Filing Review', () => {
+  test('shows all jurisdictions with transactions', async ({ page }) => {
+    await page.goto('/app/tax/quarterly/2024-Q1');
+    // Verify CA, NY, TX jurisdictions displayed
+    // Verify totals match sum of jurisdictions
+  });
+
+  test('export generates valid CSV with correct schema', async ({ page }) => {
+    // Click export CSV
+    // Verify download initiated
+    // Verify CSV contains required columns
+  });
+
+  test('filing requires confirmation number', async ({ page }) => {
+    // Mark as reviewed
+    // Attempt to mark as filed without confirmation
+    // Verify validation error
+    // Enter confirmation number
+    // Verify status changes to "Filed"
+  });
+
+  test('filed returns cannot be edited', async ({ page }) => {
+    // Navigate to filed return
+    // Verify edit controls disabled
+    // Verify "Filed" badge displayed
+  });
+});
+```
+
+---
+
 ## 3. Feature Specifications
 
 ### 3.1 Dashboard

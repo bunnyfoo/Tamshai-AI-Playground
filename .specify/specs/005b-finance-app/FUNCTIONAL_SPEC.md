@@ -37,6 +37,56 @@ Tamshai Corp is a SaaS company providing financial/LLC management services. Reve
 
 ---
 
+## 2.4 PRIMARY FLOW: Invoice Batch Approval
+
+**Hero Flow**: Bulk selection and batch approval of pending invoices
+
+**Complexity**: Bulk action pattern with confirmation
+
+**Pattern Reference**: `.specify/specs/005-sample-apps/BULK_ACTIONS_PATTERN.md`
+
+**Flow**:
+1. Navigate to Invoices page, filter by "Pending Approval"
+2. Select multiple invoices via checkboxes
+3. Click "Approve" in bulk action toolbar
+4. Review confirmation dialog with invoice summary
+5. Confirm to batch-approve all selected
+
+**Acceptance Criteria**:
+- [ ] Bulk action toolbar hidden when no rows selected
+- [ ] Bulk action toolbar shows count when rows selected
+- [ ] "Approve" button enabled only with 1+ rows selected
+- [ ] Confirmation shows total amount and invoice list
+- [ ] All selected invoices update status atomically
+- [ ] Toast notification shows success/partial failure
+
+**Test Scenarios**:
+```typescript
+test.describe('Invoice Bulk Approval', () => {
+  test('bulk action menu enables only when rows selected', async ({ page }) => {
+    await page.goto('/app/finance/invoices');
+    await expect(page.locator('[data-testid="bulk-toolbar"]')).toBeHidden();
+    await page.click('[data-testid="row-checkbox-0"]');
+    await expect(page.locator('[data-testid="bulk-toolbar"]')).toBeVisible();
+    await expect(page.locator('[data-testid="bulk-approve"]')).toBeEnabled();
+  });
+
+  test('shows confirmation dialog before bulk approve', async ({ page }) => {
+    await page.click('[data-testid="row-checkbox-0"]');
+    await page.click('[data-testid="row-checkbox-1"]');
+    await page.click('[data-testid="bulk-approve"]');
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await expect(page.locator('[role="dialog"]')).toContainText('Approve 2 invoices');
+  });
+
+  test('updates all selected invoices on confirmation', async ({ page }) => {
+    // Select invoices, approve, verify all status changed
+  });
+});
+```
+
+---
+
 ## 3. Feature Specifications
 
 ### 3.1 Dashboard
