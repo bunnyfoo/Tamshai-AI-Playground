@@ -40,6 +40,63 @@ Tamshai Corp provides tiered support based on customer subscription:
 
 ---
 
+## 2.4 PRIMARY FLOW: Ticket Escalation Flow
+
+**Hero Flow**: SLA-driven escalation with manager notification and priority adjustment
+
+**Complexity**: Conditional flow with real-time SLA tracking
+
+**Pattern Reference**: `.specify/research/servicenow-filter-patterns.md`
+
+**Flow**:
+1. View ticket detail with SLA countdown indicator
+2. Click "Escalate" button when SLA at risk or customer escalation
+3. Select escalation type (Priority, Functional, Hierarchical)
+4. Enter required escalation reason
+5. Confirm escalation - manager notified immediately
+
+**SLA Status Visual States**:
+| Status | Color | Threshold | Visual |
+|--------|-------|-----------|--------|
+| On Track | Green | > 25% time remaining | Progress bar (green) |
+| At Risk | Amber | 10-25% time remaining | Progress bar (amber) with pulse |
+| Critical | Red | < 10% time remaining | Progress bar (red) with shake |
+| Breached | Dark Red | Past due | Static bar, breach badge |
+
+**Acceptance Criteria**:
+- [ ] SLA countdown updates in real-time (every minute)
+- [ ] "Escalate" button prominent when SLA at risk
+- [ ] Escalation reason is required (cannot skip)
+- [ ] Manager receives immediate notification (email + in-app)
+- [ ] Ticket shows escalation badge in all list views
+- [ ] Audit trail records escalation with timestamp and user
+
+**Test Scenarios**:
+```typescript
+test.describe('Ticket Escalation Flow', () => {
+  test('SLA indicator shows correct status based on time remaining', async ({ page }) => {
+    // Mock ticket with 15% time remaining
+    // Verify "At Risk" status displayed
+    // Verify amber styling applied
+  });
+
+  test('escalation requires reason before submission', async ({ page }) => {
+    await page.click('[data-testid="escalate-button"]');
+    await page.click('[data-testid="confirm-escalation"]');
+    // Verify validation error on reason field
+    await expect(page.locator('[data-testid="reason-error"]')).toBeVisible();
+  });
+
+  test('escalation updates ticket status and notifies manager', async ({ page }) => {
+    // Complete escalation flow
+    // Verify ticket shows escalation badge
+    // Verify audit trail entry created
+  });
+});
+```
+
+---
+
 ## 3. Feature Specifications
 
 ### 3.1 Dashboard

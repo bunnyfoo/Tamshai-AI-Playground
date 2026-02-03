@@ -35,6 +35,51 @@ Tamshai Corp is a SaaS-focused LLC providing financial management services. All 
 
 ---
 
+## 2.4 PRIMARY FLOW: Time-Off Request Wizard
+
+**Hero Flow**: Multi-step time-off request with balance check, conflict detection, and approval
+
+**Complexity**: Multi-step wizard with manager approval workflow
+
+**Pattern Reference**: `.specify/specs/005-sample-apps/WIZARD_PATTERN.md`
+
+**Steps**:
+1. **Type Selection**: Choose time-off type (PTO, Sick, Personal, Bereavement, Jury Duty)
+2. **Date Selection**: Calendar picker with real-time balance display showing remaining days
+3. **Conflict Check**: Display any overlapping team requests or blackout periods
+4. **Review & Submit**: Summary with manager name, balance impact, approval routing
+
+**Acceptance Criteria**:
+- [ ] Balance updates in real-time as dates are selected
+- [ ] Conflict check shows team calendar overlay
+- [ ] Cannot proceed if balance would go negative
+- [ ] Manager receives notification immediately upon submission
+- [ ] Employee sees request status on dashboard
+
+**Test Scenarios**:
+```typescript
+test.describe('Time-Off Request Wizard', () => {
+  test('prevents request exceeding available balance', async ({ page }) => {
+    // Select dates that would exceed balance
+    // Verify "Next" button disabled with tooltip
+  });
+
+  test('shows team conflicts before submission', async ({ page }) => {
+    // Select dates overlapping with team member
+    // Verify conflict warning displayed
+    // Verify can still proceed with acknowledgment
+  });
+
+  test('breadcrumb navigation preserves entered data', async ({ page }) => {
+    // Complete steps 1-3
+    // Navigate back to step 1
+    // Verify all data preserved
+  });
+});
+```
+
+---
+
 ## 3. Feature Specifications
 
 ### 3.1 Dashboard

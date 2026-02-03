@@ -7,6 +7,10 @@
  * - ApprovalCard: Human-in-the-loop confirmations (Section 5.6)
  * - TruncationWarning: 50-record limit alerts (Section 5.3)
  * - SSEQueryClient: Server-Sent Events streaming (Section 6.1)
+ *
+ * Architecture v1.5 Components (Enterprise UX Hardening):
+ * - DataTable: Enterprise data table with bulk actions, sorting, pagination
+ * - Wizard: Multi-step wizard with validation and breadcrumb navigation
  */
 
 // v1.4 Components
@@ -16,3 +20,21 @@ export type { ConfirmationData } from './ApprovalCard';
 export { TruncationWarning } from './TruncationWarning';
 
 export { SSEQueryClient } from './SSEQueryClient';
+
+// v1.5 Enterprise UX Components
+export { DataTable } from './components/DataTable';
+export type {
+  DataTableProps,
+  ColumnDef,
+  BulkAction,
+  PaginationConfig
+} from './components/DataTable';
+
+export { Wizard } from './components/Wizard';
+export type {
+  WizardProps,
+  WizardStep,
+  WizardStepProps,
+  ValidationResult,
+  ValidationError
+} from './components/Wizard';

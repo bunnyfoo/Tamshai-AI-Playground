@@ -43,6 +43,61 @@ Tamshai Corp sells SaaS subscriptions with the following structure:
 
 ---
 
+## 2.4 PRIMARY FLOW: Lead Conversion Wizard
+
+**Hero Flow**: Multi-step lead conversion to Account + Contact + Opportunity (Salesforce-style)
+
+**Complexity**: Multi-step wizard with data validation and entity creation
+
+**Pattern Reference**: `.specify/specs/005-sample-apps/WIZARD_PATTERN.md`
+
+**Steps**:
+1. **Lead Review**: Verify lead data, company info, qualify status
+2. **Account Creation**: Create new account or link to existing (with duplicate check)
+3. **Contact Creation**: Create contact record from lead data with role assignment
+4. **Opportunity Creation**: Set opportunity value, stage, close date, products
+5. **Review & Convert**: Summary of all entities to be created with confirmation
+
+**Acceptance Criteria**:
+- [ ] Duplicate account check runs automatically in step 2
+- [ ] Existing account selection auto-populates contact data
+- [ ] Opportunity amount calculates from selected products
+- [ ] Lead status changes to "Converted" upon completion
+- [ ] All three entities (Account, Contact, Opportunity) created atomically
+
+**Test Scenarios**:
+```typescript
+test.describe('Lead Conversion Wizard', () => {
+  test('detects and warns about duplicate accounts', async ({ page }) => {
+    // Enter company name matching existing account
+    // Verify duplicate warning displayed
+    // Verify option to link vs. create new
+  });
+
+  test('wizard breadcrumbs update on step navigation', async ({ page }) => {
+    await page.goto('/app/sales/leads/123/convert');
+    await expectWizardStepActive(page, 'Lead Review');
+    await page.click('[data-testid="wizard-next"]');
+    await expectWizardStepActive(page, 'Account');
+  });
+
+  test('opportunity value updates based on product selection', async ({ page }) => {
+    // Navigate to opportunity step
+    // Select products
+    // Verify amount field updates
+  });
+
+  test('creates all entities on final confirmation', async ({ page }) => {
+    // Complete all steps
+    // Confirm conversion
+    // Verify Account, Contact, Opportunity all created
+    // Verify lead status is "Converted"
+  });
+});
+```
+
+---
+
 ## 3. Feature Specifications
 
 ### 3.1 Dashboard

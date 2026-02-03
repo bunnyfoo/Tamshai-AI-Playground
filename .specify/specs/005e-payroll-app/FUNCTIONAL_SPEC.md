@@ -45,6 +45,68 @@ All employees are US-based remote workers. Tax withholding varies by state:
 
 ---
 
+## 2.4 PRIMARY FLOW: Run Payroll Wizard
+
+**Hero Flow**: Multi-step payroll processing with preview and CFO approval
+
+**Complexity**: Multi-step wizard with validation, preview, and confirmation
+
+**Pattern Reference**: `.specify/specs/005-sample-apps/WIZARD_PATTERN.md`, `.specify/research/gusto-validation-patterns.md`
+
+**Steps**:
+1. **Pay Period Selection**: Select pay period, payroll type (Regular, Bonus, Off-cycle)
+2. **Hours & Earnings**: Review salary employees, import timesheets, add bonuses/adjustments
+3. **Deductions Review**: Review tax withholdings, benefits, 401(k), garnishments
+4. **Preview & Approval**: Full payroll summary with totals, confirmation checkbox
+
+**Pre-Flight Validation (Gusto Pattern)**:
+- [ ] All employee profiles complete
+- [ ] Bank accounts verified for direct deposit
+- [ ] Tax registrations current
+- [ ] No employees with missing W-4 data
+
+**Acceptance Criteria**:
+- [ ] Pre-flight blockers prevent proceeding until resolved
+- [ ] Pre-flight warnings allow proceeding with acknowledgment
+- [ ] Each employee row expandable to show detail breakdown
+- [ ] Overtime hours auto-calculated from timesheets
+- [ ] Tax calculations match W-4 elections and state rates
+- [ ] Final confirmation requires checkbox acknowledgment
+- [ ] Approved payroll cannot be edited
+
+**Test Scenarios**:
+```typescript
+test.describe('Run Payroll Wizard', () => {
+  test('pre-flight check blocks on missing employee data', async ({ page }) => {
+    // Mock employee with missing SSN
+    // Verify blocker displayed
+    // Verify "Next" button disabled
+    // Verify "Fix Issues" link works
+  });
+
+  test('wizard shows correct totals in preview step', async ({ page }) => {
+    // Complete steps 1-3
+    // Verify gross pay, deductions, net pay totals
+    // Verify individual employee breakdown matches
+  });
+
+  test('requires confirmation checkbox before submit', async ({ page }) => {
+    // Navigate to step 4
+    // Verify "Submit" disabled without checkbox
+    // Check checkbox
+    // Verify "Submit" enabled
+  });
+
+  test('approved payroll triggers finance journal entry', async ({ page }) => {
+    // Complete full wizard and submit
+    // Verify confirmation dialog
+    // Verify payroll status changes to "Approved"
+  });
+});
+```
+
+---
+
 ## 3. Feature Specifications
 
 ### 3.1 Dashboard
