@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import Layout from './components/Layout';
 import DashboardPage from './pages/DashboardPage';
 import PayRunsPage from './pages/PayRunsPage';
+import NewPayRunPage from './pages/NewPayRunPage';
 import PayStubsPage from './pages/PayStubsPage';
 import DirectDepositPage from './pages/DirectDepositPage';
 import ContractorsPage from './pages/ContractorsPage';
@@ -49,6 +50,7 @@ function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="pay-runs" element={<PayRunsPage />} />
+        <Route path="pay-runs/new" element={<NewPayRunPage />} />
         <Route path="pay-stubs" element={<PayStubsPage />} />
         <Route path="direct-deposit" element={<DirectDepositPage />} />
         <Route path="1099" element={<ContractorsPage />} />
