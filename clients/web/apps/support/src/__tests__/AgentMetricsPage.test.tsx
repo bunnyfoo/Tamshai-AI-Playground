@@ -326,7 +326,9 @@ describe('AgentMetricsPage', () => {
       render(<AgentMetricsPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
+        // May have multiple truncation warnings from different data sources
+        const warnings = screen.queryAllByTestId('truncation-warning');
+        expect(warnings.length).toBeGreaterThan(0);
       });
     });
   });

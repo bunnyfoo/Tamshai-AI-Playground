@@ -378,14 +378,14 @@ describe('ARRDashboardPage', () => {
       render(<ARRDashboardPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Customer')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Customer' })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText('Revenue'));
+      fireEvent.click(screen.getByRole('button', { name: 'Revenue' }));
 
       // Should show revenue retention percentages now
       await waitFor(() => {
-        expect(screen.getByText('Revenue')).toHaveClass('btn-primary');
+        expect(screen.getByRole('button', { name: 'Revenue' })).toHaveClass('btn-primary');
       });
     });
   });
@@ -497,7 +497,9 @@ describe('ARRDashboardPage', () => {
       render(<ARRDashboardPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
+        // May have multiple truncation warnings if multiple APIs return truncated data
+        const warnings = screen.queryAllByTestId('truncation-warning');
+        expect(warnings.length).toBeGreaterThan(0);
       });
     });
   });
