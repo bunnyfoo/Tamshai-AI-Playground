@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, canModifySupport, apiConfig } from '@tamshai/auth';
 import { ApprovalCard, TruncationWarning } from '@tamshai/ui';
@@ -317,10 +318,12 @@ export default function TicketsPage() {
                 {tickets.map((ticket) => (
                   <tr key={ticket.id} className="table-row">
                     <td className="table-cell">
-                      <div className="font-medium">{ticket.title}</div>
-                      <div className="text-xs text-secondary-500 truncate max-w-xs">
-                        {ticket.description}
-                      </div>
+                      <Link to={`/tickets/${ticket.id}`} className="block hover:text-primary-600">
+                        <div className="font-medium">{ticket.title}</div>
+                        <div className="text-xs text-secondary-500 truncate max-w-xs">
+                          {ticket.description}
+                        </div>
+                      </Link>
                     </td>
                     <td className="table-cell">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>

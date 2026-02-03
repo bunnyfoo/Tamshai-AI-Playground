@@ -57,7 +57,7 @@ export function DashboardPage() {
     queryKey: ['tax-summary'],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/tax/summary`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/tax/get_tax_summary`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = await response.json();
