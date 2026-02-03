@@ -321,9 +321,17 @@ if [ -n "$TEMPLATE_FILE" ]; then
 
     # Update test user credentials based on environment
     if [ "$ENV" = "dev" ]; then
-        # For dev, replace placeholders with actual dev values
-        REALM_JSON=$(echo "$REALM_JSON" | sed 's/__TEST_USER_PASSWORD__/Test123!Journey/g')
-        REALM_JSON=$(echo "$REALM_JSON" | sed 's/__TEST_USER_TOTP_SECRET__/***REDACTED_TOTP***/g')
+        # For dev, replace placeholders with values from environment (GitHub secrets)
+        local test_password="${TEST_USER_PASSWORD:-}"
+        local test_totp="${TEST_USER_TOTP_SECRET:-***REDACTED_TOTP***}"
+
+        if [ -n "$test_password" ]; then
+            REALM_JSON=$(echo "$REALM_JSON" | sed "s/__TEST_USER_PASSWORD__/$test_password/g")
+        else
+            log_warn "TEST_USER_PASSWORD not set - test-user.journey will use placeholder password"
+            REALM_JSON=$(echo "$REALM_JSON" | sed 's/__TEST_USER_PASSWORD__/__PLACEHOLDER_PASSWORD__/g')
+        fi
+        REALM_JSON=$(echo "$REALM_JSON" | sed "s/__TEST_USER_TOTP_SECRET__/$test_totp/g")
     else
         # For stage/prod, ensure placeholders are used (they may already be)
         # Only transform if hardcoded values exist

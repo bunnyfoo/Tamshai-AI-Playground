@@ -26,20 +26,20 @@ const BASE_URLS: Record<string, { site: string; apps: Record<string, string>; ke
   dev: {
     site: 'https://www.tamshai-playground.local:8443',
     apps: {
-      hr: 'https://www.tamshai-playground.local:8443/app/hr',
-      finance: 'https://www.tamshai-playground.local:8443/app/finance',
-      sales: 'https://www.tamshai-playground.local:8443/app/sales',
-      support: 'https://www.tamshai-playground.local:8443/app/support',
+      hr: 'https://www.tamshai-playground.local:8443/hr',
+      finance: 'https://www.tamshai-playground.local:8443/finance',
+      sales: 'https://www.tamshai-playground.local:8443/sales',
+      support: 'https://www.tamshai-playground.local:8443/support',
     },
     keycloak: 'https://www.tamshai-playground.local:8443/auth',
   },
   stage: {
     site: 'https://www.tamshai.com',
     apps: {
-      hr: 'https://www.tamshai.com/app/hr',
-      finance: 'https://www.tamshai.com/app/finance',
-      sales: 'https://www.tamshai.com/app/sales',
-      support: 'https://www.tamshai.com/app/support',
+      hr: 'https://www.tamshai.com/hr',
+      finance: 'https://www.tamshai.com/finance',
+      sales: 'https://www.tamshai.com/sales',
+      support: 'https://www.tamshai.com/support',
     },
     keycloak: 'https://www.tamshai.com/auth',
   },
@@ -111,9 +111,9 @@ function generateTotpCode(secret: string): string {
 async function authenticateUser(page: Page): Promise<void> {
   const urls = BASE_URLS[ENV];
 
-  // Skip if no credentials
+  // Throw if no credentials - caller should handle
   if (!TEST_USER.password) {
-    test.skip(true, 'No test credentials configured');
+    throw new Error('No test credentials configured');
   }
 
   // Navigate to employee login
@@ -154,42 +154,92 @@ async function authenticateUser(page: Page): Promise<void> {
     // TOTP not required - continue
   }
 
-  // Wait for portal to load
+  // Wait for portal to fully load with authentication tokens
+  await page.waitForLoadState('networkidle', { timeout: 30000 });
+
+  // Verify we're on the portal by checking for portal-specific content
+  // This ensures the OAuth callback completed and tokens are stored in localStorage
+  const portalHeading = page.locator('h2:has-text("Available Applications")');
+  await expect(portalHeading).toBeVisible({ timeout: 30000 });
+
+  console.log(`Authentication completed for ${TEST_USER.username}`);
+}
+
+/**
+ * Helper to authenticate and navigate to an app page
+ * Each app has its own OAuth flow, so we authenticate via SSO redirect
+ */
+async function authenticateAndNavigateToApp(page: Page, appUrl: string): Promise<void> {
+  // Skip if no credentials
+  if (!TEST_USER.password) {
+    throw new Error('No test credentials configured');
+  }
+
+  // Navigate to app - it will redirect to Keycloak for auth
+  await page.goto(appUrl);
+  await page.waitForLoadState('networkidle');
+
+  // Check if we're on Keycloak login page
+  const usernameInput = page.locator('#username, input[name="username"]');
+  const isOnKeycloak = await usernameInput.isVisible({ timeout: 10000 }).catch(() => false);
+
+  if (isOnKeycloak) {
+    // Wait for form to be ready
+    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Need to authenticate
+    await page.fill('#username', TEST_USER.username);
+    await page.fill('#password', TEST_USER.password);
+    await page.click('#kc-login');
+
+    // Handle TOTP if required
+    try {
+      const otpInput = await page.waitForSelector('#otp, input[name="otp"]', {
+        state: 'visible',
+        timeout: 5000,
+      });
+
+      if (otpInput) {
+        const totpSecret = TEST_USER.totpSecret || loadTotpSecret(TEST_USER.username, ENV) || '';
+        if (!totpSecret) {
+          throw new Error('TOTP required but no secret available');
+        }
+        const totpCode = generateTotpCode(totpSecret);
+        await page.fill('#otp, input[name="otp"]', totpCode);
+        await page.click('#kc-login, button[type="submit"]');
+      }
+    } catch {
+      // TOTP not required
+    }
+  }
+
+  // Wait for app to load
   await page.waitForLoadState('networkidle', { timeout: 30000 });
 }
 
-// Store authenticated context
-let authenticatedContext: BrowserContext | null = null;
-
 test.describe('Sample Apps - Phase 2 Pages', () => {
-  test.beforeAll(async ({ browser }) => {
-    // Create a single authenticated context for all tests
-    authenticatedContext = await browser.newContext({
-      ignoreHTTPSErrors: ENV === 'dev',
-    });
-    const page = await authenticatedContext.newPage();
-    await authenticateUser(page);
-    await page.close();
-  });
-
-  test.afterAll(async () => {
-    if (authenticatedContext) {
-      await authenticatedContext.close();
-    }
-  });
 
   test.describe('HR App', () => {
-    test('OrgChartPage - displays organization chart', async () => {
-      if (!authenticatedContext) test.skip(true, 'No authenticated context');
-      const page = await authenticatedContext!.newPage();
+    test('OrgChartPage - displays organization chart', async ({ browser }) => {
+      if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
+      const context = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
+      const page = await context.newPage();
       const urls = BASE_URLS[ENV];
 
       try {
-        await page.goto(`${urls.apps.hr}/org-chart`);
+        // Authenticate via portal first (same pattern as Cross-App Navigation test)
+        await authenticateUser(page);
+
+        // Navigate directly to HR app
+        await page.goto(`${urls.apps.hr}/`);
         await page.waitForLoadState('networkidle');
 
-        // Verify page title
-        await expect(page.locator('text=Organization Chart')).toBeVisible({ timeout: 10000 });
+        // Should be on HR app now - click Org Chart tab
+        await page.click('text=Org Chart');
+        await page.waitForLoadState('networkidle');
+
+        // Verify page title (page header, not tab)
+        await expect(page.locator('h1:has-text("Organization Chart"), h2:has-text("Organization Chart")')).toBeVisible({ timeout: 10000 });
 
         // Verify control buttons exist
         await expect(page.locator('text=Expand All')).toBeVisible();
@@ -198,7 +248,7 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
         // Verify search input exists
         await expect(page.locator('input[placeholder*="Search" i], input[placeholder*="name" i]')).toBeVisible();
       } finally {
-        await page.close();
+        await context.close();
       }
     });
 
