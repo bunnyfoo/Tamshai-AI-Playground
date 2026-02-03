@@ -36,12 +36,12 @@ export default function PayStubsPage() {
     queryKey: ['pay-stubs', yearFilter],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/pay-stubs?year=${yearFilter}`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/list_pay_stubs?year=${yearFilter}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch pay stubs');
       const result = await response.json();
-      return result.data as PayStub[];
+      return (result.data || []) as PayStub[];
     },
   });
 

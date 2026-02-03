@@ -20,12 +20,12 @@ export default function DirectDepositPage() {
     queryKey: ['direct-deposit'],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/direct-deposit`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/get_direct_deposit`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch direct deposit settings');
       const result = await response.json();
-      return result.data as DirectDeposit[];
+      return (result.data || []) as DirectDeposit[];
     },
   });
 

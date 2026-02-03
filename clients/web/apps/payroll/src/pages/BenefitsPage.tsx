@@ -29,12 +29,12 @@ export default function BenefitsPage() {
     queryKey: ['benefits'],
     queryFn: async () => {
       const token = await getAccessToken();
-      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/payroll/benefits`, {
+      const response = await fetch(`${apiConfig.mcpGatewayUrl}/api/mcp/payroll/get_benefits`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch benefits');
       const result = await response.json();
-      return result.data as BenefitDeduction[];
+      return (result.data || []) as BenefitDeduction[];
     },
   });
 

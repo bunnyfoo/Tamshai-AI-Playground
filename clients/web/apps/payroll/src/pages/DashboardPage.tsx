@@ -32,7 +32,16 @@ export default function DashboardPage() {
       });
       if (!response.ok) throw new Error('Failed to fetch dashboard metrics');
       const result = await response.json();
-      return result.data as PayrollDashboardMetrics;
+      // Map API response to expected UI format
+      const data = result.data;
+      return {
+        next_pay_date: data.next_pay_date,
+        days_until_payday: Math.ceil((new Date(data.next_pay_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+        current_period_gross: data.total_gross_pay,
+        employees_count: data.employee_count,
+        ytd_payroll: data.ytd_totals?.gross_pay || data.total_gross_pay,
+        ytd_payroll_change: 0, // API doesn't provide this
+      } as PayrollDashboardMetrics;
     },
   });
 
