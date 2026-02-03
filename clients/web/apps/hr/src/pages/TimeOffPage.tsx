@@ -33,7 +33,7 @@ export default function TimeOffPage() {
   const { data: balancesResponse, isLoading: loadingBalances } = useQuery({
     queryKey: ['time-off-balances'],
     queryFn: async () => {
-      const token = getAccessToken();
+      const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
 
       const response = await fetch(
@@ -50,7 +50,7 @@ export default function TimeOffPage() {
   const { data: requestsResponse, isLoading: loadingRequests } = useQuery({
     queryKey: ['time-off-requests', activeTab],
     queryFn: async () => {
-      const token = getAccessToken();
+      const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
 
       const endpoint = activeTab === 'team'
@@ -76,7 +76,7 @@ export default function TimeOffPage() {
       end_date: string;
       notes?: string;
     }) => {
-      const token = getAccessToken();
+      const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
 
       const response = await fetch(
@@ -108,7 +108,7 @@ export default function TimeOffPage() {
       approved: boolean;
       comments?: string;
     }) => {
-      const token = getAccessToken();
+      const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
 
       const response = await fetch(
