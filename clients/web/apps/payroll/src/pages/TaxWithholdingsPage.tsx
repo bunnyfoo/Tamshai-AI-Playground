@@ -40,8 +40,23 @@ export default function TaxWithholdingsPage() {
         </div>
       )}
 
+      {/* No Withholding Configured */}
+      {!isLoading && !error && !withholding && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-center gap-3">
+            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="text-lg font-medium text-blue-900">No withholding configured</h3>
+              <p className="text-blue-700 mt-1">Tax withholding settings have not been set up for your account. Please contact HR or Payroll to configure your tax elections.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Federal W-4 */}
-      {!isLoading && !error && (
+      {!isLoading && !error && withholding && (
         <>
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Federal W-4</h2>

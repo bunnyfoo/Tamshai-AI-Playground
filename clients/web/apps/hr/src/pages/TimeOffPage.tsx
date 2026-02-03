@@ -30,7 +30,7 @@ export default function TimeOffPage() {
   const isManager = userContext?.roles?.includes('manager') || canWrite;
 
   // Fetch time-off balances for current user
-  const { data: balancesResponse, isLoading: loadingBalances } = useQuery({
+  const { data: balancesResponse, isLoading: loadingBalances, error: balancesError } = useQuery({
     queryKey: ['time-off-balances'],
     queryFn: async () => {
       const token = await getAccessToken();
@@ -198,6 +198,13 @@ export default function TimeOffPage() {
             }}
             onComplete={handleConfirmationComplete}
           />
+        </div>
+      )}
+
+      {/* Error State */}
+      {balancesError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700">Error loading time-off data: {(balancesError as Error).message}</p>
         </div>
       )}
 
