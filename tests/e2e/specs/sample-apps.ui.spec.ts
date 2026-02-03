@@ -8,8 +8,17 @@
  * - Support: SLAPage, AgentMetricsPage
  *
  * Prerequisites:
- * - User must be authenticated with appropriate roles
- * - Uses test-user.journey account (has executive role for all apps)
+ * - ALWAYS run with --workers=1 to avoid TOTP reuse issues
+ * - Environment variables:
+ *   - TEST_USERNAME: User to authenticate as (default: test-user.journey)
+ *   - TEST_USER_PASSWORD: User's password (required)
+ *   - TEST_USER_TOTP_SECRET: TOTP secret in BASE32 (optional, auto-captured if not set)
+ *
+ * test-user.journey Access:
+ * - In dev: Has executive role (C-Suite group) for full UX testing
+ * - In stage/prod: No data access roles (login journey testing only)
+ *
+ * See docs/testing/TEST_USER_JOURNEY.md for credential management.
  */
 
 import { test, expect, Page, BrowserContext, Browser } from '@playwright/test';
@@ -338,26 +347,41 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
       await expect(sharedPage.locator('[role="dialog"], .modal, .wizard, [class*="TimeOffRequestWizard"]').first()).toBeVisible({ timeout: 5000 });
     });
 
-    test.skip('EmployeeProfilePage - displays employee profile', async () => {
-      // Skipped: Requires clicking on employee from directory which depends on sample data
+    test('EmployeeProfilePage - displays employee profile', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
       const urls = BASE_URLS[ENV];
 
+      // Navigate to Employee Directory (the default HR page)
       await sharedPage.goto(`${urls.apps.hr}/`);
       await sharedPage.waitForLoadState('networkidle');
 
-      // Click on first employee link
-      const employeeLink = sharedPage.locator('a[href*="/employees/"], tr[data-testid] a').first();
-      if (await employeeLink.isVisible({ timeout: 10000 })) {
-        await employeeLink.click();
-        await sharedPage.waitForLoadState('networkidle');
+      // Wait for employee data to load (requires MCP HR server + sample data)
+      const employeeLink = sharedPage.locator('a[href*="/employees/"]').first();
+      const hasEmployees = await employeeLink.isVisible({ timeout: 15000 }).catch(() => false);
 
-        // Verify profile page loads with tabs
-        await expect(sharedPage.locator('text=overview, text=Overview').first()).toBeVisible({ timeout: 10000 });
-        await expect(sharedPage.locator('text=employment, text=Employment').first()).toBeVisible();
-      } else {
-        test.skip(true, 'No employees in directory');
+      if (!hasEmployees) {
+        // Skip if no employees are present (MCP HR not running or no sample data)
+        test.skip(true, 'No employees in directory - MCP HR may not be running or sample data not loaded');
+        return;
       }
+
+      // Click on first employee link to navigate to profile
+      await employeeLink.click();
+      await sharedPage.waitForLoadState('networkidle');
+
+      // Verify profile page loads - look for breadcrumb link back to directory
+      await expect(
+        sharedPage.locator('a:has-text("Employee Directory")').first()
+      ).toBeVisible({ timeout: 10000 });
+
+      // Verify profile tabs exist (tabs are lowercase: overview, employment, timeoff, documents)
+      await expect(
+        sharedPage.locator('button:has-text("overview")').or(sharedPage.locator('button:has-text("Overview")'))
+      ).toBeVisible({ timeout: 5000 });
+
+      await expect(
+        sharedPage.locator('button:has-text("employment")').or(sharedPage.locator('button:has-text("Employment")'))
+      ).toBeVisible({ timeout: 5000 });
     });
   });
 

@@ -290,6 +290,7 @@ assign_critical_prod_users() {
         "sarah.kim:C-Suite"
         "james.wilson:C-Suite"
         "test-user.journey:All-Employees"
+        "test-user.journey:C-Suite"
     )
 
     for mapping in "${critical_users[@]}"; do
