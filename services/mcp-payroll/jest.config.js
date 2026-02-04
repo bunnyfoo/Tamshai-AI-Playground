@@ -9,6 +9,8 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.test.ts',
     '!src/index.ts',
+    '!src/utils/logger.ts', // Configuration file
+    '!src/tools/index.ts',  // Re-export file
   ],
   coverageThreshold: {
     global: {
