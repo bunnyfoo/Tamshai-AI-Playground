@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, canModifySales, apiConfig } from '@tamshai/auth';
 import { ApprovalCard, TruncationWarning } from '@tamshai/ui';
+import LeadConversionWizard from '../components/LeadConversionWizard';
 import type { Lead, APIResponse } from '../types';
 
 /**
@@ -39,6 +40,9 @@ export default function LeadsPage() {
     message: string;
     lead: Lead;
   } | null>(null);
+
+  // Lead conversion wizard state
+  const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
 
   // Fetch leads
   const { data: leadsResponse, isLoading, error, refetch } = useQuery({
@@ -449,8 +453,7 @@ export default function LeadsPage() {
                       <td className="table-cell">
                         {lead.status === 'QUALIFIED' && (
                           <button
-                            onClick={() => convertMutation.mutate(lead._id)}
-                            disabled={convertMutation.isPending}
+                            onClick={() => setConvertingLead(lead)}
                             className="text-success-600 hover:text-success-700 text-sm font-medium"
                             data-testid="convert-button"
                           >
@@ -485,6 +488,20 @@ export default function LeadsPage() {
           </span>
         </div>
       </div>
+
+      {/* Lead Conversion Wizard */}
+      {convertingLead && (
+        <LeadConversionWizard
+          lead={convertingLead}
+          onClose={() => setConvertingLead(null)}
+          onComplete={() => {
+            setConvertingLead(null);
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+            queryClient.invalidateQueries({ queryKey: ['customers'] });
+          }}
+        />
+      )}
     </div>
   );
 }

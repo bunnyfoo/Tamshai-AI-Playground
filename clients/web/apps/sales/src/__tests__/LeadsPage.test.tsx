@@ -34,7 +34,7 @@ const createWrapper = () => {
   );
 };
 
-// Mock data
+// Mock data with correct LeadScore structure
 const mockLeads: Lead[] = [
   {
     _id: 'lead-001',
@@ -45,9 +45,12 @@ const mockLeads: Lead[] = [
     source: 'Website',
     score: {
       total: 85,
-      engagement: 90,
-      firmographic: 80,
-      behavioral: 85,
+      factors: {
+        company_size: 20,
+        industry_fit: 25,
+        engagement: 20,
+        timing: 20,
+      },
     },
     owner_id: 'user-001',
     owner_name: 'Test User',
@@ -65,9 +68,12 @@ const mockLeads: Lead[] = [
     source: 'Referral',
     score: {
       total: 45,
-      engagement: 50,
-      firmographic: 40,
-      behavioral: 45,
+      factors: {
+        company_size: 10,
+        industry_fit: 15,
+        engagement: 10,
+        timing: 10,
+      },
     },
     owner_id: 'user-001',
     owner_name: 'Test User',
@@ -84,9 +90,12 @@ const mockLeads: Lead[] = [
     source: 'Trade Show',
     score: {
       total: 25,
-      engagement: 20,
-      firmographic: 30,
-      behavioral: 25,
+      factors: {
+        company_size: 5,
+        industry_fit: 5,
+        engagement: 10,
+        timing: 5,
+      },
     },
     owner_id: 'user-002',
     owner_name: 'Another User',
@@ -285,20 +294,11 @@ describe('LeadsPage', () => {
       expect(convertButtons).toHaveLength(1);
     });
 
-    test('shows confirmation dialog when converting', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ status: 'success', data: mockLeads }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({
-            status: 'pending_confirmation',
-            confirmationId: 'conf-001',
-            message: 'Convert Acme Corp lead to opportunity?',
-          }),
-        });
+    test('opens conversion wizard when convert button clicked', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success', data: mockLeads }),
+      });
 
       render(<LeadsPage />, { wrapper: createWrapper() });
 
@@ -309,8 +309,10 @@ describe('LeadsPage', () => {
       const convertButton = screen.getByTestId('convert-button');
       fireEvent.click(convertButton);
 
+      // Wizard dialog should appear
       await waitFor(() => {
-        expect(screen.getByTestId('confirmation-dialog')).toBeInTheDocument();
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Convert Lead')).toBeInTheDocument();
       });
     });
   });

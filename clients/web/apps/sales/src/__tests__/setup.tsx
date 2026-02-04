@@ -40,19 +40,23 @@ vi.mock('@tamshai/auth', () => ({
   },
 }));
 
-// Mock @tamshai/ui module
-vi.mock('@tamshai/ui', () => ({
-  TruncationWarning: ({ message }: { message: string }) => (
-    <div data-testid="truncation-warning">{message}</div>
-  ),
-  ApprovalCard: ({ message, onComplete }: { message: string; onComplete: (success: boolean) => void }) => (
-    <div data-testid="approval-card">
-      <p>{message}</p>
-      <button onClick={() => onComplete(true)}>Approve</button>
-      <button onClick={() => onComplete(false)}>Reject</button>
-    </div>
-  ),
-}));
+// Mock @tamshai/ui module - import actual Wizard and types
+vi.mock('@tamshai/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tamshai/ui')>();
+  return {
+    ...actual,
+    TruncationWarning: ({ message }: { message: string }) => (
+      <div data-testid="truncation-warning">{message}</div>
+    ),
+    ApprovalCard: ({ message, onComplete }: { message: string; onComplete: (success: boolean) => void }) => (
+      <div data-testid="approval-card">
+        <p>{message}</p>
+        <button onClick={() => onComplete(true)}>Approve</button>
+        <button onClick={() => onComplete(false)}>Reject</button>
+      </div>
+    ),
+  };
+});
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
