@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, canModifySupport, apiConfig } from '@tamshai/auth';
 import { TruncationWarning } from '@tamshai/ui';
-import type { SLASummary, SLAStatus, SLAPolicy, APIResponse } from '../types';
+import SLACountdown from '../components/SLACountdown';
+import EscalationFlowModal from '../components/EscalationFlowModal';
+import type { SLASummary, SLAStatus, SLAPolicy, EscalationTarget, APIResponse } from '../types';
 
 /**
  * SLA Tracking Page
@@ -29,6 +31,8 @@ export default function SLAPage() {
   // State
   const [tierFilter, setTierFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'at_risk' | 'breached' | 'all'>('all');
+  const [escalationTicket, setEscalationTicket] = useState<SLAStatus | null>(null);
+  const [escalationTargets, setEscalationTargets] = useState<EscalationTarget[]>([]);
 
   // Fetch SLA summary
   const { data: summaryResponse, isLoading: summaryLoading, error: summaryError } = useQuery({
@@ -50,7 +54,7 @@ export default function SLAPage() {
   });
 
   // Fetch at-risk tickets
-  const { data: ticketsResponse, isLoading: ticketsLoading, refetch: refetchTickets } = useQuery({
+  const { data: ticketsResponse, isLoading: ticketsLoading } = useQuery({
     queryKey: ['sla-tickets', statusFilter, tierFilter],
     queryFn: async () => {
       const token = getAccessToken();
@@ -98,55 +102,46 @@ export default function SLAPage() {
     },
   });
 
-  // Escalate ticket mutation
-  const escalateMutation = useMutation({
-    mutationFn: async (ticketId: string) => {
-      const token = getAccessToken();
-      if (!token) throw new Error('Not authenticated');
+  // Open escalation modal with targets
+  const handleOpenEscalation = async (ticket: SLAStatus) => {
+    const token = await getAccessToken();
+    if (!token) return;
 
+    try {
       const url = apiConfig.mcpGatewayUrl
-        ? `${apiConfig.mcpGatewayUrl}/api/mcp/support/escalate_ticket`
-        : '/api/mcp/support/escalate_ticket';
+        ? `${apiConfig.mcpGatewayUrl}/api/mcp/support/get_escalation_targets`
+        : '/api/mcp/support/get_escalation_targets';
 
       const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ticketId, reason: 'SLA at risk' }),
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error('Failed to escalate ticket');
-      return response.json() as Promise<APIResponse<void>>;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sla-tickets'] });
-    },
-  });
+
+      if (response.ok) {
+        const result = await response.json() as APIResponse<EscalationTarget[]>;
+        setEscalationTargets(result.data || []);
+      } else {
+        // Default empty targets if API fails
+        setEscalationTargets([]);
+      }
+    } catch {
+      setEscalationTargets([]);
+    }
+
+    setEscalationTicket(ticket);
+  };
+
+  // Handle escalation completion
+  const handleEscalationComplete = () => {
+    setEscalationTicket(null);
+    setEscalationTargets([]);
+    queryClient.invalidateQueries({ queryKey: ['sla-tickets'] });
+    queryClient.invalidateQueries({ queryKey: ['sla-summary'] });
+  };
 
   const summary = summaryResponse?.data;
   const tickets = ticketsResponse?.data || [];
   const isTruncated = ticketsResponse?.metadata?.truncated;
   const isLoading = summaryLoading || ticketsLoading;
-
-  // Format time remaining
-  const formatTimeRemaining = (minutes: number): string => {
-    if (minutes < 0) return 'Breached';
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours < 24) return `${hours}h ${mins}m`;
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return `${days}d ${remainingHours}h`;
-  };
-
-  // Get SLA status color
-  const getSLAStatusColor = (ticket: SLAStatus): string => {
-    if (ticket.is_breached) return 'text-danger-600 bg-danger-50';
-    if (ticket.is_at_risk) return 'text-warning-600 bg-warning-50';
-    return 'text-success-600 bg-success-50';
-  };
 
   // Get compliance color
   const getComplianceColor = (percent: number): string => {
@@ -382,18 +377,12 @@ export default function SLAPage() {
                       </span>
                     </td>
                     <td className="table-cell">
-                      <div className={`inline-flex items-center px-2 py-1 rounded-full text-sm ${getSLAStatusColor(ticket)}`}>
-                        {ticket.is_breached ? (
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )}
-                        {formatTimeRemaining(ticket.time_remaining_minutes)}
-                      </div>
+                      <SLACountdown
+                        timeRemainingMinutes={ticket.time_remaining_minutes}
+                        isAtRisk={ticket.is_at_risk}
+                        isBreached={ticket.is_breached}
+                        liveUpdate
+                      />
                     </td>
                     <td className="table-cell text-sm">{ticket.assigned_to || 'Unassigned'}</td>
                     <td className="table-cell text-sm">{formatDate(ticket.created_at)}</td>
@@ -411,8 +400,7 @@ export default function SLAPage() {
                             </button>
                           )}
                           <button
-                            onClick={() => escalateMutation.mutate(ticket.ticket_id)}
-                            disabled={escalateMutation.isPending}
+                            onClick={() => handleOpenEscalation(ticket)}
                             className="text-warning-600 hover:text-warning-700 text-sm font-medium"
                             data-testid="escalate-button"
                           >
@@ -442,6 +430,19 @@ export default function SLAPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Escalation Flow Modal */}
+      {escalationTicket && (
+        <EscalationFlowModal
+          ticket={escalationTicket}
+          targets={escalationTargets}
+          onClose={() => {
+            setEscalationTicket(null);
+            setEscalationTargets([]);
+          }}
+          onComplete={handleEscalationComplete}
+        />
       )}
     </div>
   );

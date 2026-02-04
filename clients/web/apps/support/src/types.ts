@@ -138,6 +138,35 @@ export interface AgentPerformanceSummary {
 }
 
 /**
+ * Escalation Types
+ */
+export interface EscalationRecord {
+  escalation_id: string;
+  ticket_id: string;
+  escalated_by: string;
+  escalated_by_name: string;
+  escalated_to?: string;
+  escalated_to_name?: string;
+  escalation_level: 'tier1' | 'tier2' | 'management';
+  reason: string;
+  notes?: string;
+  sla_status_at_escalation: {
+    time_remaining_minutes: number;
+    is_breached: boolean;
+    is_at_risk: boolean;
+  };
+  created_at: string;
+}
+
+export interface EscalationTarget {
+  id: string;
+  name: string;
+  role: string;
+  current_workload: number;
+  avg_resolution_minutes: number;
+}
+
+/**
  * API response wrapper
  */
 export interface APIResponse<T> {
