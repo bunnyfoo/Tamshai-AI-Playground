@@ -67,6 +67,10 @@ ENV CURL_CA_BUNDLE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
 
 # The realm recreation script needs curl and jq, both are now available as static binaries
 
+# Security: Explicitly run as keycloak user (UID 1000, inherited from base image)
+# This makes the non-root user explicit for security scanners
+USER 1000
+
 # Start Keycloak in production mode with realm import
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
 CMD ["start", "--optimized", "--import-realm"]
