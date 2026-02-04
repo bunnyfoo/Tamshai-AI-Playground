@@ -92,7 +92,7 @@ describe('TimeOffPage', () => {
 
   describe('Balance Display', () => {
     test('displays time-off type names when data loads', async () => {
-      mockFetch.mockResolvedValueOnce({
+      mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ status: 'success', data: mockBalances }),
       });
@@ -100,7 +100,9 @@ describe('TimeOffPage', () => {
       render(<TimeOffPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Paid Time Off')).toBeInTheDocument();
+        // Multiple elements may contain "Paid Time Off"
+        const ptoElements = screen.getAllByText('Paid Time Off');
+        expect(ptoElements.length).toBeGreaterThan(0);
       });
     });
 
@@ -142,8 +144,8 @@ describe('TimeOffPage', () => {
     });
   });
 
-  describe('Request Form Modal', () => {
-    test('opens request form when button clicked', async () => {
+  describe('Request Wizard', () => {
+    test('opens request wizard when button clicked', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ status: 'success', data: mockBalances }),
@@ -155,7 +157,26 @@ describe('TimeOffPage', () => {
       fireEvent.click(requestButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Time Off Type')).toBeInTheDocument();
+        // Wizard shows step 1 with "Select Type"
+        expect(screen.getByText('Select Type')).toBeInTheDocument();
+      });
+    });
+
+    test('displays time-off types in wizard', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success', data: mockBalances }),
+      });
+
+      render(<TimeOffPage />, { wrapper: createWrapper() });
+
+      const requestButton = screen.getByText('Request Time Off');
+      fireEvent.click(requestButton);
+
+      await waitFor(() => {
+        // Check that balance types are shown in wizard
+        expect(screen.getByTestId('type-option-PTO')).toBeInTheDocument();
+        expect(screen.getByTestId('type-option-SICK')).toBeInTheDocument();
       });
     });
   });

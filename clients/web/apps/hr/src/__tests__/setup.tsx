@@ -1,6 +1,12 @@
 import '@testing-library/jest-dom';
 import React from 'react';
-import { vi } from 'vitest';
+import { cleanup } from '@testing-library/react';
+import { afterEach, vi } from 'vitest';
+
+// Cleanup after each test
+afterEach(() => {
+  cleanup();
+});
 
 // Mock @tamshai/auth module
 vi.mock('@tamshai/auth', () => ({
@@ -29,19 +35,23 @@ vi.mock('@tamshai/auth', () => ({
   },
 }));
 
-// Mock @tamshai/ui module
-vi.mock('@tamshai/ui', () => ({
-  TruncationWarning: ({ message }: { message: string }) => (
-    <div data-testid="truncation-warning">{message}</div>
-  ),
-  ApprovalCard: ({ message, onComplete }: { message: string; onComplete: (success: boolean) => void }) => (
-    <div data-testid="approval-card">
-      <p>{message}</p>
-      <button onClick={() => onComplete(true)}>Approve</button>
-      <button onClick={() => onComplete(false)}>Reject</button>
-    </div>
-  ),
-}));
+// Mock @tamshai/ui module - import actual Wizard and types
+vi.mock('@tamshai/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tamshai/ui')>();
+  return {
+    ...actual,
+    TruncationWarning: ({ message }: { message: string }) => (
+      <div data-testid="truncation-warning">{message}</div>
+    ),
+    ApprovalCard: ({ message, onComplete }: { message: string; onComplete: (success: boolean) => void }) => (
+      <div data-testid="approval-card">
+        <p>{message}</p>
+        <button onClick={() => onComplete(true)}>Approve</button>
+        <button onClick={() => onComplete(false)}>Reject</button>
+      </div>
+    ),
+  };
+});
 
 // Mock window.matchMedia for responsive components
 Object.defineProperty(window, 'matchMedia', {

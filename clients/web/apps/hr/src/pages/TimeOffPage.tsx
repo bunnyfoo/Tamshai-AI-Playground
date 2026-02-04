@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, apiConfig, canModifyHR } from '@tamshai/auth';
 import { ApprovalCard, TruncationWarning } from '@tamshai/ui';
-import type { TimeOffBalance, TimeOffRequest, APIResponse } from '../types';
+import TimeOffRequestWizard from '../components/TimeOffRequestWizard';
+import type { TimeOffBalance, TimeOffRequest, APIResponse, Employee } from '../types';
 
 /**
  * Time-Off Management Page
@@ -418,142 +419,21 @@ export default function TimeOffPage() {
         </>
       )}
 
-      {/* Request Form Modal */}
+      {/* Request Wizard Modal */}
       {showRequestForm && (
-        <TimeOffRequestForm
-          onClose={() => setShowRequestForm(false)}
-          onSubmit={(data) => submitRequestMutation.mutate(data)}
-          isSubmitting={submitRequestMutation.isPending}
+        <TimeOffRequestWizard
           balances={balances}
+          existingRequests={requests}
+          manager={null} // TODO: Fetch manager info
+          onClose={() => setShowRequestForm(false)}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ['time-off-requests'] });
+            queryClient.invalidateQueries({ queryKey: ['time-off-balances'] });
+            setShowRequestForm(false);
+          }}
         />
       )}
     </div>
   );
 }
 
-/**
- * Time-Off Request Form Modal
- */
-function TimeOffRequestForm({
-  onClose,
-  onSubmit,
-  isSubmitting,
-  balances,
-}: {
-  onClose: () => void;
-  onSubmit: (data: { type_code: string; start_date: string; end_date: string; notes?: string }) => void;
-  isSubmitting: boolean;
-  balances: TimeOffBalance[];
-}) {
-  const [typeCode, setTypeCode] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [notes, setNotes] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!typeCode || !startDate || !endDate) return;
-    onSubmit({ type_code: typeCode, start_date: startDate, end_date: endDate, notes: notes || undefined });
-  };
-
-  const selectedBalance = balances.find(b => b.type_code === typeCode);
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="px-6 py-4 border-b border-secondary-200">
-          <h3 className="text-lg font-semibold text-secondary-900">Request Time Off</h3>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="px-6 py-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">
-                Time Off Type
-              </label>
-              <select
-                value={typeCode}
-                onChange={(e) => setTypeCode(e.target.value)}
-                className="input w-full"
-                required
-              >
-                <option value="">Select type...</option>
-                {balances.map((balance) => (
-                  <option key={balance.type_code} value={balance.type_code}>
-                    {balance.type_name} ({balance.available} days available)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedBalance && (
-              <div className="p-3 bg-primary-50 rounded-lg">
-                <div className="text-sm text-primary-700">
-                  Available: <span className="font-bold">{selectedBalance.available} days</span>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="input w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                  className="input w-full"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">
-                Notes (optional)
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="input w-full"
-                rows={3}
-                placeholder="Any additional details..."
-              />
-            </div>
-          </div>
-
-          <div className="px-6 py-4 bg-secondary-50 border-t border-secondary-200 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={isSubmitting || !typeCode || !startDate || !endDate}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Request'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
