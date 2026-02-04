@@ -1107,33 +1107,36 @@ app.post('/execute', async (req: Request, res: Response) => {
 // SERVER STARTUP
 // =============================================================================
 
-const server = app.listen(PORT, async () => {
-  logger.info(`MCP Sales Server listening on port ${PORT}`);
-  logger.info('Architecture version: 1.4');
-  const dbHealthy = await checkConnection();
-  if (dbHealthy) {
-    logger.info('Database connection: OK');
-  } else {
-    logger.error('Database connection: FAILED');
-  }
-});
-
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, closing server...');
-  server.close(async () => {
-    await closeConnection();
-    logger.info('Server closed');
-    process.exit(0);
+// Only start server when run directly, not when imported for testing
+if (require.main === module) {
+  const server = app.listen(PORT, async () => {
+    logger.info(`MCP Sales Server listening on port ${PORT}`);
+    logger.info('Architecture version: 1.4');
+    const dbHealthy = await checkConnection();
+    if (dbHealthy) {
+      logger.info('Database connection: OK');
+    } else {
+      logger.error('Database connection: FAILED');
+    }
   });
-});
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, closing server...');
-  server.close(async () => {
-    await closeConnection();
-    logger.info('Server closed');
-    process.exit(0);
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received, closing server...');
+    server.close(async () => {
+      await closeConnection();
+      logger.info('Server closed');
+      process.exit(0);
+    });
   });
-});
+
+  process.on('SIGINT', async () => {
+    logger.info('SIGINT received, closing server...');
+    server.close(async () => {
+      await closeConnection();
+      logger.info('Server closed');
+      process.exit(0);
+    });
+  });
+}
 
 export default app;

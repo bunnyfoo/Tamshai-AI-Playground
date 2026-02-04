@@ -14,6 +14,7 @@ module.exports = {
     '!src/**/__tests__/**',
     '!src/**/*.test.ts',
     '!src/index.ts', // Excluded: Main server file, covered by integration tests
+    '!src/test-utils/**', // Test utilities are not production code
   ],
   coverageThreshold: {
     global: {
