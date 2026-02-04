@@ -5,6 +5,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/sales-tax', label: 'Sales Tax Rates', icon: '🏷️' },
   { path: '/quarterly', label: 'Quarterly Estimates', icon: '📅' },
+  { path: '/quarterly-filings', label: 'Filing Review', icon: '✅' },
   { path: '/filings', label: 'Annual Filings', icon: '📋' },
   { path: '/registrations', label: 'State Registrations', icon: '📍' },
   { path: '/audit-log', label: 'Audit Log', icon: '📜' },

@@ -7,6 +7,7 @@ import {
   DashboardPage,
   SalesTaxPage,
   QuarterlyEstimatesPage,
+  QuarterlyFilingReviewPage,
   AnnualFilingsPage,
   StateRegistrationsPage,
   AuditLogPage,
@@ -51,6 +52,7 @@ function App() {
         <Route index element={<DashboardPage />} />
         <Route path="sales-tax" element={<SalesTaxPage />} />
         <Route path="quarterly" element={<QuarterlyEstimatesPage />} />
+        <Route path="quarterly-filings" element={<QuarterlyFilingReviewPage />} />
         <Route path="filings" element={<AnnualFilingsPage />} />
         <Route path="registrations" element={<StateRegistrationsPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />

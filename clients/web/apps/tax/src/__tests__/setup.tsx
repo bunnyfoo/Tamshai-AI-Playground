@@ -78,6 +78,73 @@ vi.mock('@tamshai/ui', () => ({
         <button onClick={onClose}>Close</button>
       </div>
     ) : null,
+  DataTable: ({ data, columns, emptyState }: { data: any[]; columns: any[]; emptyState?: React.ReactNode }) => (
+    <div data-testid="data-table">
+      {data.length === 0 ? (
+        emptyState
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              {columns.map((col: any) => (
+                <th key={col.id}>{col.header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row: any, i: number) => (
+              <tr key={row.id || i}>
+                {columns.map((col: any) => (
+                  <td key={col.id}>
+                    {col.cell ? col.cell({ row: { original: row } }) : col.accessorFn?.(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  ),
+  ConfirmDialog: ({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) => (
+    isOpen ? <div role="dialog" data-testid="confirm-dialog">{children}</div> : null
+  ),
+  Wizard: ({ children, isOpen, onClose, title, steps, currentStep, onNext, onPrevious, showBreadcrumbs, canProceed, isLastStep }: any) => (
+    isOpen ? (
+      <div role="dialog" className="wizard" aria-labelledby="wizard-title">
+        <h2 id="wizard-title">{title}</h2>
+        {showBreadcrumbs && (
+          <nav aria-label="Wizard progress">
+            <ul>
+              {steps.map((step: any, index: number) => (
+                <li key={step.id} aria-current={index === currentStep ? 'step' : undefined}>
+                  {step.title}
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+        <main role="main">
+          <p>Step {currentStep + 1} of {steps.length}</p>
+          <h2>{steps[currentStep].title}</h2>
+          {children}
+        </main>
+        <div>
+          {currentStep > 0 && <button onClick={onPrevious}>Previous</button>}
+          {!isLastStep && <button onClick={onNext} disabled={!canProceed}>Next</button>}
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    ) : null
+  ),
+  WizardStep: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AuditTrail: ({ entries, compact }: { entries: any[]; compact?: boolean }) => (
+    <div data-testid="audit-trail">
+      {entries.map((entry: any) => (
+        <div key={entry.id}>{entry.action} - {entry.user}</div>
+      ))}
+    </div>
+  ),
 }));
 
 // Mock fetch globally
