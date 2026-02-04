@@ -1,0 +1,413 @@
+# Tamshai Testing Guide
+
+Complete guide for running unit tests, integration tests, and obtaining test coverage metrics.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Docker Port Reference](#docker-port-reference)
+- [Obtaining Secrets](#obtaining-secrets)
+- [Running Unit Tests](#running-unit-tests)
+- [Running Integration Tests](#running-integration-tests)
+- [Test Coverage](#test-coverage)
+- [TOTP Management](#totp-management)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Prerequisites
+
+1. **Docker Desktop** running with all containers healthy
+2. **Node.js 20+** and npm 10+
+3. **GitHub CLI (gh)** authenticated with `bunnyfoo` account
+4. **Bash shell** (Git Bash on Windows)
+
+Verify Docker containers are running:
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}" | grep tamshai-pg
+```
+
+---
+
+## Docker Port Reference
+
+| Service | Container Name | Internal Port | External Port |
+|---------|---------------|---------------|---------------|
+| **Keycloak** | tamshai-pg-keycloak | 8080 | **8190** |
+| **MCP Gateway** | tamshai-pg-mcp-gateway | 3110 | **3110** |
+| **MCP HR** | tamshai-pg-mcp-hr | 3111 | **3111** |
+| **MCP Finance** | tamshai-pg-mcp-finance | 3112 | **3112** |
+| **MCP Sales** | tamshai-pg-mcp-sales | 3113 | **3113** |
+| **MCP Support** | tamshai-pg-mcp-support | 3114 | **3114** |
+| **MCP Journey** | tamshai-pg-mcp-journey | 3115 | **3115** |
+| **MCP Payroll** | tamshai-pg-mcp-payroll | 3116 | **3116** |
+| **MCP Tax** | tamshai-pg-mcp-tax | 3117 | **3117** |
+| **PostgreSQL** | tamshai-pg-postgres | 5432 | **5443** |
+| **Redis** | tamshai-pg-redis | 6379 | **6390** |
+| **Caddy (HTTPS)** | tamshai-pg-caddy | 443 | **8443** |
+
+**URL Patterns:**
+- Keycloak Admin: `http://127.0.0.1:8190/auth/admin`
+- Keycloak Token: `http://127.0.0.1:8190/auth/realms/tamshai-corp/protocol/openid-connect/token`
+- MCP Gateway Health: `http://127.0.0.1:3110/health`
+
+---
+
+## Obtaining Secrets
+
+Secrets are stored in GitHub and retrieved via workflow dispatch.
+
+### Required Secrets
+
+| Secret | Purpose | Used By |
+|--------|---------|---------|
+| `DEV_USER_PASSWORD` | Password for test users (alice.chen, bob.martinez, etc.) | Integration tests |
+| `KEYCLOAK_CLIENT_SECRET` | mcp-gateway client secret | Integration tests |
+| `CLAUDE_API_KEY` | Anthropic API key for AI queries | SSE streaming tests |
+
+### Retrieve Secrets
+
+```bash
+# Get all secrets
+./scripts/secrets/read-github-secrets.sh --all
+
+# Get user passwords only
+./scripts/secrets/read-github-secrets.sh --user-passwords
+
+# Export as environment variables
+eval $(./scripts/secrets/read-github-secrets.sh --all --env)
+```
+
+**Output Example:**
+```
+==========================================
+Retrieved Secrets (all)
+==========================================
+CLAUDE_API_KEY=sk-ant-api03-<REDACTED>
+DEV_USER_PASSWORD=<REDACTED>
+TEST_USER_PASSWORD=<REDACTED>
+==========================================
+```
+
+### Keycloak Client Secret
+
+The `mcp-gateway` client secret can also be retrieved directly from Keycloak:
+
+```bash
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://localhost:8080/auth --realm master --user admin --password admin
+
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh get clients -r tamshai-corp \
+  --fields clientId,secret -q clientId=mcp-gateway
+```
+
+**Note:** Retrieve via the kcadm.sh command above or from GitHub secrets.
+
+---
+
+## Running Unit Tests
+
+### Service Unit Tests
+
+```bash
+# MCP Gateway
+cd services/mcp-gateway
+npm test                    # Run all tests
+npm test -- --coverage      # With coverage
+npm test -- --watch         # Watch mode for TDD
+
+# MCP HR
+cd services/mcp-hr
+npm test
+
+# MCP Finance
+cd services/mcp-finance
+npm test
+
+# All services (from repo root)
+npm run test:services
+```
+
+### Web App Unit Tests (Vitest)
+
+```bash
+cd clients/web
+
+# All apps
+npm test
+
+# Specific app
+npm test -- --filter finance
+npm test -- --filter sales
+npm test -- --filter support
+npm test -- --filter hr
+npm test -- --filter payroll
+
+# With coverage
+npm test -- --coverage
+```
+
+---
+
+## Running Integration Tests
+
+### Quick Start
+
+```bash
+cd tests/integration
+
+# Set required environment variables (get values from ./scripts/secrets/read-github-secrets.sh)
+export DEV_USER_PASSWORD='<from-github-secrets>'
+export KEYCLOAK_CLIENT_SECRET='<from-keycloak-or-github-secrets>'
+
+# Run all integration tests
+npm test
+
+# Run specific test file
+npm test -- rbac.test.ts
+npm test -- mcp-gateway-proxy.test.ts
+npm test -- sse-streaming.test.ts
+```
+
+### One-Liner with Secrets
+
+```bash
+cd tests/integration && \
+  DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
+  KEYCLOAK_CLIENT_SECRET="$KEYCLOAK_CLIENT_SECRET" \
+  npm test
+```
+
+### Test Files
+
+| Test File | Description | Duration |
+|-----------|-------------|----------|
+| `rbac.test.ts` | Role-based access control | ~45s |
+| `mcp-gateway-proxy.test.ts` | MCP endpoint routing | ~3s |
+| `mcp-tools.test.ts` | MCP tool invocations | ~60s |
+| `sse-streaming.test.ts` | AI query streaming | ~120s |
+| `query-scenarios.test.ts` | Natural language queries | ~90s |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KEYCLOAK_URL` | `http://127.0.0.1:8190/auth` | Keycloak base URL |
+| `KEYCLOAK_REALM` | `tamshai-corp` | Realm name |
+| `GATEWAY_URL` | `http://127.0.0.1:3110` | MCP Gateway URL |
+| `MCP_HR_URL` | `http://127.0.0.1:3111` | MCP HR URL |
+| `MCP_FINANCE_URL` | `http://127.0.0.1:3112` | MCP Finance URL |
+| `MCP_SALES_URL` | `http://127.0.0.1:3113` | MCP Sales URL |
+| `MCP_SUPPORT_URL` | `http://127.0.0.1:3114` | MCP Support URL |
+| `DEV_USER_PASSWORD` | (required) | Test user password |
+| `KEYCLOAK_CLIENT_SECRET` | `test-client-secret` | mcp-gateway secret |
+
+---
+
+## Test Coverage
+
+### Service Coverage (Jest)
+
+```bash
+cd services/mcp-gateway
+npm test -- --coverage
+
+# Coverage report locations:
+# - Terminal summary
+# - coverage/lcov-report/index.html (HTML report)
+# - coverage/lcov.info (for CI tools)
+```
+
+### Web App Coverage (Vitest)
+
+```bash
+cd clients/web
+
+# Install coverage provider (first time)
+npm install -D @vitest/coverage-v8
+
+# Run with coverage
+npm test -- --coverage
+
+# Coverage report by app
+npm test -- --filter finance --coverage
+```
+
+### Coverage Thresholds
+
+| Component | Statements | Branches | Functions | Lines |
+|-----------|------------|----------|-----------|-------|
+| MCP Gateway | 31% | 29% | 31% | 31% |
+| Finance App | 75% | 65% | 76% | 77% |
+| Sales App | 73% | 64% | 74% | 76% |
+| Support App | 81% | 69% | 87% | 83% |
+| HR App | 65% | 57% | 57% | 69% |
+
+**Strategy:** 90% coverage required on new code (diff coverage).
+
+---
+
+## TOTP Management
+
+Integration tests use direct access grants which bypass TOTP. However, user accounts may have `CONFIGURE_TOTP` required action which blocks authentication.
+
+### Check User TOTP Status
+
+```bash
+# Get user ID
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh get users -r tamshai-corp \
+  -q username=alice.chen --fields id,requiredActions
+```
+
+### Disable TOTP Requirement (for testing)
+
+```bash
+# Get admin credentials
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh config credentials \
+  --server http://localhost:8080/auth --realm master --user admin --password admin
+
+# Clear requiredActions for a user
+USER_ID="d3f27af0-3fd7-4e89-beca-b005f997003c"  # alice.chen
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh update users/$USER_ID -r tamshai-corp \
+  -s 'requiredActions=[]' -s 'enabled=true'
+```
+
+### Re-enable TOTP Requirement
+
+```bash
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh update users/$USER_ID -r tamshai-corp \
+  -s 'requiredActions=["CONFIGURE_TOTP"]'
+```
+
+### Automatic TOTP Handling
+
+The `jest.setup.js` file automatically:
+1. **Before tests:** Removes `CONFIGURE_TOTP` from all test users
+2. **After tests:** Restores `CONFIGURE_TOTP` for users without OTP credentials
+
+---
+
+## Troubleshooting
+
+### Common Errors
+
+#### "Services not ready for integration tests"
+
+```
+❌ Some services are not healthy. Please start all services:
+   cd infrastructure/docker && docker compose up -d
+```
+
+**Solution:** Verify containers are running and healthy:
+```bash
+docker ps --filter "name=tamshai-pg" --format "{{.Names}}: {{.Status}}"
+```
+
+#### "Account is not fully set up"
+
+```
+{"error":"invalid_grant","error_description":"Account is not fully set up"}
+```
+
+**Solution:** Clear user's requiredActions:
+```bash
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh update users/<USER_ID> -r tamshai-corp \
+  -s 'requiredActions=[]'
+```
+
+#### "Invalid user credentials"
+
+**Solution:** Reset the user's password:
+```bash
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh set-password -r tamshai-corp \
+  --username alice.chen --new-password "$DEV_USER_PASSWORD"
+```
+
+#### "jwt audience invalid. expected: mcp-gateway"
+
+**Solution:** Add audience mapper to mcp-gateway client:
+```bash
+# Get client ID
+CLIENT_ID=$(MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh get clients -r tamshai-corp \
+  -q clientId=mcp-gateway --fields id | jq -r '.[0].id')
+
+# Add audience mapper
+MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
+  /opt/keycloak/bin/kcadm.sh create clients/$CLIENT_ID/protocol-mappers/models \
+  -r tamshai-corp \
+  -s 'name=mcp-gateway-audience' \
+  -s 'protocol=openid-connect' \
+  -s 'protocolMapper=oidc-audience-mapper' \
+  -s 'config."included.client.audience"=mcp-gateway' \
+  -s 'config."id.token.claim"=true' \
+  -s 'config."access.token.claim"=true'
+```
+
+#### "ECONNREFUSED" or "503 Service Unavailable"
+
+**Solution:** Check specific service health:
+```bash
+curl http://127.0.0.1:3110/health  # Gateway
+curl http://127.0.0.1:3111/health  # HR
+curl http://127.0.0.1:3112/health  # Finance
+```
+
+Restart unhealthy container:
+```bash
+docker restart tamshai-pg-mcp-gateway
+```
+
+### Debug Token Contents
+
+```bash
+# Get token and decode (requires DEV_USER_PASSWORD and KEYCLOAK_CLIENT_SECRET env vars)
+TOKEN=$(curl -s -X POST 'http://127.0.0.1:8190/auth/realms/tamshai-corp/protocol/openid-connect/token' \
+  -d 'grant_type=password' \
+  -d 'client_id=mcp-gateway' \
+  -d "client_secret=$KEYCLOAK_CLIENT_SECRET" \
+  -d 'username=alice.chen' \
+  -d "password=$DEV_USER_PASSWORD" \
+  -d 'scope=openid' | jq -r '.access_token')
+
+# Decode payload
+echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | jq '.realm_access.roles'
+```
+
+### Clean Test Artifacts
+
+```bash
+# Remove temporary files created during testing
+rm -f bob_token.json token.json response.json expense_response.json finance_response.json
+rm -f tests/integration/test_output.txt
+rm -rf tests/e2e/.auth/
+rm -rf clients/web/.turbo/cache/
+```
+
+---
+
+## Test Users
+
+| Username | Role | Department | Password |
+|----------|------|------------|----------|
+| eve.thompson | executive | Executive | (DEV_USER_PASSWORD) |
+| alice.chen | hr-read, hr-write | HR | (DEV_USER_PASSWORD) |
+| bob.martinez | finance-read, finance-write | Finance | (DEV_USER_PASSWORD) |
+| carol.johnson | sales-read, sales-write | Sales | (DEV_USER_PASSWORD) |
+| dan.williams | support-read, support-write | Support | (DEV_USER_PASSWORD) |
+| nina.patel | manager | Engineering | (DEV_USER_PASSWORD) |
+| marcus.johnson | employee | Engineering | (DEV_USER_PASSWORD) |
+| frank.davis | (none) | IT Intern | (DEV_USER_PASSWORD) |
+
+---
+
+*Last Updated: February 2026*
