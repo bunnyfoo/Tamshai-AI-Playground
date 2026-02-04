@@ -24,13 +24,12 @@ vi.mock('@tamshai/auth', () => ({
   },
 }));
 
-// Mock window.print and clipboard
+// Mock window.print
 const mockPrint = vi.fn();
-const mockWriteText = vi.fn();
-Object.defineProperty(window, 'print', { value: mockPrint });
-Object.defineProperty(navigator, 'clipboard', {
-  value: { writeText: mockWriteText },
-});
+Object.defineProperty(window, 'print', { value: mockPrint, configurable: true });
+
+// Mock clipboard - define as a writable mock that can be reassigned
+const mockWriteText = vi.fn().mockResolvedValue(undefined);
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
@@ -105,6 +104,13 @@ describe('ArticleDetailPage', () => {
     mockFetch.mockReset();
     mockPrint.mockReset();
     mockWriteText.mockReset();
+    mockWriteText.mockResolvedValue(undefined);
+    // Ensure clipboard is properly mocked for each test
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: mockWriteText },
+      configurable: true,
+      writable: true,
+    });
   });
 
   describe('Content Display', () => {
@@ -120,7 +126,8 @@ describe('ArticleDetailPage', () => {
         expect(screen.getByTestId('article-title')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('VPN Troubleshooting Guide')).toBeInTheDocument();
+      // Title appears in multiple places (breadcrumb, h1, markdown content), so use getByTestId
+      expect(screen.getByTestId('article-title')).toHaveTextContent('VPN Troubleshooting Guide');
     });
 
     test('renders article content', async () => {
@@ -148,7 +155,8 @@ describe('ArticleDetailPage', () => {
         expect(screen.getByTestId('article-category')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Network')).toBeInTheDocument();
+      // Category badge should contain the text
+      expect(screen.getByTestId('article-category')).toHaveTextContent('Network');
     });
 
     test('displays article tags', async () => {
@@ -334,7 +342,11 @@ describe('ArticleDetailPage', () => {
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ status: 'success' }),
+          json: () => Promise.resolve({ status: 'success', data: [] }), // related articles
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ status: 'success' }), // feedback submission
         });
 
       render(<ArticleDetailPage />, { wrapper: createWrapper() });
@@ -405,8 +417,6 @@ describe('ArticleDetailPage', () => {
 
   describe('Print and Share', () => {
     test('print button triggers print', async () => {
-      const user = userEvent.setup();
-
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ status: 'success', data: mockArticle }),
@@ -418,12 +428,12 @@ describe('ArticleDetailPage', () => {
         expect(screen.getByTestId('print-button')).toBeInTheDocument();
       });
 
-      await user.click(screen.getByTestId('print-button'));
+      // Use fireEvent instead of userEvent to avoid potential conflicts
+      fireEvent.click(screen.getByTestId('print-button'));
       expect(mockPrint).toHaveBeenCalled();
     });
 
     test('copy link button copies URL', async () => {
-      const user = userEvent.setup();
       mockWriteText.mockResolvedValue(undefined);
 
       mockFetch.mockResolvedValueOnce({
@@ -437,8 +447,12 @@ describe('ArticleDetailPage', () => {
         expect(screen.getByTestId('copy-link-button')).toBeInTheDocument();
       });
 
-      await user.click(screen.getByTestId('copy-link-button'));
-      expect(mockWriteText).toHaveBeenCalled();
+      // Use fireEvent instead of userEvent to avoid clipboard mock conflict
+      fireEvent.click(screen.getByTestId('copy-link-button'));
+
+      await waitFor(() => {
+        expect(mockWriteText).toHaveBeenCalled();
+      });
     });
   });
 });

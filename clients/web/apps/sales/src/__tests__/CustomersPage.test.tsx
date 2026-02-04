@@ -92,11 +92,14 @@ describe('CustomersPage', () => {
       render(<CustomersPage />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(screen.getByText('Company Name')).toBeInTheDocument();
-        expect(screen.getByText('Industry')).toBeInTheDocument();
-        expect(screen.getByText('Primary Contact')).toBeInTheDocument();
-        expect(screen.getByText('Location')).toBeInTheDocument();
-        expect(screen.getByText('Actions')).toBeInTheDocument();
+        // Use getAllByRole to find table headers specifically, as some text appears in multiple places
+        const headers = screen.getAllByRole('columnheader');
+        const headerTexts = headers.map(h => h.textContent);
+        expect(headerTexts).toContain('Company Name');
+        expect(headerTexts).toContain('Industry');
+        expect(headerTexts).toContain('Primary Contact');
+        expect(headerTexts).toContain('Location');
+        expect(headerTexts).toContain('Actions');
       });
     });
 
