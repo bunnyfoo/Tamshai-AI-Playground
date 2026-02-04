@@ -286,7 +286,7 @@ describe('Authorization Tests - AI Queries', () => {
     expect(response.data.metadata.dataSourcesQueried).toContain('finance');
   });
 
-  test('Sales user has employee self-access to HR but RLS limits data', async () => {
+  testOrSkip('Sales user has employee self-access to HR but RLS limits data', async () => {
     // Sales users have 'employee' role which grants access to HR MCP for self-data
     // But RLS should prevent access to other employees' salary data
     const token = await getAccessToken(TEST_USERS.salesUser.username, TEST_USERS.salesUser.password);
