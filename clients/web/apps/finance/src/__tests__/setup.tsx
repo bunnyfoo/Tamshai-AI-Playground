@@ -41,6 +41,144 @@ vi.mock('@tamshai/ui', () => ({
       <button onClick={() => onComplete(false)}>Reject</button>
     </div>
   ),
+  DataTable: ({
+    data,
+    columns,
+    keyField,
+    selectable,
+    selectedRows = [],
+    onSelectionChange,
+    bulkActions = [],
+    onBulkAction,
+    rowActions,
+  }: any) => (
+    <div data-testid="data-table">
+      {selectable && selectedRows.length > 0 && bulkActions.length > 0 && (
+        <div data-testid="bulk-action-toolbar" role="toolbar" aria-label="Bulk actions">
+          <span data-testid="selected-count" role="status" aria-live="polite">
+            {selectedRows.length} {selectedRows.length === 1 ? 'item' : 'items'} selected
+          </span>
+          <button onClick={() => onSelectionChange?.([])}>
+            Clear
+          </button>
+          {bulkActions.map((action: any) => (
+            <button
+              key={action.id}
+              data-testid={`bulk-action-${action.id}`}
+              onClick={() => {
+                const selectedItems = data.filter((row: any) => selectedRows.includes(row[keyField]));
+                onBulkAction?.(action.id, selectedItems);
+              }}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <table role="grid" aria-multiselectable={selectable ? 'true' : undefined}>
+        <thead role="rowgroup" aria-label="table header">
+          <tr>
+            {selectable && (
+              <th>
+                <input
+                  type="checkbox"
+                  data-testid="select-all-checkbox"
+                  aria-label="Select all rows"
+                  checked={selectedRows.length === data.length && data.length > 0}
+                  data-indeterminate={selectedRows.length > 0 && selectedRows.length < data.length ? 'true' : undefined}
+                  ref={(el) => {
+                    if (el) {
+                      el.indeterminate = selectedRows.length > 0 && selectedRows.length < data.length;
+                    }
+                  }}
+                  onChange={() => {
+                    if (selectedRows.length === data.length) {
+                      onSelectionChange?.([]);
+                    } else {
+                      onSelectionChange?.(data.map((row: any) => row[keyField]));
+                    }
+                  }}
+                />
+              </th>
+            )}
+            {columns.map((col: any) => (
+              <th key={col.id} role="columnheader">{col.header}</th>
+            ))}
+            {rowActions && <th>Actions</th>}
+          </tr>
+        </thead>
+        <tbody role="rowgroup">
+          {data.map((row: any) => {
+            const rowId = row[keyField];
+            const isSelected = selectedRows.includes(rowId);
+            return (
+              <tr key={rowId} role="row" aria-selected={isSelected} data-selected={isSelected ? 'true' : undefined}>
+                {selectable && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      data-testid="row-checkbox"
+                      aria-label={`Select row: ${row[columns[0]?.accessor]}`}
+                      checked={isSelected}
+                      onChange={() => {
+                        if (isSelected) {
+                          onSelectionChange?.(selectedRows.filter((id: string) => id !== rowId));
+                        } else {
+                          onSelectionChange?.([...selectedRows, rowId]);
+                        }
+                      }}
+                    />
+                  </td>
+                )}
+                {columns.map((col: any) => {
+                  const value = typeof col.accessor === 'function' ? col.accessor(row) : row[col.accessor];
+                  const content = col.cell ? col.cell(value, row) : value;
+                  return <td key={col.id} role="gridcell">{content}</td>;
+                })}
+                {rowActions && <td>{rowActions(row)}</td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  ),
+  ConfirmDialog: ({
+    isOpen,
+    title,
+    message,
+    confirmLabel = 'Confirm',
+    cancelLabel = 'Cancel',
+    isLoading,
+    showReasonInput,
+    onConfirm,
+    onCancel,
+    details,
+  }: any) => isOpen ? (
+    <div role="dialog" aria-modal="true" data-testid="confirm-dialog">
+      <h2>{title}</h2>
+      <p>{message}</p>
+      {details && (
+        <dl>
+          {Object.entries(details).map(([key, value]) => (
+            <div key={key}>
+              <dt>{key}:</dt>
+              <dd>{String(value)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {showReasonInput && (
+        <textarea data-testid="reason-input" name="reason" />
+      )}
+      <button data-testid="cancel-action" onClick={onCancel} disabled={isLoading}>
+        {cancelLabel}
+      </button>
+      <button data-testid="confirm-action" onClick={() => onConfirm()} disabled={isLoading}>
+        {isLoading ? 'Processing...' : confirmLabel}
+      </button>
+    </div>
+  ) : null,
 }));
 
 // Mock window.matchMedia for responsive components

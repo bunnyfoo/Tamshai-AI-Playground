@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth, canModifyFinance, apiConfig } from '@tamshai/auth';
-import { ApprovalCard, TruncationWarning, DataTable } from '@tamshai/ui';
+import { ApprovalCard, TruncationWarning, DataTable, ConfirmDialog } from '@tamshai/ui';
 import type { ColumnDef, BulkAction } from '@tamshai/ui';
 import type { Invoice } from '../types';
 
@@ -50,7 +50,7 @@ export function InvoicesPage() {
   // Selection state for bulk operations
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
-  // Confirmation state
+  // Confirmation state (API-based human-in-the-loop)
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     confirmationId: string;
     message: string;
@@ -58,6 +58,14 @@ export function InvoicesPage() {
     invoices?: Invoice[];
     action: 'approve' | 'delete' | 'pay' | 'bulk_approve' | 'bulk_reject';
   } | null>(null);
+
+  // Local bulk action confirmation dialog state
+  const [bulkConfirmDialog, setBulkConfirmDialog] = useState<{
+    isOpen: boolean;
+    action: string;
+    invoices: Invoice[];
+    isProcessing: boolean;
+  }>({ isOpen: false, action: '', invoices: [], isProcessing: false });
 
   // Helper functions (defined early for use in callbacks)
   const formatCurrency = useCallback((amount: number): string => {
@@ -293,22 +301,52 @@ export function InvoicesPage() {
     },
   });
 
-  // Handle bulk actions
+  // Handle bulk actions - show confirmation dialog first
   const handleBulkAction = useCallback((actionId: string, selectedItems: Invoice[]) => {
-    const selectedIds = selectedItems.map((i) => i.id);
-
-    switch (actionId) {
-      case 'approve':
-        bulkApproveMutation.mutate(selectedIds);
-        break;
-      case 'export':
-        // Export selected invoices as CSV
-        handleExportInvoices(selectedItems);
-        break;
-      default:
-        console.warn('Unknown bulk action:', actionId);
+    if (actionId === 'export') {
+      // Export doesn't need confirmation
+      handleExportInvoices(selectedItems);
+      return;
     }
-  }, [bulkApproveMutation]);
+
+    // Show confirmation dialog for approve/reject actions
+    setBulkConfirmDialog({
+      isOpen: true,
+      action: actionId,
+      invoices: selectedItems,
+      isProcessing: false,
+    });
+  }, []);
+
+  // Execute bulk action after confirmation
+  const handleBulkConfirm = useCallback(async (reason?: string) => {
+    const { action, invoices: selectedInvoices } = bulkConfirmDialog;
+    const selectedIds = selectedInvoices.map((i) => i.id);
+
+    setBulkConfirmDialog((prev) => ({ ...prev, isProcessing: true }));
+
+    try {
+      switch (action) {
+        case 'approve':
+          await bulkApproveMutation.mutateAsync(selectedIds);
+          break;
+        case 'reject':
+          // TODO: Implement bulk reject with reason
+          console.log('Bulk reject with reason:', reason);
+          break;
+        default:
+          console.warn('Unknown bulk action:', action);
+      }
+      setSelectedRows([]);
+    } finally {
+      setBulkConfirmDialog({ isOpen: false, action: '', invoices: [], isProcessing: false });
+    }
+  }, [bulkConfirmDialog, bulkApproveMutation]);
+
+  // Cancel bulk action
+  const handleBulkCancel = useCallback(() => {
+    setBulkConfirmDialog({ isOpen: false, action: '', invoices: [], isProcessing: false });
+  }, []);
 
   // Export invoices as CSV
   const handleExportInvoices = (invoicesToExport: Invoice[]) => {
@@ -410,6 +448,12 @@ export function InvoicesPage() {
         id: 'approve',
         label: 'Approve',
         variant: 'primary',
+        requiresConfirmation: true,
+      },
+      {
+        id: 'reject',
+        label: 'Reject',
+        variant: 'destructive',
         requiresConfirmation: true,
       },
       {
@@ -573,9 +617,29 @@ export function InvoicesPage() {
         <p className="page-subtitle">Manage vendor invoices and payments</p>
       </div>
 
-      {/* Pending Confirmation */}
+      {/* Bulk Action Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={bulkConfirmDialog.isOpen}
+        title={`${bulkConfirmDialog.action === 'approve' ? 'Approve' : 'Reject'} Invoices`}
+        message={`Are you sure you want to ${bulkConfirmDialog.action} ${bulkConfirmDialog.invoices.length} invoice${bulkConfirmDialog.invoices.length !== 1 ? 's' : ''}?`}
+        confirmLabel={bulkConfirmDialog.action === 'approve' ? 'Approve' : 'Reject'}
+        variant={bulkConfirmDialog.action === 'reject' ? 'destructive' : 'primary'}
+        isLoading={bulkConfirmDialog.isProcessing}
+        showReasonInput={bulkConfirmDialog.action === 'reject'}
+        reasonPlaceholder="Enter reason for rejection..."
+        onConfirm={handleBulkConfirm}
+        onCancel={handleBulkCancel}
+        details={{
+          count: bulkConfirmDialog.invoices.length,
+          totalAmount: formatCurrency(
+            bulkConfirmDialog.invoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0)
+          ),
+        }}
+      />
+
+      {/* Pending Confirmation (API-based human-in-the-loop) */}
       {pendingConfirmation && (
-        <div className="mb-6" data-testid="confirmation-dialog">
+        <div className="mb-6" data-testid="api-confirmation">
           <ApprovalCard
             confirmationId={pendingConfirmation.confirmationId}
             message={pendingConfirmation.message}
