@@ -177,9 +177,30 @@ npm test -- sse-streaming.test.ts
 ```bash
 cd tests/integration && \
   DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
-  KEYCLOAK_CLIENT_SECRET="$KEYCLOAK_CLIENT_SECRET" \
   npm test
 ```
+
+### MCP Gateway Integration Tests
+
+The MCP Gateway has its own integration tests in `services/mcp-gateway/`:
+
+```bash
+cd services/mcp-gateway
+
+# Run all integration tests
+MCP_GATEWAY_URL=http://127.0.0.1:3110 \
+KEYCLOAK_URL=http://127.0.0.1:8190 \
+DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
+npm run test:integration
+
+# Run specific test pattern (e.g., Payroll)
+MCP_GATEWAY_URL=http://127.0.0.1:3110 \
+KEYCLOAK_URL=http://127.0.0.1:8190 \
+DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
+npm run test:integration -- --testNamePattern="Payroll"
+```
+
+**Note:** Both `tests/integration/` and `services/mcp-gateway/` integration tests have automatic TOTP handling - no manual clearing required.
 
 ### Test Files
 
@@ -195,15 +216,17 @@ cd tests/integration && \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `KEYCLOAK_URL` | `http://127.0.0.1:8190/auth` | Keycloak base URL |
+| `KEYCLOAK_URL` | `http://127.0.0.1:8190` | Keycloak base URL (without `/auth`) |
 | `KEYCLOAK_REALM` | `tamshai-corp` | Realm name |
-| `GATEWAY_URL` | `http://127.0.0.1:3110` | MCP Gateway URL |
+| `GATEWAY_URL` / `MCP_GATEWAY_URL` | `http://127.0.0.1:3110` | MCP Gateway URL |
 | `MCP_HR_URL` | `http://127.0.0.1:3111` | MCP HR URL |
 | `MCP_FINANCE_URL` | `http://127.0.0.1:3112` | MCP Finance URL |
 | `MCP_SALES_URL` | `http://127.0.0.1:3113` | MCP Sales URL |
 | `MCP_SUPPORT_URL` | `http://127.0.0.1:3114` | MCP Support URL |
 | `DEV_USER_PASSWORD` | (required) | Test user password |
-| `KEYCLOAK_CLIENT_SECRET` | `test-client-secret` | mcp-gateway secret |
+| `KEYCLOAK_CLIENT_SECRET` | `mcp-gateway-secret` | mcp-gateway client secret |
+
+**Note:** Test files add `/auth` to the Keycloak URL internally where needed.
 
 ---
 
@@ -288,9 +311,19 @@ MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
 
 ### Automatic TOTP Handling
 
-The `jest.setup.js` file automatically:
+Both integration test locations have automatic TOTP handling:
+
+| Location | Setup File | Behavior |
+|----------|------------|----------|
+| `tests/integration/` | `jest.setup.js` | Handles TOTP automatically |
+| `services/mcp-gateway/` | `setup.ts` | Handles TOTP automatically |
+
+**How it works:**
 1. **Before tests:** Removes `CONFIGURE_TOTP` from all test users
 2. **After tests:** Restores `CONFIGURE_TOTP` for users without OTP credentials
+3. **CI mode:** Skips TOTP handling (Keycloak is ephemeral)
+
+**Note:** Manual TOTP management is only needed if running tests outside these frameworks.
 
 ---
 
@@ -316,7 +349,9 @@ docker ps --filter "name=tamshai-pg" --format "{{.Names}}: {{.Status}}"
 {"error":"invalid_grant","error_description":"Account is not fully set up"}
 ```
 
-**Solution:** Clear user's requiredActions:
+**Note:** This should be handled automatically by the test setup files. If you see this error, it means automatic TOTP handling failed or you're running tests outside the standard frameworks.
+
+**Manual Solution:** Clear user's requiredActions:
 ```bash
 MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
   /opt/keycloak/bin/kcadm.sh update users/<USER_ID> -r tamshai-corp \
