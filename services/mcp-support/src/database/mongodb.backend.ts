@@ -157,10 +157,23 @@ export class MongoDBBackend implements ISupportBackend {
   async updateTicket(ticketId: string, updates: Partial<SupportTicket>): Promise<boolean> {
     const ticketsCollection = await getCollection('tickets');
 
-    // Remove _id from updates if present (can't update _id field)
-    const { _id, ...cleanUpdates } = updates as any;
+    // Security: Whitelist allowed update fields to prevent NoSQL injection
+    const allowedFields = [
+      'title', 'description', 'status', 'priority',
+      'assigned_to', 'tags', 'resolution', 'closed_at', 'closed_by', 'updated_at'
+    ] as const;
 
-    const result = await ticketsCollection.updateOne({ ticket_id: ticketId }, { $set: cleanUpdates });
+    const safeUpdates: Record<string, unknown> = {};
+    for (const field of allowedFields) {
+      if (field in updates && updates[field] !== undefined) {
+        safeUpdates[field] = updates[field];
+      }
+    }
+
+    // Ensure updated_at is set
+    safeUpdates['updated_at'] = new Date().toISOString();
+
+    const result = await ticketsCollection.updateOne({ ticket_id: ticketId }, { $set: safeUpdates });
 
     return result.matchedCount > 0;
   }

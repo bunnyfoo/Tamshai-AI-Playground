@@ -124,17 +124,24 @@ export function sanitizeForLogging(
     const entries = Object.entries(obj);
 
     for (const [key, value] of entries) {
-      // Skip dangerous keys
+      // Skip dangerous keys (prototype pollution prevention)
       if (DANGEROUS_KEYS.has(key)) {
+        continue;
+      }
+
+      // Skip keys that don't match safe pattern
+      if (!SAFE_KEY_PATTERN.test(key) || key.length > 100) {
         continue;
       }
 
       // Redact sensitive keys
       if (isSensitiveKey(key)) {
+        // lgtm[js/remote-property-injection] - key validated above
         sanitized[key] = '[REDACTED]';
         continue;
       }
 
+      // lgtm[js/remote-property-injection] - key validated above
       sanitized[key] = sanitizeForLogging(value, depth + 1);
     }
 

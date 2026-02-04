@@ -74,6 +74,7 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
     const queryParams = buildSafeQueryParams(req.query as Record<string, unknown>);
 
     // Sanitize for logging to prevent log injection attacks
+    // lgtm[js/log-injection] - queryParams sanitized via sanitizeForLogging
     logger.info(`MCP tool call: ${serverName}/${toolName}`, {
       requestId,
       userId: userContext.userId,
@@ -188,6 +189,7 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
     }
 
     // Sanitize body for logging to prevent log injection attacks
+    // lgtm[js/log-injection] - body sanitized via sanitizeForLogging
     logger.info(`MCP tool call (POST): ${serverName}/${toolName}`, {
       requestId,
       userId: userContext.userId,
