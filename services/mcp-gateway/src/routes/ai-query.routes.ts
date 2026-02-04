@@ -102,15 +102,45 @@ export function createAIQueryRoutes(deps: AIQueryRoutesDependencies): Router {
       const accessibleServers = getAccessibleServers(userContext.roles);
       const deniedServers = getDeniedServers(userContext.roles);
 
-      // Query all accessible MCP servers in parallel
-      const mcpPromises = accessibleServers.map((server) =>
-        queryMCPServer(server, query, userContext)
-      );
-      const mcpResults = await Promise.all(mcpPromises);
+      // Query all accessible MCP servers in parallel with timeout
+      const MCP_TIMEOUT_MS = parseInt(process.env.MCP_QUERY_TIMEOUT_MS || '5000');
 
-      // v1.5: Separate successful from failed results
-      const successfulResults = mcpResults.filter((r) => r.status === 'success');
-      const failedResults = mcpResults.filter((r) => r.status !== 'success');
+      const mcpPromises = accessibleServers.map(async (server) => {
+        try {
+          // Race between actual query and timeout
+          const result = await Promise.race([
+            queryMCPServer(server, query, userContext),
+            new Promise<MCPQueryResult>((_, reject) =>
+              setTimeout(() => reject(new Error('MCP_QUERY_TIMEOUT')), MCP_TIMEOUT_MS)
+            ),
+          ]);
+          return result;
+        } catch (error) {
+          // Handle timeout or query failure gracefully
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          logger.warn(`MCP server query failed`, {
+            server: server.name,
+            error: errorMessage,
+            timeout: errorMessage === 'MCP_QUERY_TIMEOUT',
+          });
+          return {
+            server: server.name,
+            status: 'error' as const,
+            error: errorMessage,
+            data: null,
+            durationMs: MCP_TIMEOUT_MS,
+          };
+        }
+      });
+
+      const mcpResults = await Promise.allSettled(mcpPromises);
+      const resolvedResults = mcpResults
+        .filter((r): r is PromiseFulfilledResult<MCPQueryResult> => r.status === 'fulfilled')
+        .map((r) => r.value);
+
+      // v1.5: Separate successful from failed results (filter resolved MCPQueryResults)
+      const successfulResults = resolvedResults.filter((r) => r.status === 'success');
+      const failedResults = resolvedResults.filter((r) => r.status !== 'success');
 
       // Log any partial response issues
       if (failedResults.length > 0) {

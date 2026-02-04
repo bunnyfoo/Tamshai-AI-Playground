@@ -25,9 +25,10 @@ const pool = new Pool({
   database: process.env.POSTGRES_DB || 'tamshai_payroll',
   user: process.env.POSTGRES_USER || 'tamshai',
   password: process.env.POSTGRES_PASSWORD,
-  max: 20,
+  min: 2,                           // Keep 2 warm connections
+  max: 10,                          // Optimized: Reduced from 20
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 5000,    // Fail faster
 });
 
 // Log pool errors
@@ -45,32 +46,37 @@ export async function queryWithRLS<T extends QueryResultRow>(
   values?: unknown[]
 ): Promise<QueryResult<T>> {
   const client = await pool.connect();
+  const startTime = Date.now();
   try {
     await client.query('BEGIN');
 
-    // Set session variables for RLS policies
+    // OPTIMIZED: Combine SET commands into single set_config query
+    // This reduces database round trips from 3-5 to 1
     await client.query(
-      format('SET LOCAL app.current_user_id = %L', userContext.userId)
+      `SELECT set_config('app.current_user_id', $1, true),
+              set_config('app.current_user_email', $2, true),
+              set_config('app.current_user_roles', $3, true),
+              set_config('app.current_department_id', $4, true),
+              set_config('app.current_manager_id', $5, true)`,
+      [
+        userContext.userId,
+        userContext.email || '',
+        userContext.roles.join(','),
+        userContext.departmentId || '',
+        userContext.managerId || ''
+      ]
     );
-    await client.query(
-      format('SET LOCAL app.current_user_email = %L', userContext.email || '')
-    );
-    await client.query(
-      format('SET LOCAL app.current_user_roles = %L', userContext.roles.join(','))
-    );
-    if (userContext.departmentId) {
-      await client.query(
-        format('SET LOCAL app.current_department_id = %L', userContext.departmentId)
-      );
-    }
-    if (userContext.managerId) {
-      await client.query(
-        format('SET LOCAL app.current_manager_id = %L', userContext.managerId)
-      );
-    }
 
     const result = await client.query<T>(queryText, values);
     await client.query('COMMIT');
+
+    // Log query execution with timing
+    logger.debug('Query executed with RLS', {
+      userId: userContext.userId,
+      rowCount: result.rowCount,
+      durationMs: Date.now() - startTime,
+    });
+
     return result;
   } catch (error) {
     await client.query('ROLLBACK');

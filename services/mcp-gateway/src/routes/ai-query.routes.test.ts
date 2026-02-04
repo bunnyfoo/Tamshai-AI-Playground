@@ -429,7 +429,8 @@ describe('AI Query Routes', () => {
       );
     });
 
-    it('should return 500 when MCP query throws', async () => {
+    it('should handle MCP query errors gracefully and return partial response', async () => {
+      // v1.5: MCP query errors are now handled gracefully with timeout wrapper
       mockGetAccessibleServers.mockReturnValue([mockHRServer]);
       mockGetDeniedServers.mockReturnValue([]);
       mockQueryMCPServer.mockRejectedValue(new Error('Network error'));
@@ -437,9 +438,23 @@ describe('AI Query Routes', () => {
       const response = await request(app)
         .post('/api/ai/query')
         .send({ query: 'test' })
-        .expect(500);
+        .expect(200);
 
-      expect(response.body.error).toBe('Failed to process AI query');
+      // Should return partial status with warnings about failed MCP server
+      expect(response.body.status).toBe('partial');
+      expect(response.body.warnings).toBeDefined();
+      expect(response.body.warnings).toHaveLength(1);
+      expect(response.body.warnings[0].message).toBe('Network error');
+      expect(response.body.metadata.dataSourcesFailed).toHaveLength(1);
+
+      // Logger should have warned about the failure
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'MCP server query failed',
+        expect.objectContaining({
+          error: 'Network error',
+          timeout: false,
+        })
+      );
     });
   });
 
