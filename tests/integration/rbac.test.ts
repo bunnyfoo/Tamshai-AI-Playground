@@ -25,10 +25,11 @@ import { fail } from 'assert';
 // Ports configured to avoid conflicts with existing MCP dev environment (8443, 172.28.0.0/16)
 // Use 127.0.0.1 instead of localhost for Windows compatibility
 // Use mcp-gateway client which has directAccessGrantsEnabled=true
+// Ports match tamshai-pg docker-compose configuration
 const CONFIG = {
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8180',
+  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3100',
+  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3110',
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'test-client-secret',
 };
@@ -254,7 +255,8 @@ describe('Authorization Tests - AI Queries', () => {
 
     expect(response.status).toBe(200);
     expect(response.data.response).toBeDefined();
-    expect(response.data.metadata.dataSourcesQueried).toContain('mcp-hr');
+    // Gateway returns server names without 'mcp-' prefix
+    expect(response.data.metadata.dataSourcesQueried).toContain('hr');
   });
 
   testOrSkip('Finance user AI query about budgets succeeds', async () => {
@@ -267,20 +269,22 @@ describe('Authorization Tests - AI Queries', () => {
 
     expect(response.status).toBe(200);
     expect(response.data.response).toBeDefined();
-    expect(response.data.metadata.dataSourcesQueried).toContain('mcp-finance');
+    // Gateway returns server names without 'mcp-' prefix
+    expect(response.data.metadata.dataSourcesQueried).toContain('finance');
   });
 
   test('Sales user cannot query HR data', async () => {
     const token = await getAccessToken(TEST_USERS.salesUser.username, TEST_USERS.salesUser.password);
     const client = createAuthenticatedClient(token);
-    
+
     const response = await client.post('/api/ai/query', {
       query: 'What is Alice Chen\'s salary?',
     });
-    
+
     expect(response.status).toBe(200);
     // Response should indicate no access to HR data
-    expect(response.data.metadata.dataSourcesQueried).not.toContain('mcp-hr');
+    // Gateway returns server names without 'mcp-' prefix
+    expect(response.data.metadata.dataSourcesQueried).not.toContain('hr');
   });
 
   test('Unauthenticated request is rejected', async () => {

@@ -16,13 +16,14 @@ const axios = require('axios');
 const CONFIG = {
   // Use 127.0.0.1 instead of localhost for Windows compatibility
   // (localhost can have DNS resolution issues on Windows with Docker)
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8180',
+  // Ports match tamshai-pg docker-compose configuration
+  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3100',
-  mcpHrUrl: process.env.MCP_HR_URL || 'http://127.0.0.1:3101',
-  mcpFinanceUrl: process.env.MCP_FINANCE_URL || 'http://127.0.0.1:3102',
-  mcpSalesUrl: process.env.MCP_SALES_URL || 'http://127.0.0.1:3103',
-  mcpSupportUrl: process.env.MCP_SUPPORT_URL || 'http://127.0.0.1:3104',
+  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3110',
+  mcpHrUrl: process.env.MCP_HR_URL || 'http://127.0.0.1:3111',
+  mcpFinanceUrl: process.env.MCP_FINANCE_URL || 'http://127.0.0.1:3112',
+  mcpSalesUrl: process.env.MCP_SALES_URL || 'http://127.0.0.1:3113',
+  mcpSupportUrl: process.env.MCP_SUPPORT_URL || 'http://127.0.0.1:3114',
 };
 
 // All test users - TOTP should be required for all of them
