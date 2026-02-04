@@ -79,10 +79,13 @@ export async function getIdentityToken(targetUrl: string): Promise<string | null
     }
 
     const client = await clientPromise;
-    const headers = await client.getRequestHeaders();
+    // google-auth-library v9 returns {[key: string]: string}, v10+ returns Fetch API Headers
+    const headers = await client.getRequestHeaders() as Record<string, string> | Headers;
 
     // Extract the token from the Authorization header
-    const authHeader = headers['Authorization'] || headers['authorization'];
+    const authHeader = 'get' in headers && typeof headers.get === 'function'
+      ? (headers.get('Authorization') || headers.get('authorization'))
+      : ((headers as Record<string, string>)['Authorization'] || (headers as Record<string, string>)['authorization']);
     if (authHeader && authHeader.startsWith('Bearer ')) {
       return authHeader.substring(7);
     }
