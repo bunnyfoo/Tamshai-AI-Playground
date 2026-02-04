@@ -99,14 +99,14 @@ IMMUTABLE
 AS $$
 DECLARE
     total_days INTEGER := 0;
-    current_date DATE := start_date;
+    loop_date DATE := start_date;
 BEGIN
-    WHILE current_date <= end_date LOOP
+    WHILE loop_date <= end_date LOOP
         -- Skip Saturday (6) and Sunday (0)
-        IF EXTRACT(DOW FROM current_date) NOT IN (0, 6) THEN
+        IF EXTRACT(DOW FROM loop_date) NOT IN (0, 6) THEN
             total_days := total_days + 1;
         END IF;
-        current_date := current_date + INTERVAL '1 day';
+        loop_date := loop_date + INTERVAL '1 day';
     END LOOP;
     RETURN total_days;
 END;

@@ -212,7 +212,7 @@ CREATE POLICY tax_audit_read ON tax.audit_logs
 
 CREATE POLICY tax_audit_write ON tax.audit_logs
     FOR INSERT
-    USING (
+    WITH CHECK (
         current_setting('app.current_user_roles', true) LIKE '%tax-write%'
         OR current_setting('app.current_user_roles', true) LIKE '%executive%'
     );
