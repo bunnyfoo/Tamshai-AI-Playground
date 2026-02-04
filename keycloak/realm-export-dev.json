@@ -801,7 +801,7 @@
         "https://www.tamshai-playground.local:8443/*"
       ],
       "webOrigins": ["+"],
-      "fullScopeAllowed": true,
+      "fullScopeAllowed": false,
       "defaultClientScopes": [
         "openid",
         "profile",

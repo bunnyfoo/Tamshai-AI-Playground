@@ -176,7 +176,8 @@ describe('Authorization Tests - MCP Access', () => {
     expect(accessibleSources).toContain('mcp-hr');
   });
 
-  test('HR user cannot access Finance MCP server', async () => {
+  test('HR user has self-access to Finance MCP server via employee role', async () => {
+    // All employees (including HR users) have self-access to Finance for expense reports
     const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
     const client = createAuthenticatedClient(token);
 
@@ -184,7 +185,9 @@ describe('Authorization Tests - MCP Access', () => {
 
     expect(response.status).toBe(200);
     const accessibleSources = response.data.accessibleDataSources.map((s: any) => s.name);
-    expect(accessibleSources).not.toContain('mcp-finance');
+    // HR users can access mcp-finance via 'employee' role for self-access (own expense reports)
+    // Data filtering (self-only vs all) is enforced by PostgreSQL RLS
+    expect(accessibleSources).toContain('mcp-finance');
   });
 
   test('Finance user can access Finance MCP server', async () => {
@@ -198,7 +201,8 @@ describe('Authorization Tests - MCP Access', () => {
     expect(accessibleSources).toContain('mcp-finance');
   });
 
-  test('Finance user cannot access HR MCP server', async () => {
+  test('Finance user has self-access to HR MCP server via employee role', async () => {
+    // All employees (including Finance users) have self-access to HR for their own profile
     const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
     const client = createAuthenticatedClient(token);
 
@@ -206,7 +210,9 @@ describe('Authorization Tests - MCP Access', () => {
 
     expect(response.status).toBe(200);
     const accessibleSources = response.data.accessibleDataSources.map((s: any) => s.name);
-    expect(accessibleSources).not.toContain('mcp-hr');
+    // Finance users can access mcp-hr via 'employee' role for self-access (own profile)
+    // Data filtering (self-only vs all) is enforced by PostgreSQL RLS
+    expect(accessibleSources).toContain('mcp-hr');
   });
 
   test('Executive can access all MCP servers', async () => {
@@ -223,14 +229,21 @@ describe('Authorization Tests - MCP Access', () => {
     expect(accessibleSources).toContain('mcp-support');
   });
 
-  test('Intern cannot access any MCP servers', async () => {
+  test('Intern has employee self-access (HR, Finance, Support) but not Sales', async () => {
+    // Interns are employees and have self-access to personal data
     const token = await getAccessToken(TEST_USERS.intern.username, TEST_USERS.intern.password);
     const client = createAuthenticatedClient(token);
-    
+
     const response = await client.get('/api/mcp/tools');
-    
+
     expect(response.status).toBe(200);
-    expect(response.data.accessibleDataSources.length).toBe(0);
+    const accessibleSources = response.data.accessibleDataSources.map((s: any) => s.name);
+    // Employee role grants self-access to HR (own profile), Finance (own expenses), Support (own tickets)
+    expect(accessibleSources).toContain('mcp-hr');
+    expect(accessibleSources).toContain('mcp-finance');
+    expect(accessibleSources).toContain('mcp-support');
+    // Sales requires explicit sales-read/sales-write roles
+    expect(accessibleSources).not.toContain('mcp-sales');
   });
 });
 

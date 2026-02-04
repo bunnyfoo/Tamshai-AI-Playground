@@ -440,22 +440,26 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
     expect(supportResponse.status).toBe(200);
   });
 
-  test('HR user cannot access finance endpoints', async () => {
+  test('HR user can access finance endpoints via employee role (self-access)', async () => {
+    // All employees have self-access to Finance for expense reports
+    // Data filtering (self vs all) is enforced by PostgreSQL RLS
     const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_BUDGETS);
-    // Should get 401/403 or error status
-    expect([401, 403]).toContain(response.status);
+    // Employee role grants gateway access; RLS filters data
+    expect(response.status).toBe(200);
   });
 
-  test('Finance user cannot access HR endpoints', async () => {
+  test('Finance user can access HR endpoints via employee role (self-access)', async () => {
+    // All employees have self-access to HR for their own profile
+    // Data filtering (self vs all) is enforced by PostgreSQL RLS
     const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.HR.LIST_EMPLOYEES);
-    // Should get 401/403 or error status
-    expect([401, 403]).toContain(response.status);
+    // Employee role grants gateway access; RLS filters to show only own profile
+    expect(response.status).toBe(200);
   });
 });
 

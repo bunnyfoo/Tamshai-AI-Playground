@@ -15,13 +15,13 @@ const mcpServerConfigs: MCPServerConfig[] = [
   {
     name: 'mcp-hr',
     url: 'http://localhost:3101',
-    requiredRoles: ['hr-read', 'hr-write', 'executive'],
+    requiredRoles: ['employee', 'hr-read', 'hr-write', 'executive'],
     description: 'HR data including employees, departments, org structure',
   },
   {
     name: 'mcp-finance',
     url: 'http://localhost:3102',
-    requiredRoles: ['finance-read', 'finance-write', 'executive'],
+    requiredRoles: ['employee', 'finance-read', 'finance-write', 'executive'],
     description: 'Financial data including budgets, reports, invoices',
   },
   {
@@ -33,7 +33,7 @@ const mcpServerConfigs: MCPServerConfig[] = [
   {
     name: 'mcp-support',
     url: 'http://localhost:3104',
-    requiredRoles: ['support-read', 'support-write', 'executive'],
+    requiredRoles: ['employee', 'support-read', 'support-write', 'executive'],
     description: 'Support data including tickets, knowledge base',
   },
 ];
