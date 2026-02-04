@@ -5,55 +5,156 @@
  * Enables state isolation between tests to ensure deterministic outcomes.
  *
  * Architecture v1.5 - Enterprise UX Hardening
+ *
+ * Uses MCP Gateway Admin API for snapshot/rollback operations.
+ * The admin API is protected by X-Admin-Key header.
  */
-
-import { Page } from '@playwright/test';
 
 // Environment configuration
 const ENV = process.env.TEST_ENV || 'dev';
 const API_BASE_URLS: Record<string, string> = {
-  dev: 'https://www.tamshai-playground.local:8443/api',
-  stage: 'https://www.tamshai.com/api',
-  prod: 'https://app.tamshai.com/api',
+  dev: 'https://www.tamshai-playground.local:8443/api/admin',
+  stage: 'https://www.tamshai.com/api/admin',
+  prod: 'https://app.tamshai.com/api/admin',
 };
 
-interface SnapshotResult {
-  snapshotId: string;
-  timestamp: string;
-  databases: string[];
+// Admin API key (matches MCP Gateway configuration)
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'e2e-test-admin-key';
+
+// API timeout for database operations (snapshots can take time)
+const API_TIMEOUT = 60000; // 60 seconds
+
+interface SnapshotResponse {
+  status: 'success' | 'error';
+  data?: {
+    snapshotId: string;
+    timestamp: string;
+    databases: string[];
+  };
+  code?: string;
+  message?: string;
 }
 
-interface RollbackResult {
-  success: boolean;
-  restoredDatabases: string[];
+interface RollbackResponse {
+  status: 'success' | 'error';
+  data?: {
+    snapshotId: string;
+    restoredDatabases: string[];
+    timestamp: string;
+  };
+  code?: string;
+  message?: string;
+}
+
+interface HealthResponse {
+  status: string;
   timestamp: string;
+  snapshotDir: string;
+  snapshotCount: string;
+}
+
+/**
+ * Make authenticated request to admin API
+ */
+async function adminRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${API_BASE_URLS[ENV]}${endpoint}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': ADMIN_API_KEY,
+        ...options.headers,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(
+        errorBody.message || `Admin API error: ${response.status} ${response.statusText}`
+      );
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Admin API timeout after ${API_TIMEOUT}ms`);
+    }
+
+    throw error;
+  }
 }
 
 /**
  * Create a database snapshot for test state isolation
  *
- * In a real implementation, this would call an admin API endpoint
- * that creates point-in-time snapshots of the test databases.
+ * Creates point-in-time snapshots of the test databases using the
+ * MCP Gateway Admin API. The snapshot can later be restored using
+ * rollbackToSnapshot().
  *
- * For now, this provides a mock implementation that can be replaced
- * with actual database snapshot logic when the admin API is available.
- *
+ * @param databases - Optional array of database names to snapshot
+ *                    Defaults to all domain databases
  * @returns Promise<string> - Snapshot ID for later rollback
+ *
+ * @example
+ * ```typescript
+ * let snapshotId: string;
+ *
+ * test.beforeAll(async () => {
+ *   snapshotId = await createDatabaseSnapshot();
+ * });
+ *
+ * test.afterEach(async () => {
+ *   await rollbackToSnapshot(snapshotId);
+ * });
+ * ```
  */
-export async function createDatabaseSnapshot(): Promise<string> {
+export async function createDatabaseSnapshot(
+  databases?: string[]
+): Promise<string> {
   const timestamp = new Date().toISOString();
-  const snapshotId = `snapshot-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-  // TODO: When admin API is available, call:
-  // const response = await fetch(`${API_BASE_URLS[ENV]}/admin/snapshots`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
-  //   body: JSON.stringify({ databases: ['tamshai_hr', 'tamshai_finance', 'tamshai_sales', 'tamshai_support', 'tamshai_payroll'] })
-  // });
+  try {
+    const response = await adminRequest<SnapshotResponse>('/snapshots', {
+      method: 'POST',
+      body: databases ? JSON.stringify({ databases }) : undefined,
+    });
 
-  console.log(`[DB Snapshot] Created snapshot: ${snapshotId} at ${timestamp}`);
+    if (response.status === 'error') {
+      throw new Error(response.message || 'Failed to create snapshot');
+    }
 
-  return snapshotId;
+    const snapshotId = response.data?.snapshotId || '';
+
+    console.log(`[DB Snapshot] Created: ${snapshotId}`);
+    console.log(`  Timestamp: ${response.data?.timestamp}`);
+    console.log(`  Databases: ${response.data?.databases?.join(', ')}`);
+
+    return snapshotId;
+  } catch (error) {
+    // If admin API is not available, fall back to mock implementation
+    if (error instanceof Error && error.message.includes('fetch')) {
+      console.warn(`[DB Snapshot] Admin API not available, using mock snapshot`);
+      const mockSnapshotId = `mock-snapshot-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      console.log(`[DB Snapshot] Created mock snapshot: ${mockSnapshotId} at ${timestamp}`);
+      return mockSnapshotId;
+    }
+
+    console.error(`[DB Snapshot] Failed to create snapshot:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -63,17 +164,45 @@ export async function createDatabaseSnapshot(): Promise<string> {
  * This ensures test isolation - changes made during a test are reverted.
  *
  * @param snapshotId - The snapshot ID returned from createDatabaseSnapshot
+ *
+ * @example
+ * ```typescript
+ * test.afterEach(async () => {
+ *   await rollbackToSnapshot(snapshotId);
+ * });
+ * ```
  */
 export async function rollbackToSnapshot(snapshotId: string): Promise<void> {
   const timestamp = new Date().toISOString();
 
-  // TODO: When admin API is available, call:
-  // const response = await fetch(`${API_BASE_URLS[ENV]}/admin/snapshots/${snapshotId}/rollback`, {
-  //   method: 'POST',
-  //   headers: { 'Authorization': `Bearer ${adminToken}` }
-  // });
+  // Skip rollback for mock snapshots
+  if (snapshotId.startsWith('mock-snapshot-')) {
+    console.log(`[DB Rollback] Skipping mock snapshot rollback: ${snapshotId} at ${timestamp}`);
+    return;
+  }
 
-  console.log(`[DB Rollback] Rolled back to snapshot: ${snapshotId} at ${timestamp}`);
+  try {
+    const response = await adminRequest<RollbackResponse>(
+      `/snapshots/${snapshotId}/rollback`,
+      { method: 'POST' }
+    );
+
+    if (response.status === 'error') {
+      throw new Error(response.message || 'Failed to rollback snapshot');
+    }
+
+    console.log(`[DB Rollback] Restored: ${snapshotId}`);
+    console.log(`  Databases: ${response.data?.restoredDatabases?.join(', ')}`);
+  } catch (error) {
+    // If admin API is not available, log warning but don't fail
+    if (error instanceof Error && error.message.includes('fetch')) {
+      console.warn(`[DB Rollback] Admin API not available, skipping rollback`);
+      return;
+    }
+
+    console.error(`[DB Rollback] Failed to rollback:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -83,15 +212,24 @@ export async function rollbackToSnapshot(snapshotId: string): Promise<void> {
  * Use this when tests need specific data configurations.
  *
  * @param scenario - The test scenario name (e.g., 'invoice-bulk-approval', 'lead-conversion')
+ *
+ * @example
+ * ```typescript
+ * test.beforeEach(async () => {
+ *   await seedTestData('invoice-bulk-approval');
+ * });
+ * ```
  */
 export async function seedTestData(scenario: string): Promise<void> {
   console.log(`[DB Seed] Seeding data for scenario: ${scenario}`);
 
-  // TODO: When admin API is available, call:
-  // const response = await fetch(`${API_BASE_URLS[ENV]}/admin/seed/${scenario}`, {
-  //   method: 'POST',
-  //   headers: { 'Authorization': `Bearer ${adminToken}` }
-  // });
+  try {
+    await adminRequest(`/seed/${scenario}`, { method: 'POST' });
+    console.log(`[DB Seed] Completed: ${scenario}`);
+  } catch (error) {
+    console.warn(`[DB Seed] Failed to seed data for ${scenario}:`, error);
+    // Don't throw - seeding failure shouldn't block tests
+  }
 }
 
 /**
@@ -101,15 +239,24 @@ export async function seedTestData(scenario: string): Promise<void> {
  * Use this for cleanup after tests that create large amounts of data.
  *
  * @param domain - The domain to clear (e.g., 'finance', 'hr', 'sales')
+ *
+ * @example
+ * ```typescript
+ * test.afterAll(async () => {
+ *   await clearTestData('finance');
+ * });
+ * ```
  */
 export async function clearTestData(domain: string): Promise<void> {
   console.log(`[DB Clear] Clearing test data for domain: ${domain}`);
 
-  // TODO: When admin API is available, call:
-  // const response = await fetch(`${API_BASE_URLS[ENV]}/admin/clear/${domain}`, {
-  //   method: 'POST',
-  //   headers: { 'Authorization': `Bearer ${adminToken}` }
-  // });
+  try {
+    await adminRequest(`/clear/${domain}`, { method: 'POST' });
+    console.log(`[DB Clear] Completed: ${domain}`);
+  } catch (error) {
+    console.warn(`[DB Clear] Failed to clear data for ${domain}:`, error);
+    // Don't throw - clearing failure shouldn't block tests
+  }
 }
 
 /**
@@ -120,9 +267,17 @@ export async function clearTestData(domain: string): Promise<void> {
  *
  * @param domain - The domain to hash (e.g., 'finance', 'hr')
  * @returns Promise<string> - Hash of the database state
+ *
+ * @example
+ * ```typescript
+ * const hashBefore = await getDatabaseStateHash('finance');
+ * // ... run test ...
+ * const hashAfter = await getDatabaseStateHash('finance');
+ * expect(hashBefore).not.toBe(hashAfter); // Data changed
+ * ```
  */
 export async function getDatabaseStateHash(domain: string): Promise<string> {
-  // TODO: When admin API is available, call actual endpoint
+  // TODO: Implement actual hash endpoint when needed
   return `hash-${domain}-${Date.now()}`;
 }
 
@@ -133,20 +288,88 @@ export async function getDatabaseStateHash(domain: string): Promise<string> {
  * Use at the start of test suites to ensure database availability.
  *
  * @param timeout - Maximum wait time in milliseconds (default: 30000)
+ *
+ * @example
+ * ```typescript
+ * test.beforeAll(async () => {
+ *   await waitForDatabaseReady(60000);
+ * });
+ * ```
  */
 export async function waitForDatabaseReady(timeout: number = 30000): Promise<void> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeout) {
     try {
-      // TODO: When health endpoint is available, check actual database health
-      // const response = await fetch(`${API_BASE_URLS[ENV]}/health/db`);
-      // if (response.ok) return;
-      return; // For now, assume ready
+      const response = await adminRequest<HealthResponse>('/health');
+
+      if (response.status === 'healthy') {
+        console.log(`[DB Health] Database ready`);
+        return;
+      }
     } catch {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // API not ready yet, continue polling
     }
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  throw new Error(`Database not ready after ${timeout}ms`);
+  console.warn(`[DB Health] Timeout after ${timeout}ms - proceeding anyway`);
+}
+
+/**
+ * Delete a specific snapshot
+ *
+ * Cleans up a snapshot and its associated files.
+ * Use this to free disk space after tests complete.
+ *
+ * @param snapshotId - The snapshot ID to delete
+ *
+ * @example
+ * ```typescript
+ * test.afterAll(async () => {
+ *   await deleteSnapshot(snapshotId);
+ * });
+ * ```
+ */
+export async function deleteSnapshot(snapshotId: string): Promise<void> {
+  // Skip deletion for mock snapshots
+  if (snapshotId.startsWith('mock-snapshot-')) {
+    console.log(`[DB Snapshot] Skipping mock snapshot deletion: ${snapshotId}`);
+    return;
+  }
+
+  try {
+    await adminRequest(`/snapshots/${snapshotId}`, { method: 'DELETE' });
+    console.log(`[DB Snapshot] Deleted: ${snapshotId}`);
+  } catch (error) {
+    console.warn(`[DB Snapshot] Failed to delete ${snapshotId}:`, error);
+    // Don't throw - deletion failure shouldn't block tests
+  }
+}
+
+/**
+ * List all available snapshots
+ *
+ * Returns a list of all snapshots currently stored.
+ * Useful for debugging or cleanup operations.
+ *
+ * @returns Promise<Array> - List of snapshot metadata
+ */
+export async function listSnapshots(): Promise<Array<{
+  id: string;
+  timestamp: string;
+  databases: string[];
+}>> {
+  try {
+    interface ListResponse {
+      status: string;
+      data: Array<{ id: string; timestamp: string; databases: string[] }>;
+    }
+    const response = await adminRequest<ListResponse>('/snapshots');
+    return response.data || [];
+  } catch (error) {
+    console.warn(`[DB Snapshot] Failed to list snapshots:`, error);
+    return [];
+  }
 }

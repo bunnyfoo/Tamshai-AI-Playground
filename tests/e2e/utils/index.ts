@@ -27,6 +27,8 @@ export {
   clearTestData,
   getDatabaseStateHash,
   waitForDatabaseReady,
+  deleteSnapshot,
+  listSnapshots,
 } from './database';
 
 // Bulk action utilities for DataTable testing

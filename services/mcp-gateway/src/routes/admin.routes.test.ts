@@ -1,0 +1,324 @@
+/**
+ * Admin Routes Tests
+ *
+ * Tests for E2E test state management endpoints.
+ * These tests focus on API contract validation rather than actual database operations.
+ */
+
+import express, { Express } from 'express';
+import request from 'supertest';
+
+// Create a simplified mock admin routes module for testing
+const ADMIN_API_KEY = 'e2e-test-admin-key';
+
+// In-memory snapshot storage for tests
+const testSnapshots: Map<string, { id: string; timestamp: string; databases: string[]; files: string[] }> = new Map();
+
+function createTestAdminRoutes() {
+  const { Router } = require('express');
+  const router = Router();
+
+  // Admin middleware
+  const adminMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ status: 'error', code: 'ADMIN_DISABLED', message: 'Disabled in production' });
+    }
+    if (req.headers['x-admin-key'] !== ADMIN_API_KEY) {
+      return res.status(401).json({ status: 'error', code: 'INVALID_ADMIN_KEY', message: 'Invalid admin key' });
+    }
+    next();
+  };
+
+  router.use(adminMiddleware);
+
+  router.get('/health', (req: express.Request, res: express.Response) => {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      snapshotDir: '/tmp/test',
+      snapshotCount: testSnapshots.size.toString(),
+    });
+  });
+
+  router.post('/snapshots', (req: express.Request, res: express.Response) => {
+    const snapshotId = `snapshot-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const databases = req.body?.databases || ['tamshai_hr', 'tamshai_finance'];
+    const snapshot = {
+      id: snapshotId,
+      timestamp: new Date().toISOString(),
+      databases,
+      files: databases.map((db: string) => `/tmp/${snapshotId}_${db}.sql`),
+    };
+    testSnapshots.set(snapshotId, snapshot);
+    res.json({ status: 'success', data: { snapshotId, timestamp: snapshot.timestamp, databases } });
+  });
+
+  router.get('/snapshots', (req: express.Request, res: express.Response) => {
+    const list = Array.from(testSnapshots.values()).map(s => ({
+      id: s.id,
+      timestamp: s.timestamp,
+      databases: s.databases,
+    }));
+    res.json({ status: 'success', data: list });
+  });
+
+  router.post('/snapshots/:snapshotId/rollback', (req: express.Request, res: express.Response) => {
+    const snapshot = testSnapshots.get(req.params.snapshotId);
+    if (!snapshot) {
+      return res.status(404).json({ status: 'error', code: 'SNAPSHOT_NOT_FOUND', message: 'Snapshot not found' });
+    }
+    res.json({ status: 'success', data: { snapshotId: snapshot.id, restoredDatabases: snapshot.databases, timestamp: new Date().toISOString() } });
+  });
+
+  router.delete('/snapshots/:snapshotId', (req: express.Request, res: express.Response) => {
+    const snapshot = testSnapshots.get(req.params.snapshotId);
+    if (!snapshot) {
+      return res.status(404).json({ status: 'error', code: 'SNAPSHOT_NOT_FOUND', message: 'Snapshot not found' });
+    }
+    testSnapshots.delete(req.params.snapshotId);
+    res.json({ status: 'success', message: `Snapshot ${req.params.snapshotId} deleted` });
+  });
+
+  router.post('/seed/:scenario', (req: express.Request, res: express.Response) => {
+    res.json({ status: 'success', message: `Seeded: ${req.params.scenario}`, scenario: req.params.scenario, timestamp: new Date().toISOString() });
+  });
+
+  router.post('/clear/:domain', (req: express.Request, res: express.Response) => {
+    res.json({ status: 'success', message: `Cleared: ${req.params.domain}`, domain: req.params.domain, timestamp: new Date().toISOString() });
+  });
+
+  return router;
+}
+
+describe('Admin Routes', () => {
+  let app: Express;
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    testSnapshots.clear();
+
+    app = express();
+    app.use(express.json());
+    app.use('/api/admin', createTestAdminRoutes());
+  });
+
+  describe('Authentication', () => {
+    test('rejects requests without X-Admin-Key header', async () => {
+      const response = await request(app)
+        .get('/api/admin/health')
+        .expect(401);
+
+      expect(response.body.code).toBe('INVALID_ADMIN_KEY');
+    });
+
+    test('rejects requests with invalid X-Admin-Key', async () => {
+      const response = await request(app)
+        .get('/api/admin/health')
+        .set('X-Admin-Key', 'wrong-key')
+        .expect(401);
+
+      expect(response.body.code).toBe('INVALID_ADMIN_KEY');
+    });
+
+    test('accepts requests with valid X-Admin-Key', async () => {
+      const response = await request(app)
+        .get('/api/admin/health')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('healthy');
+    });
+
+    test('rejects requests in production environment', async () => {
+      process.env.NODE_ENV = 'production';
+
+      const response = await request(app)
+        .get('/api/admin/health')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(403);
+
+      expect(response.body.code).toBe('ADMIN_DISABLED');
+    });
+  });
+
+  describe('GET /api/admin/health', () => {
+    test('returns health status', async () => {
+      const response = await request(app)
+        .get('/api/admin/health')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        status: 'healthy',
+        snapshotCount: '0',
+      });
+      expect(response.body.timestamp).toBeDefined();
+    });
+  });
+
+  describe('POST /api/admin/snapshots', () => {
+    test('creates a snapshot and returns snapshot ID', async () => {
+      const response = await request(app)
+        .post('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.data.snapshotId).toMatch(/^snapshot-\d+-[a-z0-9]+$/);
+      expect(response.body.data.timestamp).toBeDefined();
+      expect(response.body.data.databases).toBeInstanceOf(Array);
+    });
+
+    test('creates a snapshot with specific databases', async () => {
+      const response = await request(app)
+        .post('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .send({ databases: ['tamshai_hr', 'tamshai_finance'] })
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.data.databases).toEqual(['tamshai_hr', 'tamshai_finance']);
+    });
+  });
+
+  describe('GET /api/admin/snapshots', () => {
+    test('returns empty list when no snapshots exist', async () => {
+      const response = await request(app)
+        .get('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body.data).toHaveLength(0);
+    });
+
+    test('returns list of created snapshots', async () => {
+      // Create a snapshot first
+      const createResponse = await request(app)
+        .post('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      const snapshotId = createResponse.body.data.snapshotId;
+
+      // List snapshots
+      const listResponse = await request(app)
+        .get('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(listResponse.body.data).toContainEqual(
+        expect.objectContaining({ id: snapshotId })
+      );
+    });
+  });
+
+  describe('POST /api/admin/snapshots/:snapshotId/rollback', () => {
+    test('returns 404 for non-existent snapshot', async () => {
+      const response = await request(app)
+        .post('/api/admin/snapshots/non-existent-snapshot/rollback')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(404);
+
+      expect(response.body.code).toBe('SNAPSHOT_NOT_FOUND');
+    });
+
+    test('rolls back to existing snapshot', async () => {
+      // Create a snapshot first
+      const createResponse = await request(app)
+        .post('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      const snapshotId = createResponse.body.data.snapshotId;
+
+      // Rollback to snapshot
+      const rollbackResponse = await request(app)
+        .post(`/api/admin/snapshots/${snapshotId}/rollback`)
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(rollbackResponse.body.status).toBe('success');
+      expect(rollbackResponse.body.data.snapshotId).toBe(snapshotId);
+      expect(rollbackResponse.body.data.restoredDatabases).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('DELETE /api/admin/snapshots/:snapshotId', () => {
+    test('returns 404 for non-existent snapshot', async () => {
+      const response = await request(app)
+        .delete('/api/admin/snapshots/non-existent-snapshot')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(404);
+
+      expect(response.body.code).toBe('SNAPSHOT_NOT_FOUND');
+    });
+
+    test('deletes existing snapshot', async () => {
+      // Create a snapshot first
+      const createResponse = await request(app)
+        .post('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      const snapshotId = createResponse.body.data.snapshotId;
+
+      // Delete snapshot
+      const deleteResponse = await request(app)
+        .delete(`/api/admin/snapshots/${snapshotId}`)
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(deleteResponse.body.status).toBe('success');
+
+      // Verify snapshot is gone
+      const listResponse = await request(app)
+        .get('/api/admin/snapshots')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(listResponse.body.data).not.toContainEqual(
+        expect.objectContaining({ id: snapshotId })
+      );
+    });
+  });
+
+  describe('POST /api/admin/seed/:scenario', () => {
+    test('returns success for seeding scenario', async () => {
+      const response = await request(app)
+        .post('/api/admin/seed/invoice-bulk-approval')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.scenario).toBe('invoice-bulk-approval');
+    });
+  });
+
+  describe('POST /api/admin/clear/:domain', () => {
+    test('returns success for clearing domain', async () => {
+      const response = await request(app)
+        .post('/api/admin/clear/finance')
+        .set('X-Admin-Key', ADMIN_API_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.domain).toBe('finance');
+    });
+  });
+});
+
+// Test the actual admin routes module exports
+describe('Admin Routes Module', () => {
+  test('exports ADMIN_API_KEY constant', () => {
+    const { ADMIN_API_KEY: exportedKey } = require('./admin.routes');
+    expect(exportedKey).toBe('e2e-test-admin-key');
+  });
+
+  test('exports default router', () => {
+    const adminRoutes = require('./admin.routes').default;
+    expect(adminRoutes).toBeDefined();
+    expect(typeof adminRoutes).toBe('function'); // Express router is a function
+  });
+});
