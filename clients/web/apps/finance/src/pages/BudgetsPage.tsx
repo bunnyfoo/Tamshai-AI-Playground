@@ -111,7 +111,9 @@ export function BudgetsPage() {
     },
     onSuccess: (data, budgetId) => {
       if (data.status === 'pending_confirmation') {
-        const budget = budgets.find((b) => `${b.department_code}-${b.fiscal_year}-${b.category_name}` === budgetId);
+        // budgetId format is "DEPT-YEAR-CATEGORY-INDEX", need to match without the index
+        const budgetIdWithoutIndex = budgetId.replace(/-\d+$/, '');
+        const budget = budgets.find((b) => `${b.department_code}-${b.fiscal_year}-${b.category_name}` === budgetIdWithoutIndex);
         if (budget) {
           setPendingConfirmation({
             confirmationId: data.confirmationId!,
