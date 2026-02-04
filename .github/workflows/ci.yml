@@ -852,6 +852,11 @@ jobs:
           KEYCLOAK_CLIENT_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
           GATEWAY_URL: http://localhost:3100
+          # MCP server URLs - must match ports started above (3101-3104)
+          MCP_HR_URL: http://127.0.0.1:3101
+          MCP_FINANCE_URL: http://127.0.0.1:3102
+          MCP_SALES_URL: http://127.0.0.1:3103
+          MCP_SUPPORT_URL: http://127.0.0.1:3104
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
