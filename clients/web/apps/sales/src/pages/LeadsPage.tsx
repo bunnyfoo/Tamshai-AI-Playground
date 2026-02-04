@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, canModifySales, apiConfig } from '@tamshai/auth';
-import { ApprovalCard, TruncationWarning } from '@tamshai/ui';
+import { ApprovalCard, TruncationWarning, DataTable, ConfirmDialog } from '@tamshai/ui';
+import type { ColumnDef, BulkAction } from '@tamshai/ui';
 import LeadConversionWizard from '../components/LeadConversionWizard';
 import type { Lead, APIResponse } from '../types';
 
@@ -11,6 +12,7 @@ import type { Lead, APIResponse } from '../types';
  * Features:
  * - Lead list with scoring visualization
  * - Status filtering and search
+ * - Bulk actions: Convert, Update Status, Export (Enterprise UX)
  * - Convert to Opportunity action (sales-write)
  * - v1.4 confirmation flow
  * - Truncation warnings
@@ -34,12 +36,24 @@ export default function LeadsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [scoreFilter, setScoreFilter] = useState<string>('');
 
-  // Confirmation state
+  // Selection state for DataTable
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+
+  // Confirmation states
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     confirmationId: string;
     message: string;
     lead: Lead;
   } | null>(null);
+
+  // Bulk action confirmation dialog
+  const [bulkActionDialog, setBulkActionDialog] = useState<{
+    isOpen: boolean;
+    actionId: string;
+    selectedLeads: Lead[];
+    title: string;
+    message: string;
+  }>({ isOpen: false, actionId: '', selectedLeads: [], title: '', message: '' });
 
   // Lead conversion wizard state
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null);
@@ -126,6 +140,36 @@ export default function LeadsPage() {
     },
   });
 
+  // Bulk update status mutation
+  const bulkUpdateStatusMutation = useMutation({
+    mutationFn: async ({ leadIds, status }: { leadIds: string[]; status: string }) => {
+      const token = getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+
+      // Execute sequentially for now (could be parallelized with Promise.all)
+      for (const leadId of leadIds) {
+        const url = apiConfig.mcpGatewayUrl
+          ? `${apiConfig.mcpGatewayUrl}/api/mcp/sales/update_lead`
+          : '/api/mcp/sales/update_lead';
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ leadId, status }),
+        });
+        if (!response.ok) throw new Error(`Failed to update lead ${leadId}`);
+      }
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setSelectedRows([]);
+    },
+  });
+
   const leads = leadsResponse?.data || [];
   const isTruncated = leadsResponse?.metadata?.truncated;
 
@@ -201,6 +245,211 @@ export default function LeadsPage() {
     setStatusFilter('');
     setSearchQuery('');
     setScoreFilter('');
+  };
+
+  // DataTable columns
+  const columns: ColumnDef<Lead>[] = [
+    {
+      id: 'company',
+      header: 'Company',
+      accessor: 'company_name',
+      sortable: true,
+      cell: (value, row) => (
+        <div>
+          <p className="font-medium text-secondary-900">{String(value)}</p>
+          {row.industry && (
+            <p className="text-sm text-secondary-500">{row.industry}</p>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'contact',
+      header: 'Contact',
+      accessor: 'contact_name',
+      sortable: true,
+      cell: (value, row) => (
+        <div>
+          <p className="font-medium">{String(value)}</p>
+          <a
+            href={`mailto:${row.contact_email}`}
+            className="text-sm text-primary-600 hover:underline"
+          >
+            {row.contact_email}
+          </a>
+        </div>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessor: 'status',
+      sortable: true,
+      cell: (value, row) => {
+        const status = LEAD_STATUSES.find((s) => s.value === value);
+        if (canWrite && value !== 'CONVERTED' && value !== 'DISQUALIFIED') {
+          return (
+            <select
+              value={String(value)}
+              onChange={(e) => updateStatusMutation.mutate({ leadId: row._id, status: e.target.value })}
+              className={`text-sm px-2 py-1 rounded ${status?.color || 'badge-secondary'}`}
+              data-testid="status-select"
+            >
+              {LEAD_STATUSES.filter((s) => s.value !== 'CONVERTED').map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          );
+        }
+        return (
+          <span className={status?.color || 'badge-secondary'} data-testid="status-badge">
+            {status?.label || String(value)}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'score',
+      header: 'Score',
+      accessor: (row) => row.score.total,
+      sortable: true,
+      cell: (value, row) => (
+        <div className="flex items-center gap-2">
+          <div className="w-16">
+            <div className="h-2 bg-secondary-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${getScoreBarColor(row.score.total)} transition-all`}
+                style={{ width: `${row.score.total}%` }}
+              />
+            </div>
+          </div>
+          <span className={`text-sm font-medium ${getScoreColor(row.score.total)}`}>
+            {row.score.total}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: 'source',
+      header: 'Source',
+      accessor: 'source',
+      sortable: true,
+      cell: (value) => <span className="text-sm text-secondary-600">{String(value)}</span>,
+    },
+    {
+      id: 'owner',
+      header: 'Owner',
+      accessor: 'owner_name',
+      sortable: true,
+      cell: (value) => <span className="text-sm">{String(value || '-')}</span>,
+    },
+    {
+      id: 'last_activity',
+      header: 'Last Activity',
+      accessor: (row) => row.last_activity_date || row.updated_at,
+      sortable: true,
+      cell: (value) => (
+        <span className="text-sm text-secondary-600">{formatDate(String(value))}</span>
+      ),
+    },
+  ];
+
+  // Bulk actions
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'bulk_qualify',
+      label: 'Mark Qualified',
+      variant: 'primary',
+      requiresConfirmation: true,
+    },
+    {
+      id: 'bulk_disqualify',
+      label: 'Disqualify',
+      variant: 'danger',
+      requiresConfirmation: true,
+    },
+    {
+      id: 'export',
+      label: 'Export CSV',
+      variant: 'neutral',
+    },
+  ];
+
+  // Handle bulk actions
+  const handleBulkAction = (actionId: string, selectedLeads: Lead[]) => {
+    if (actionId === 'bulk_qualify') {
+      setBulkActionDialog({
+        isOpen: true,
+        actionId,
+        selectedLeads,
+        title: 'Mark Leads as Qualified',
+        message: `Are you sure you want to mark ${selectedLeads.length} lead(s) as Qualified? This will update their status and make them eligible for conversion.`,
+      });
+    } else if (actionId === 'bulk_disqualify') {
+      setBulkActionDialog({
+        isOpen: true,
+        actionId,
+        selectedLeads,
+        title: 'Disqualify Leads',
+        message: `Are you sure you want to disqualify ${selectedLeads.length} lead(s)? This action indicates these leads are not a good fit.`,
+      });
+    } else if (actionId === 'export') {
+      // Export to CSV
+      const headers = ['Company', 'Contact', 'Email', 'Status', 'Score', 'Source', 'Owner'];
+      const rows = selectedLeads.map((lead) => [
+        lead.company_name,
+        lead.contact_name,
+        lead.contact_email,
+        lead.status,
+        lead.score.total.toString(),
+        lead.source,
+        lead.owner_name || '',
+      ]);
+      const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSelectedRows([]);
+    }
+  };
+
+  // Confirm bulk action
+  const confirmBulkAction = () => {
+    const { actionId, selectedLeads } = bulkActionDialog;
+    if (actionId === 'bulk_qualify') {
+      bulkUpdateStatusMutation.mutate({
+        leadIds: selectedLeads.map((l) => l._id),
+        status: 'QUALIFIED',
+      });
+    } else if (actionId === 'bulk_disqualify') {
+      bulkUpdateStatusMutation.mutate({
+        leadIds: selectedLeads.map((l) => l._id),
+        status: 'DISQUALIFIED',
+      });
+    }
+    setBulkActionDialog({ isOpen: false, actionId: '', selectedLeads: [], title: '', message: '' });
+  };
+
+  // Row actions renderer
+  const renderRowActions = (lead: Lead) => {
+    if (lead.status === 'QUALIFIED') {
+      return (
+        <button
+          onClick={() => setConvertingLead(lead)}
+          className="text-success-600 hover:text-success-700 text-sm font-medium"
+          data-testid="convert-button"
+        >
+          Convert
+        </button>
+      );
+    }
+    return null;
   };
 
   // Loading state
@@ -357,7 +606,7 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Leads Table */}
+      {/* Leads Table with DataTable */}
       <div className="card overflow-hidden">
         {filteredLeads.length === 0 ? (
           <div className="py-12 text-center" data-testid="empty-state">
@@ -370,103 +619,19 @@ export default function LeadsPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table" data-testid="leads-table">
-              <thead>
-                <tr>
-                  <th className="table-header">Company</th>
-                  <th className="table-header">Contact</th>
-                  <th className="table-header">Status</th>
-                  <th className="table-header">Score</th>
-                  <th className="table-header">Source</th>
-                  <th className="table-header">Owner</th>
-                  <th className="table-header">Last Activity</th>
-                  {canWrite && <th className="table-header">Actions</th>}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-secondary-200">
-                {filteredLeads.map((lead) => (
-                  <tr key={lead._id} className="table-row hover:bg-secondary-50" data-testid="lead-row">
-                    <td className="table-cell">
-                      <div>
-                        <p className="font-medium text-secondary-900">{lead.company_name}</p>
-                        {lead.industry && (
-                          <p className="text-sm text-secondary-500">{lead.industry}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      <div>
-                        <p className="font-medium">{lead.contact_name}</p>
-                        <a
-                          href={`mailto:${lead.contact_email}`}
-                          className="text-sm text-primary-600 hover:underline"
-                        >
-                          {lead.contact_email}
-                        </a>
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      {canWrite && lead.status !== 'CONVERTED' && lead.status !== 'DISQUALIFIED' ? (
-                        <select
-                          value={lead.status}
-                          onChange={(e) => updateStatusMutation.mutate({ leadId: lead._id, status: e.target.value })}
-                          className={`text-sm px-2 py-1 rounded ${LEAD_STATUSES.find((s) => s.value === lead.status)?.color || 'badge-secondary'}`}
-                          data-testid="status-select"
-                        >
-                          {LEAD_STATUSES.filter((s) => s.value !== 'CONVERTED').map((status) => (
-                            <option key={status.value} value={status.value}>
-                              {status.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span
-                          className={LEAD_STATUSES.find((s) => s.value === lead.status)?.color || 'badge-secondary'}
-                          data-testid="status-badge"
-                        >
-                          {LEAD_STATUSES.find((s) => s.value === lead.status)?.label || lead.status}
-                        </span>
-                      )}
-                    </td>
-                    <td className="table-cell">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16">
-                          <div className="h-2 bg-secondary-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${getScoreBarColor(lead.score.total)} transition-all`}
-                              style={{ width: `${lead.score.total}%` }}
-                            />
-                          </div>
-                        </div>
-                        <span className={`text-sm font-medium ${getScoreColor(lead.score.total)}`}>
-                          {lead.score.total}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="table-cell text-sm text-secondary-600">{lead.source}</td>
-                    <td className="table-cell text-sm">{lead.owner_name || '-'}</td>
-                    <td className="table-cell text-sm text-secondary-600">
-                      {formatDate(lead.last_activity_date || lead.updated_at)}
-                    </td>
-                    {canWrite && (
-                      <td className="table-cell">
-                        {lead.status === 'QUALIFIED' && (
-                          <button
-                            onClick={() => setConvertingLead(lead)}
-                            className="text-success-600 hover:text-success-700 text-sm font-medium"
-                            data-testid="convert-button"
-                          >
-                            Convert
-                          </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<Lead>
+            data={filteredLeads}
+            columns={columns}
+            keyField="_id"
+            selectable={canWrite}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+            bulkActions={canWrite ? bulkActions : []}
+            onBulkAction={handleBulkAction}
+            sortable
+            stickyHeader
+            rowActions={canWrite ? renderRowActions : undefined}
+          />
         )}
       </div>
 
@@ -488,6 +653,22 @@ export default function LeadsPage() {
           </span>
         </div>
       </div>
+
+      {/* Bulk Action Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={bulkActionDialog.isOpen}
+        title={bulkActionDialog.title}
+        message={bulkActionDialog.message}
+        confirmLabel={bulkActionDialog.actionId === 'bulk_disqualify' ? 'Disqualify' : 'Confirm'}
+        cancelLabel="Cancel"
+        isLoading={bulkUpdateStatusMutation.isPending}
+        onConfirm={confirmBulkAction}
+        onCancel={() => setBulkActionDialog({ isOpen: false, actionId: '', selectedLeads: [], title: '', message: '' })}
+        details={{
+          'Selected Leads': bulkActionDialog.selectedLeads.length,
+          'Action': bulkActionDialog.actionId === 'bulk_qualify' ? 'Mark as Qualified' : 'Disqualify',
+        }}
+      />
 
       {/* Lead Conversion Wizard */}
       {convertingLead && (
