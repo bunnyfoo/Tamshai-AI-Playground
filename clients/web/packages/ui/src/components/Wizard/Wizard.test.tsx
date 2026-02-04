@@ -91,9 +91,10 @@ describe('Wizard', () => {
       );
 
       expect(screen.getByRole('navigation', { name: /wizard progress/i })).toBeInTheDocument();
-      expect(screen.getByText('Step One')).toBeInTheDocument();
-      expect(screen.getByText('Step Two')).toBeInTheDocument();
-      expect(screen.getByText('Review')).toBeInTheDocument();
+      // Step names appear in both breadcrumb and step header, so use getAllByText
+      expect(screen.getAllByText('Step One').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Step Two').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Review').length).toBeGreaterThan(0);
     });
 
     it('marks current step as active', () => {
@@ -130,9 +131,11 @@ describe('Wizard', () => {
         expect(screen.getByTestId('step-2')).toBeInTheDocument();
       });
 
-      // Click breadcrumb for step 1
-      const breadcrumbs = screen.getAllByRole('listitem');
-      fireEvent.click(breadcrumbs[0]);
+      // Click the button inside the first breadcrumb (Step One)
+      // The breadcrumb nav contains buttons for navigation
+      const breadcrumbNav = screen.getByRole('navigation', { name: /wizard progress/i });
+      const breadcrumbButtons = breadcrumbNav.querySelectorAll('button');
+      fireEvent.click(breadcrumbButtons[0]);
 
       await waitFor(() => {
         expect(screen.getByTestId('step-1')).toBeInTheDocument();

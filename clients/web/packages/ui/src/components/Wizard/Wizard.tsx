@@ -33,26 +33,32 @@ export interface WizardStep {
 export interface WizardProps {
   steps: WizardStep[];
   initialStep?: number;
+  initialData?: Record<string, unknown>;
   onComplete: (data: Record<string, unknown>) => Promise<void>;
   onCancel?: () => void;
   title?: string;
   showBreadcrumbs?: boolean;
+  submitLabel?: string;
+  submittingLabel?: string;
 }
 
 export function Wizard({
   steps,
   initialStep = 0,
+  initialData = {},
   onComplete,
   onCancel,
   title,
   showBreadcrumbs = false,
+  submitLabel = 'Submit',
+  submittingLabel = 'Processing...',
 }: WizardProps) {
   const wizardId = useId();
   const titleId = `${wizardId}-title`;
 
   // State
   const [currentStepIndex, setCurrentStepIndex] = useState(initialStep);
-  const [data, setData] = useState<Record<string, unknown>>({});
+  const [data, setData] = useState<Record<string, unknown>>(initialData);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -309,12 +315,12 @@ export function Wizard({
             {isSubmitting ? (
               <>
                 <SpinnerIcon className="w-4 h-4 animate-spin" />
-                Processing...
+                {submittingLabel}
               </>
             ) : isLastStep ? (
               <>
                 <CheckIcon className="w-4 h-4" />
-                Submit
+                {submitLabel}
               </>
             ) : (
               <>
