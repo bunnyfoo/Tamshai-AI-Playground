@@ -158,36 +158,42 @@ const mcpServerConfigs: MCPServerConfig[] = [
   {
     name: 'hr',
     url: config.mcpServers.hr,
-    requiredRoles: ['hr-read', 'hr-write', 'executive'],
+    // 'employee' role grants self-access (own profile); department roles grant full access
+    requiredRoles: ['employee', 'hr-read', 'hr-write', 'executive'],
     description: 'HR data including employees, departments, org structure',
   },
   {
     name: 'finance',
     url: config.mcpServers.finance,
-    requiredRoles: ['finance-read', 'finance-write', 'executive'],
+    // 'employee' role grants self-access (own expenses); department roles grant full access
+    requiredRoles: ['employee', 'finance-read', 'finance-write', 'executive'],
     description: 'Financial data including budgets, reports, invoices',
   },
   {
     name: 'sales',
     url: config.mcpServers.sales,
+    // Sales data requires explicit sales roles (no employee self-access)
     requiredRoles: ['sales-read', 'sales-write', 'executive'],
     description: 'CRM data including customers, deals, pipeline',
   },
   {
     name: 'support',
     url: config.mcpServers.support,
-    requiredRoles: ['support-read', 'support-write', 'executive'],
+    // 'employee' role grants self-access (own tickets); department roles grant full access
+    requiredRoles: ['employee', 'support-read', 'support-write', 'executive'],
     description: 'Support data including tickets, knowledge base',
   },
   {
     name: 'payroll',
     url: config.mcpServers.payroll,
-    requiredRoles: ['payroll-read', 'payroll-write', 'hr-read', 'hr-write', 'executive'],
+    // 'employee' role grants self-access (own pay stubs); department roles grant full access
+    requiredRoles: ['employee', 'payroll-read', 'payroll-write', 'hr-read', 'hr-write', 'executive'],
     description: 'Payroll data including pay stubs, deductions, tax withholdings',
   },
   {
     name: 'tax',
     url: config.mcpServers.tax,
+    // Tax data requires explicit tax/finance roles (no employee self-access)
     requiredRoles: ['tax-read', 'tax-write', 'finance-read', 'finance-write', 'executive'],
     description: 'Tax data including sales tax, quarterly estimates, annual filings',
   },

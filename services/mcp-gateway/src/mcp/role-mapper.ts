@@ -40,8 +40,8 @@ export function createDefaultMCPServers(mcpServerUrls: {
     {
       name: 'sales',
       url: mcpServerUrls.sales,
-      // 'employee' grants self-access via RLS, department roles grant full access
-      requiredRoles: ['employee', 'sales-read', 'sales-write', 'executive'],
+      // Sales data requires explicit sales roles (no employee self-access)
+      requiredRoles: ['sales-read', 'sales-write', 'executive'],
       description: 'CRM data including customers, deals, pipeline',
     },
     {
