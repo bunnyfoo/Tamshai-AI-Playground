@@ -67,7 +67,7 @@ const snapshots: Map<string, Snapshot> = new Map();
 /**
  * Middleware to check if admin routes are enabled
  */
-function adminRoutesEnabled(req: Request, res: Response, next: Function) {
+function adminRoutesEnabled(req: Request, res: Response, next: () => void) {
   const env = process.env.NODE_ENV || 'development';
 
   if (env === 'production') {
@@ -256,7 +256,7 @@ router.post('/snapshots', async (req: Request, res: Response) => {
           const file = await createPostgresSnapshot(snapshotId, db);
           files.push(file);
           databases.push(db);
-        } catch (error) {
+        } catch {
           logger.warn(`Skipping PostgreSQL database ${db}: not available`);
         }
       }
@@ -269,7 +269,7 @@ router.post('/snapshots', async (req: Request, res: Response) => {
           const dir = await createMongoSnapshot(snapshotId, db);
           files.push(dir);
           databases.push(db);
-        } catch (error) {
+        } catch {
           logger.warn(`Skipping MongoDB database ${db}: not available`);
         }
       }

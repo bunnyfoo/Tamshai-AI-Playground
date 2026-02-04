@@ -5,8 +5,9 @@
  * These tests focus on API contract validation rather than actual database operations.
  */
 
-import express, { Express } from 'express';
+import express, { Express, Router } from 'express';
 import request from 'supertest';
+import actualAdminRoutes, { ADMIN_API_KEY as ACTUAL_ADMIN_API_KEY } from './admin.routes';
 
 // Create a simplified mock admin routes module for testing
 const ADMIN_API_KEY = 'e2e-test-admin-key';
@@ -15,7 +16,6 @@ const ADMIN_API_KEY = 'e2e-test-admin-key';
 const testSnapshots: Map<string, { id: string; timestamp: string; databases: string[]; files: string[] }> = new Map();
 
 function createTestAdminRoutes() {
-  const { Router } = require('express');
   const router = Router();
 
   // Admin middleware
@@ -312,13 +312,11 @@ describe('Admin Routes', () => {
 // Test the actual admin routes module exports
 describe('Admin Routes Module', () => {
   test('exports ADMIN_API_KEY constant', () => {
-    const { ADMIN_API_KEY: exportedKey } = require('./admin.routes');
-    expect(exportedKey).toBe('e2e-test-admin-key');
+    expect(ACTUAL_ADMIN_API_KEY).toBe('e2e-test-admin-key');
   });
 
   test('exports default router', () => {
-    const adminRoutes = require('./admin.routes').default;
-    expect(adminRoutes).toBeDefined();
-    expect(typeof adminRoutes).toBe('function'); // Express router is a function
+    expect(actualAdminRoutes).toBeDefined();
+    expect(typeof actualAdminRoutes).toBe('function'); // Express router is a function
   });
 });
