@@ -46,7 +46,7 @@ import adminRoutes from './routes/admin.routes';
 import { JWTValidator } from './auth/jwt-validator';
 import { createAuthMiddleware } from './middleware/auth.middleware';
 import { createStreamingRoutes, drainConnections, getActiveConnectionCount } from './routes/streaming.routes';
-import { MCPClient, MCPQueryResult } from './mcp/mcp-client';
+import { MCPClient } from './mcp/mcp-client';
 import { createAIQueryRoutes } from './routes/ai-query.routes';
 import { createConfirmationRoutes } from './routes/confirmation.routes';
 import { createMCPProxyRoutes } from './routes/mcp-proxy.routes';
