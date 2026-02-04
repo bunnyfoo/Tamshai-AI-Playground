@@ -3,12 +3,27 @@
  *
  * Sets up database connections and test utilities for integration tests.
  * Requires running PostgreSQL and other services.
+ *
+ * TOTP Handling:
+ * - Uses direct access grants which bypass OTP requirement
+ * - Does NOT delete any user credentials
+ * - Temporarily removes CONFIGURE_TOTP required action (if present)
+ * - Restores required actions after tests
  */
 
 import { Client, Pool } from 'pg';
+import axios from 'axios';
 
 // Test environment configuration
 process.env.NODE_ENV = 'test';
+
+// Keycloak configuration for TOTP handling
+// Note: KEYCLOAK_URL should NOT include /auth - we add it where needed
+const KEYCLOAK_CONFIG = {
+  url: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190',
+  realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
+  adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
+};
 
 // Database connection settings from environment or defaults
 // IMPORTANT: Use tamshai_app user (not tamshai) to enforce RLS policies
@@ -36,6 +51,24 @@ const DB_CONFIG = DB_CONFIG_HR;
 // Connection pools for different test users
 let adminPool: Pool | null = null;
 let adminPoolFinance: Pool | null = null;
+
+// Keycloak admin token for TOTP management
+let keycloakAdminToken: string | null = null;
+
+// Storage for user state to restore after tests
+const savedUserState: Record<string, { userId: string; requiredActions: string[]; hasOtpCredential: boolean }> = {};
+
+// Test usernames that need TOTP handling
+const TEST_USERNAMES = [
+  'eve.thompson',
+  'alice.chen',
+  'bob.martinez',
+  'carol.johnson',
+  'dan.williams',
+  'frank.davis',
+  'nina.patel',
+  'marcus.johnson',
+];
 
 /**
  * Get admin database connection pool for HR database
@@ -210,11 +243,239 @@ export const TEST_USERS = {
   },
 };
 
+// ============================================================================
+// Keycloak TOTP Management Functions
+// ============================================================================
+
+interface KeycloakCredential {
+  type: string;
+  id: string;
+}
+
+interface KeycloakUser {
+  id: string;
+  username: string;
+  requiredActions: string[];
+}
+
+/**
+ * Get admin token from Keycloak master realm
+ */
+async function getKeycloakAdminToken(): Promise<string> {
+  const response = await axios.post(
+    `${KEYCLOAK_CONFIG.url}/auth/realms/master/protocol/openid-connect/token`,
+    new URLSearchParams({
+      client_id: 'admin-cli',
+      username: 'admin',
+      password: KEYCLOAK_CONFIG.adminPassword,
+      grant_type: 'password',
+    }),
+    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  );
+  return response.data.access_token;
+}
+
+/**
+ * Get user ID by username
+ */
+async function getUserId(username: string): Promise<string | null> {
+  const response = await axios.get<KeycloakUser[]>(
+    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
+    {
+      params: { username },
+      headers: { Authorization: `Bearer ${keycloakAdminToken}` },
+    }
+  );
+  return response.data[0]?.id || null;
+}
+
+/**
+ * Get user details
+ */
+async function getUser(userId: string): Promise<KeycloakUser> {
+  const response = await axios.get<KeycloakUser>(
+    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
+    { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
+  );
+  return response.data;
+}
+
+/**
+ * Get user's credentials
+ */
+async function getUserCredentials(userId: string): Promise<KeycloakCredential[]> {
+  const response = await axios.get<KeycloakCredential[]>(
+    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}/credentials`,
+    { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
+  );
+  return response.data;
+}
+
+/**
+ * Update user's required actions
+ */
+async function updateUserRequiredActions(userId: string, requiredActions: string[]): Promise<void> {
+  await axios.put(
+    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
+    { requiredActions },
+    {
+      headers: {
+        Authorization: `Bearer ${keycloakAdminToken}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+}
+
+/**
+ * Prepare test users for automated testing
+ *
+ * IMPORTANT: We do NOT delete OTP credentials!
+ * We only temporarily remove CONFIGURE_TOTP from required actions.
+ * The mcp-gateway client uses direct access grants which bypass OTP.
+ */
+async function prepareTestUsers(): Promise<void> {
+  console.log('\n🔐 Preparing test users for automated testing...');
+  console.log('   (OTP credentials are preserved - only required actions are modified)\n');
+
+  for (const username of TEST_USERNAMES) {
+    try {
+      const userId = await getUserId(username);
+      if (!userId) {
+        console.log(`   ⚠️  User ${username} not found, skipping`);
+        continue;
+      }
+
+      const user = await getUser(userId);
+      const currentActions = user.requiredActions || [];
+
+      // Check if user has existing OTP credential
+      const credentials = await getUserCredentials(userId);
+      const hasOtpCredential = credentials.some((c) => c.type === 'otp');
+
+      // Save current state for restoration
+      savedUserState[username] = {
+        userId,
+        requiredActions: [...currentActions],
+        hasOtpCredential,
+      };
+
+      // Remove CONFIGURE_TOTP from required actions if present
+      if (currentActions.includes('CONFIGURE_TOTP')) {
+        const newActions = currentActions.filter((a) => a !== 'CONFIGURE_TOTP');
+        await updateUserRequiredActions(userId, newActions);
+        console.log(`   ✅ ${username}: Temporarily removed CONFIGURE_TOTP requirement`);
+      } else {
+        console.log(`   ℹ️  ${username}: No CONFIGURE_TOTP requirement to remove`);
+      }
+
+      if (hasOtpCredential) {
+        console.log(`   📱 ${username}: Has existing OTP credential (will be preserved)`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`   ❌ Error preparing ${username}: ${message}`);
+    }
+  }
+}
+
+/**
+ * Restore TOTP requirement for all test users
+ *
+ * After QA testing, TOTP should be re-enabled for all users:
+ * - If user has OTP credential: No action needed (they can use their authenticator)
+ * - If user has no OTP credential: Add CONFIGURE_TOTP (they'll be prompted on next login)
+ */
+async function restoreTestUsers(): Promise<void> {
+  console.log('\n🔐 Re-enabling TOTP requirement for all test users...');
+
+  // Refresh admin token in case it expired during long tests
+  try {
+    keycloakAdminToken = await getKeycloakAdminToken();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('   ❌ Failed to refresh admin token:', message);
+    return;
+  }
+
+  for (const username of TEST_USERNAMES) {
+    try {
+      const saved = savedUserState[username];
+      if (!saved) {
+        console.log(`   ⚠️  No saved state for ${username}, skipping`);
+        continue;
+      }
+
+      const { userId } = saved;
+
+      // Check current OTP credential status
+      const currentCredentials = await getUserCredentials(userId);
+      const hasOtpCredential = currentCredentials.some((c) => c.type === 'otp');
+
+      // Get current user state
+      const user = await getUser(userId);
+      const currentActions = user.requiredActions || [];
+
+      if (hasOtpCredential) {
+        // User has OTP credential - they don't need CONFIGURE_TOTP
+        // Remove it if present (they can just use their existing authenticator)
+        if (currentActions.includes('CONFIGURE_TOTP')) {
+          const newActions = currentActions.filter((a) => a !== 'CONFIGURE_TOTP');
+          await updateUserRequiredActions(userId, newActions);
+        }
+        console.log(`   ✅ ${username}: Has OTP credential, TOTP ready to use`);
+      } else {
+        // User has no OTP credential - add CONFIGURE_TOTP so they're prompted
+        if (!currentActions.includes('CONFIGURE_TOTP')) {
+          const newActions = [...currentActions, 'CONFIGURE_TOTP'];
+          await updateUserRequiredActions(userId, newActions);
+          console.log(`   🔒 ${username}: Added CONFIGURE_TOTP (will be prompted on next login)`);
+        } else {
+          console.log(`   🔒 ${username}: CONFIGURE_TOTP already required`);
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`   ❌ Error restoring ${username}: ${message}`);
+    }
+  }
+
+  console.log('\n   ✅ TOTP requirement restored for all users');
+}
+
 // Increase timeout for slow database operations
 jest.setTimeout(30000);
 
-// Global cleanup
+// Global setup - prepare test users (remove CONFIGURE_TOTP)
+beforeAll(async () => {
+  const isCI = process.env.CI === 'true';
+
+  // In CI, skip TOTP handling (Keycloak is ephemeral)
+  if (isCI) {
+    console.log('\n✅ CI mode - skipping TOTP preparation');
+    return;
+  }
+
+  try {
+    keycloakAdminToken = await getKeycloakAdminToken();
+    await prepareTestUsers();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`\n⚠️  Could not prepare test users (Keycloak may not be available): ${message}`);
+    console.warn('   Tests requiring Keycloak authentication may fail.\n');
+  }
+}, 60000);
+
+// Global cleanup - restore test users and close database connections
 afterAll(async () => {
+  const isCI = process.env.CI === 'true';
+
+  // Restore TOTP for test users (local dev only)
+  if (!isCI && keycloakAdminToken) {
+    await restoreTestUsers();
+  }
+
+  // Close database pools
   if (adminPool) {
     await adminPool.end();
     adminPool = null;
@@ -223,4 +484,4 @@ afterAll(async () => {
     await adminPoolFinance.end();
     adminPoolFinance = null;
   }
-});
+}, 30000);
