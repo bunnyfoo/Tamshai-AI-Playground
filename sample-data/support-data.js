@@ -206,6 +206,70 @@ db.tickets.insertMany([
     first_response_at: new Date("2025-12-25T15:30:00Z"),
     resolution_deadline: new Date("2025-12-27T14:00:00Z"),
     closed_at: new Date("2025-12-26T09:30:00Z")
+  },
+  // =============================================================================
+  // EDGE CASE: Breached SLA Tickets (Phase 5 - Enterprise UX Hardening)
+  // Used to test SLA urgency UI, escalation workflows, and danger styling
+  // =============================================================================
+  // Breached SLA - Enterprise critical ticket (2 days overdue)
+  {
+    _id: ObjectId("670000000000000000000011"),
+    ticket_id: "TICK-011",
+    title: "API rate limiting causing production outages",
+    description: "Enterprise API calls are being rate limited during peak hours, causing intermittent 429 errors for our largest client TechCorp Inc.",
+    status: "open",
+    priority: "critical",
+    created_by: "carol.johnson",
+    created_at: new Date("2026-01-30T09:00:00Z"),
+    updated_at: new Date("2026-02-01T14:00:00Z"),
+    tags: ["api", "production", "enterprise", "sla-breach"],
+    assigned_to: "dan.williams",
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 15,
+    sla_target_resolution_minutes: 120,
+    first_response_at: new Date("2026-01-30T09:10:00Z"),
+    resolution_deadline: new Date("2026-01-30T11:00:00Z")  // 4 days overdue by Feb 3
+  },
+  // Breached SLA - High priority unassigned (1 day overdue)
+  {
+    _id: ObjectId("670000000000000000000012"),
+    ticket_id: "TICK-012",
+    title: "Data sync failing between HR and Finance systems",
+    description: "Employee salary updates made in HR system are not syncing to Finance payroll. Last successful sync was January 25th.",
+    status: "open",
+    priority: "high",
+    created_by: "bob.martinez",
+    created_at: new Date("2026-02-01T10:00:00Z"),
+    updated_at: new Date("2026-02-01T10:00:00Z"),
+    tags: ["integration", "data-sync", "hr", "finance", "sla-breach"],
+    assigned_to: null,
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 30,
+    sla_target_resolution_minutes: 240,
+    first_response_at: null,  // Never responded - missed response SLA too
+    resolution_deadline: new Date("2026-02-01T14:00:00Z")  // 2 days overdue by Feb 3
+  },
+  // Breached SLA - In progress but past deadline
+  {
+    _id: ObjectId("670000000000000000000013"),
+    ticket_id: "TICK-013",
+    title: "SSO authentication randomly logging users out",
+    description: "Multiple users report being logged out mid-session. Happens 3-4 times per day. Suspect token refresh issue.",
+    status: "in_progress",
+    priority: "high",
+    created_by: "alice.chen",
+    created_at: new Date("2026-01-28T08:00:00Z"),
+    updated_at: new Date("2026-02-02T16:00:00Z"),
+    tags: ["authentication", "sso", "keycloak", "sla-breach"],
+    assigned_to: "dan.williams",
+    resolution: null,
+    customer_tier: "enterprise",
+    sla_target_response_minutes: 30,
+    sla_target_resolution_minutes: 240,
+    first_response_at: new Date("2026-01-28T08:20:00Z"),
+    resolution_deadline: new Date("2026-01-28T12:00:00Z")  // 6 days overdue by Feb 3
   }
 ]);
 
@@ -217,26 +281,28 @@ db.ticket_summary.insertMany([
   {
     _id: ObjectId("680000000000000000000001"),
     status: "open",
-    count: 4,
+    count: 6,  // Updated: +2 breached SLA tickets (TICK-011, TICK-012)
     priority_breakdown: {
-      critical: 0,
-      high: 2,
+      critical: 1,  // +1 (TICK-011)
+      high: 3,      // +1 (TICK-012)
       medium: 1,
       low: 1
     },
-    updated_at: new Date("2025-12-30T13:30:00Z")
+    sla_breached_count: 2,  // NEW: Track SLA breaches
+    updated_at: new Date("2026-02-03T00:00:00Z")
   },
   {
     _id: ObjectId("680000000000000000000002"),
     status: "in_progress",
-    count: 2,
+    count: 3,  // Updated: +1 breached SLA ticket (TICK-013)
     priority_breakdown: {
       critical: 1,
-      high: 0,
+      high: 1,  // +1 (TICK-013)
       medium: 1,
       low: 0
     },
-    updated_at: new Date("2025-12-30T13:30:00Z")
+    sla_breached_count: 1,  // NEW: Track SLA breaches
+    updated_at: new Date("2026-02-03T00:00:00Z")
   },
   {
     _id: ObjectId("680000000000000000000003"),

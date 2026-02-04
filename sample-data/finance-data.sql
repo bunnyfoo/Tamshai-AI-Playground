@@ -436,7 +436,21 @@ INSERT INTO finance.invoices (invoice_id, invoice_number, vendor_name, vendor_id
     ('INV-2025-004', 'INV-2025-004', 'Google Cloud', 'GCP-001', 'Cloud services - October 2025', 22000.00, '2025-10-05', '2025-11-05', NULL, 'PENDING', 'ENG'),
     ('INV-2025-005', 'INV-2025-005', 'HubSpot', 'HS-001', 'Marketing automation - Q4', 15000.00, '2025-10-10', '2025-11-10', NULL, 'APPROVED', 'MKT'),
     ('INV-2025-006', 'INV-2025-006', 'Workday', 'WD-001', 'HR platform - Annual', 85000.00, '2025-09-01', '2025-09-30', '2025-09-25', 'PAID', 'HR'),
-    ('INV-2025-007', 'INV-2025-007', 'Legal Associates LLP', 'LA-001', 'Contract review services', 12500.00, '2025-10-15', '2025-11-15', NULL, 'PENDING', 'LEGAL')
+    ('INV-2025-007', 'INV-2025-007', 'Legal Associates LLP', 'LA-001', 'Contract review services', 12500.00, '2025-10-15', '2025-11-15', NULL, 'PENDING', 'LEGAL'),
+    -- =============================================================================
+    -- EDGE CASE: Overdue invoices (Phase 5 - Enterprise UX Hardening)
+    -- Used to test danger styling, overdue filters, and escalation workflows
+    -- =============================================================================
+    -- 90 days overdue (critical)
+    ('INV-2025-008', 'INV-2025-008', 'DataCenter Services Inc', 'DCS-001', 'Server colocation - September 2025', 8500.00, '2025-09-01', '2025-10-01', NULL, 'PENDING', 'IT'),
+    -- 60 days overdue (high priority)
+    ('INV-2025-009', 'INV-2025-009', 'CloudFlare Enterprise', 'CF-001', 'CDN services - October 2025', 3200.00, '2025-10-01', '2025-11-01', NULL, 'PENDING', 'ENG'),
+    -- 45 days overdue (approved but not paid)
+    ('INV-2025-010', 'INV-2025-010', 'Creative Agency Partners', 'CAP-001', 'Brand redesign phase 1', 25000.00, '2025-10-15', '2025-11-15', NULL, 'APPROVED', 'MKT'),
+    -- 30 days overdue (pending approval)
+    ('INV-2025-011', 'INV-2025-011', 'Office Supplies Co', 'OSC-001', 'Q4 office supplies order', 4750.00, '2025-11-01', '2025-12-01', NULL, 'PENDING', 'OPS'),
+    -- Multi-line item invoice (10 line items) - used to test detail modal scroll
+    ('INV-2025-012', 'INV-2025-012', 'Tech Equipment Wholesale', 'TEW-001', 'IT equipment refresh - 10 monitors, 10 keyboards, 10 mice, 10 headsets, 10 webcams, 10 docking stations, 10 USB hubs, 10 mouse pads, 10 monitor stands, 10 cable organizers', 18750.00, '2025-11-15', '2025-12-15', NULL, 'PENDING', 'IT')
 ON CONFLICT DO NOTHING;
 
 -- =============================================================================

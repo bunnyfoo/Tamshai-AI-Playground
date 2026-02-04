@@ -330,6 +330,19 @@ INSERT INTO hr.employees (id, employee_number, first_name, last_name, email, wor
 ON CONFLICT (employee_number) DO NOTHING;
 
 -- =============================================================================
+-- EDGE CASE: Terminated Employees (Phase 5 - Enterprise UX Hardening)
+-- Used to test read-only profile views, org chart edge cases, and status filtering
+-- =============================================================================
+INSERT INTO hr.employees (id, employee_number, first_name, last_name, email, work_email, phone, department_id, manager_id, title, grade, hire_date, salary, bonus_target_pct, location, is_manager, status, terminated_at) VALUES
+    -- Voluntary resignation - Sales rep who left for competitor
+    ('e1000000-0000-0000-0000-00000000e001', 'EMP-T001', 'Derek', 'Foster', 'derek.f@tamshai-playground.local', 'derek.f@tamshai-playground.local', '+1-555-400-9001', 'd1000000-0000-0000-0000-000000000004', 'e1000000-0000-0000-0000-000000000031', 'Account Executive', 'L4', '2020-06-15', 85000.00, 25, 'New York, NY', false, 'TERMINATED', '2025-12-15 17:00:00+00'),
+    -- Layoff - Marketing coordinator during restructuring
+    ('e1000000-0000-0000-0000-00000000e002', 'EMP-T002', 'Heather', 'Banks', 'heather.b@tamshai-playground.local', 'heather.b@tamshai-playground.local', '+1-555-800-9002', 'd1000000-0000-0000-0000-000000000007', 'e1000000-0000-0000-0000-000000000071', 'Marketing Coordinator', 'L2', '2023-02-01', 56000.00, 5, 'San Francisco, CA', false, 'TERMINATED', '2025-11-30 17:00:00+00'),
+    -- Former manager (tests org chart edge case - subordinates reassigned)
+    ('e1000000-0000-0000-0000-00000000e003', 'EMP-T003', 'Victor', 'Reyes', 'victor.r@tamshai-playground.local', 'victor.r@tamshai-playground.local', '+1-555-500-9003', 'd1000000-0000-0000-0000-000000000005', 'd7f8e9c0-2a3b-4c5d-9e1f-8a7b6c5d4e3f', 'Support Manager', 'L5', '2019-08-01', 105000.00, 15, 'Austin, TX', true, 'TERMINATED', '2025-10-31 17:00:00+00')
+ON CONFLICT (employee_number) DO NOTHING;
+
+-- =============================================================================
 -- PERFORMANCE REVIEWS (CONFIDENTIAL - HR and Manager access only)
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS hr.performance_reviews (
