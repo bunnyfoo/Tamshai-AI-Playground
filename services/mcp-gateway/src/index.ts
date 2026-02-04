@@ -42,6 +42,7 @@ import {
 import gdprRoutes from './routes/gdpr';
 import healthRoutes from './routes/health.routes';
 import userRoutes from './routes/user.routes';
+import adminRoutes from './routes/admin.routes';
 import { JWTValidator } from './auth/jwt-validator';
 import { createAuthMiddleware } from './middleware/auth.middleware';
 import { createStreamingRoutes, drainConnections, getActiveConnectionCount } from './routes/streaming.routes';
@@ -434,6 +435,14 @@ app.use(healthRoutes);
 // =============================================================================
 // HR-only endpoints for GDPR data subject rights
 app.use('/api/admin/gdpr', authMiddleware, gdprRoutes);
+
+// =============================================================================
+// E2E TEST ADMIN ROUTES (v1.5 - Enterprise UX Hardening)
+// =============================================================================
+// Database snapshot/rollback for E2E test state isolation
+// Protected by X-Admin-Key header (no JWT required)
+// Only available in development/test environments
+app.use('/api/admin', adminRoutes);
 
 // User info and MCP tools routes - extracted to routes/user.routes.ts
 app.use(authMiddleware, userRoutes);
