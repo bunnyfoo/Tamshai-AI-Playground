@@ -351,8 +351,10 @@ describe('CustomerDetail', () => {
 
       await waitFor(() => {
         // Only CLOSED_WON: $50,000
-        expect(screen.getByText('$50,000')).toBeInTheDocument();
-        expect(screen.getByText('Total Revenue')).toBeInTheDocument();
+        // Use testId to avoid matching table row with same value
+        expect(screen.getByTestId('total-revenue-card')).toBeInTheDocument();
+        expect(screen.getByTestId('total-revenue-card')).toHaveTextContent('$50,000');
+        expect(screen.getByTestId('total-revenue-card')).toHaveTextContent('Total Revenue');
       });
     });
 
@@ -374,8 +376,10 @@ describe('CustomerDetail', () => {
 
       await waitFor(() => {
         // Only NEGOTIATION: $150,000
-        expect(screen.getByText('$150,000')).toBeInTheDocument();
-        expect(screen.getByText('in Pipeline')).toBeInTheDocument();
+        // Use testId to avoid matching table row with same value
+        expect(screen.getByTestId('pipeline-card')).toBeInTheDocument();
+        expect(screen.getByTestId('pipeline-card')).toHaveTextContent('$150,000');
+        expect(screen.getByTestId('pipeline-card')).toHaveTextContent('in Pipeline');
       });
     });
 
