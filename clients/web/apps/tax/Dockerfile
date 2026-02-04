@@ -34,6 +34,15 @@ COPY --from=builder /app/apps/tax/dist /usr/share/nginx/html
 # Copy Nginx configuration
 COPY apps/tax/nginx.conf /etc/nginx/conf.d/default.conf
 
+# Security: Set proper ownership and run as non-root user
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+
+USER nginx
+
 EXPOSE 80
 
 # Health check
