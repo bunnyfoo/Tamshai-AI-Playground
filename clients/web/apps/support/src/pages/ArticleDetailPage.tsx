@@ -150,10 +150,26 @@ export default function ArticleDetailPage() {
     });
   };
 
+  // Escape HTML entities to prevent XSS attacks
+  const escapeHtml = (text: string): string => {
+    const htmlEntities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+    };
+    return text.replace(/[&<>"']/g, (char) => htmlEntities[char]);
+  };
+
   // Simple markdown to HTML converter
+  // Security: HTML is escaped first to prevent XSS, then safe markdown is applied
   const renderMarkdown = (content: string) => {
+    // First escape HTML to prevent XSS injection
+    let html = escapeHtml(content);
+
     // Handle code blocks
-    let html = content.replace(
+    html = html.replace(
       /```(\w+)?\n([\s\S]*?)```/g,
       '<pre class="bg-secondary-800 text-secondary-100 p-4 rounded-lg overflow-x-auto my-4"><code>$2</code></pre>'
     );

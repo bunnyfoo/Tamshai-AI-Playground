@@ -20,6 +20,7 @@ import {
 } from '../types/mcp-response';
 import { UserContext } from '../test-utils/mock-user-context';
 import { getIdentityToken } from '../utils/gcp-auth';
+import { buildSafeQueryParams, sanitizeForLogging } from '../utils/sanitize';
 
 // Extended Request type with userContext property
 interface AuthenticatedRequest extends Request {
@@ -65,29 +66,18 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
       return;
     }
 
-    // Convert query params to proper types (Express parses everything as strings)
-    // Security: Use Object.create(null) to prevent prototype pollution
-    const queryParams: Record<string, string | number | string[]> = Object.create(null);
-    const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
-    for (const [key, value] of Object.entries(req.query)) {
-      if (value === undefined) continue;
-      // Security: Reject dangerous property names to prevent prototype pollution
-      if (dangerousKeys.includes(key)) continue;
-      // Try to parse as number if it looks numeric
-      if (typeof value === 'string' && /^\d+$/.test(value)) {
-        queryParams[key] = parseInt(value, 10);
-      } else if (typeof value === 'string') {
-        queryParams[key] = value;
-      } else if (Array.isArray(value)) {
-        queryParams[key] = value.filter((v): v is string => typeof v === 'string');
-      }
-      // Skip ParsedQs objects (nested query params)
-    }
+    // Convert query params to proper types with security validation
+    // Uses buildSafeQueryParams which:
+    // - Validates keys against safe pattern (alphanumeric, underscore, hyphen, dot)
+    // - Prevents prototype pollution by rejecting dangerous keys
+    // - Uses Object.create(null) for the result object
+    const queryParams = buildSafeQueryParams(req.query as Record<string, unknown>);
 
+    // Sanitize for logging to prevent log injection attacks
     logger.info(`MCP tool call: ${serverName}/${toolName}`, {
       requestId,
       userId: userContext.userId,
-      queryParams,
+      queryParams: sanitizeForLogging(queryParams),
     });
 
     try {
@@ -197,10 +187,11 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
       return;
     }
 
+    // Sanitize body for logging to prevent log injection attacks
     logger.info(`MCP tool call (POST): ${serverName}/${toolName}`, {
       requestId,
       userId: userContext.userId,
-      body,
+      body: sanitizeForLogging(body),
     });
 
     try {
