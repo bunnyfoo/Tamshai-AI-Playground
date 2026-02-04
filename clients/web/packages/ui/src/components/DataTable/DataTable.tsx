@@ -193,13 +193,13 @@ export function DataTable<T extends Record<string, unknown>>({
       {/* Bulk Action Toolbar */}
       {selectable && selectedRows.length > 0 && bulkActions.length > 0 && (
         <div
-          data-testid="bulk-toolbar"
+          data-testid="bulk-action-toolbar"
           role="toolbar"
           aria-label="Bulk actions"
           className="flex items-center justify-between px-4 py-3 bg-primary-50 border-b border-primary-200 animate-fade-in"
         >
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-primary-700">
+            <span data-testid="selected-count" className="text-sm font-medium text-primary-700" role="status" aria-live="polite">
               {selectedRows.length} {selectedRows.length === 1 ? 'item' : 'items'} selected
             </span>
             <button
@@ -215,6 +215,7 @@ export function DataTable<T extends Record<string, unknown>>({
               <button
                 key={action.id}
                 type="button"
+                data-testid={`bulk-action-${action.id}`}
                 onClick={() => handleBulkAction(action.id)}
                 className={getBulkActionClassName(action.variant)}
               >
@@ -249,6 +250,8 @@ export function DataTable<T extends Record<string, unknown>>({
                   checked={allSelected}
                   onChange={handleHeaderCheckboxChange}
                   aria-label="Select all rows"
+                  data-testid="select-all-checkbox"
+                  data-indeterminate={someSelected ? 'true' : undefined}
                   className="w-4 h-4 rounded border-secondary-300 text-primary-500
                            focus:ring-2 focus:ring-primary-500"
                 />
@@ -299,6 +302,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 key={rowId}
                 role="row"
                 aria-selected={isSelected}
+                data-selected={isSelected ? 'true' : undefined}
                 className={`transition-colors hover:bg-secondary-50 ${
                   isSelected ? 'bg-primary-50 border-l-3 border-l-primary-500' : ''
                 }`}
@@ -311,6 +315,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       checked={isSelected}
                       onChange={() => handleRowCheckboxChange(rowId)}
                       aria-label={`Select row: ${displayName}`}
+                      data-testid="row-checkbox"
                       className="w-4 h-4 rounded border-secondary-300 text-primary-500
                                focus:ring-2 focus:ring-primary-500"
                     />

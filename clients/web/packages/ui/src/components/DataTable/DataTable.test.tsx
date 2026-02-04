@@ -234,7 +234,7 @@ describe('DataTable', () => {
         />
       );
 
-      expect(screen.queryByTestId('bulk-toolbar')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('bulk-action-toolbar')).not.toBeInTheDocument();
     });
 
     it('shows bulk toolbar when rows are selected', () => {
@@ -249,7 +249,7 @@ describe('DataTable', () => {
         />
       );
 
-      expect(screen.getByTestId('bulk-toolbar')).toBeInTheDocument();
+      expect(screen.getByTestId('bulk-action-toolbar')).toBeInTheDocument();
     });
 
     it('displays correct selection count', () => {

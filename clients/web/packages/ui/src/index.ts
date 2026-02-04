@@ -11,6 +11,7 @@
  * Architecture v1.5 Components (Enterprise UX Hardening):
  * - DataTable: Enterprise data table with bulk actions, sorting, pagination
  * - Wizard: Multi-step wizard with validation and breadcrumb navigation
+ * - AuditTrail: Change history timeline for compliance (S-OX)
  */
 
 // v1.4 Components
@@ -38,3 +39,14 @@ export type {
   ValidationResult,
   ValidationError
 } from './components/Wizard';
+
+export { AuditTrail, AuditEntry } from './components/AuditTrail';
+export type {
+  AuditTrailProps,
+  EntityType,
+  AuditEntryProps,
+  AuditEntryData
+} from './components/AuditTrail';
+
+export { ConfirmDialog } from './components/ConfirmDialog';
+export type { ConfirmDialogProps } from './components/ConfirmDialog';
