@@ -99,7 +99,7 @@ describe('AnnualFilingsPage', () => {
 
     renderWithProviders(<AnnualFilingsPage />);
 
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText('Loading filings...')).toBeInTheDocument();
   });
 
   it('displays table headers', async () => {
@@ -232,7 +232,7 @@ describe('AnnualFilingsPage', () => {
     renderWithProviders(<AnnualFilingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      expect(screen.getByText('Error loading filings')).toBeInTheDocument();
     });
   });
 });
