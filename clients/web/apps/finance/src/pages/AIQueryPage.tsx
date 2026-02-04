@@ -34,7 +34,8 @@ export function AIQueryPage() {
   const [error, setError] = useState<string | null>(null);
   const [truncationWarning, setTruncationWarning] = useState<{ message: string; count: string } | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
-  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  // Use crypto.randomUUID() for secure session ID generation
+  const [sessionId] = useState(() => `session-${crypto.randomUUID()}`);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -327,9 +328,25 @@ export function AIQueryPage() {
     });
   };
 
+  // Escape HTML entities to prevent XSS attacks
+  const escapeHtml = (text: string): string => {
+    const htmlEntities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+    };
+    return text.replace(/[&<>"']/g, (char) => htmlEntities[char]);
+  };
+
   // Simple markdown renderer (for basic formatting)
+  // Security: HTML is escaped first to prevent XSS, then safe markdown is applied
   const renderMarkdown = (content: string): string => {
-    return content
+    // First escape HTML to prevent XSS injection
+    const escaped = escapeHtml(content);
+
+    return escaped
       // Bold
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       // Italic

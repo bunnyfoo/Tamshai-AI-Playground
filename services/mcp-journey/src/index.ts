@@ -140,7 +140,9 @@ export class McpServer {
             break;
 
           default:
-            res.status(404).json({ error: `Unknown tool: ${toolName}` });
+            // Security: Return generic error, log actual value server-side
+            console.warn(`Unknown tool requested: ${toolName}`);
+            res.status(404).json({ error: 'Unknown tool requested' });
             return;
         }
 
@@ -196,7 +198,9 @@ export class McpServer {
         } else if (phoenixMatch && phoenixMatch[1]) {
           result = await this.phoenixResource.read({ version: phoenixMatch[1] });
         } else {
-          res.status(404).json({ error: `Unknown resource URI: ${uri}` });
+          // Security: Return generic error, log actual value server-side
+          console.warn(`Unknown resource URI requested: ${uri}`);
+          res.status(404).json({ error: 'Unknown resource URI requested' });
           return;
         }
 
