@@ -119,8 +119,9 @@ describe('AIQueryPage', () => {
     const submitButton = screen.getByRole('button', { name: /send|ask|submit/i });
     await user.click(submitButton);
 
+    // The input should be disabled while loading
     await waitFor(() => {
-      expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/ask about tax/i)).toBeDisabled();
     });
   });
 
@@ -190,7 +191,7 @@ describe('AIQueryPage', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
   });
 

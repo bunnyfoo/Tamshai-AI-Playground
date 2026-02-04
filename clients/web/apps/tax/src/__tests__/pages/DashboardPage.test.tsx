@@ -83,7 +83,7 @@ describe('DashboardPage', () => {
 
     renderWithProviders(<DashboardPage />);
 
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText('Loading tax data...')).toBeInTheDocument();
   });
 
   it('displays tax summary metrics', async () => {
@@ -171,7 +171,7 @@ describe('DashboardPage', () => {
     renderWithProviders(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      expect(screen.getByText('Error loading tax summary')).toBeInTheDocument();
     });
   });
 

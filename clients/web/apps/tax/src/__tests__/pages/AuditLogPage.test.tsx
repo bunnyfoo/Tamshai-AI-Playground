@@ -97,7 +97,7 @@ describe('AuditLogPage', () => {
 
     renderWithProviders(<AuditLogPage />);
 
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText('Loading audit log...')).toBeInTheDocument();
   });
 
   it('displays table headers', async () => {
@@ -206,7 +206,7 @@ describe('AuditLogPage', () => {
     renderWithProviders(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      expect(screen.getByText('Error loading audit log')).toBeInTheDocument();
     });
   });
 

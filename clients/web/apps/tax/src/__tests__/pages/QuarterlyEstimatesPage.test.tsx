@@ -88,7 +88,7 @@ describe('QuarterlyEstimatesPage', () => {
 
     renderWithProviders(<QuarterlyEstimatesPage />);
 
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   it('displays table headers', async () => {
@@ -191,7 +191,7 @@ describe('QuarterlyEstimatesPage', () => {
     renderWithProviders(<QuarterlyEstimatesPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      expect(screen.getByText('Error')).toBeInTheDocument();
     });
   });
 

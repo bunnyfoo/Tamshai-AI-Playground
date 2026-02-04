@@ -97,7 +97,7 @@ describe('StateRegistrationsPage', () => {
 
     renderWithProviders(<StateRegistrationsPage />);
 
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    expect(screen.getByText('Loading registrations...')).toBeInTheDocument();
   });
 
   it('displays table headers', async () => {
@@ -231,7 +231,7 @@ describe('StateRegistrationsPage', () => {
     renderWithProviders(<StateRegistrationsPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('error-message')).toBeInTheDocument();
+      expect(screen.getByText('Error loading registrations')).toBeInTheDocument();
     });
   });
 });
