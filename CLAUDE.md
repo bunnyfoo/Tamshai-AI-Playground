@@ -742,7 +742,7 @@ npm run test:report
 # See docs/testing/TEST_USER_JOURNEY.md for details
 export TEST_USERNAME="test-user.journey"      # Default: test-user.journey
 export TEST_USER_PASSWORD="***REDACTED_PASSWORD***"        # Default: ***REDACTED_PASSWORD***
-export TEST_USER_TOTP_SECRET="JBSWY3DPEHPK3PXP"    # Default: JBSWY3DPEHPK3PXP
+export TEST_USER_TOTP_SECRET="JBSWY3DPEHPK3PXP"    # Default: JBSWY3DPEHPK3PXP  # pragma: allowlist secret
 
 # Optional: Override with custom credentials
 export TEST_USERNAME="<custom-username>"

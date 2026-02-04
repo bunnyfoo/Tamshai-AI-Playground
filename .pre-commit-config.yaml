@@ -23,7 +23,14 @@ repos:
       - id: detect-secrets
         name: Detect secrets with detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: package-lock.json|pubspec.lock
+        # Exclude files with non-secret high-entropy strings (hashes, build artifacts)
+        exclude: |
+          (?x)^(
+            package-lock\.json|
+            pubspec\.lock|
+            .*\.turbo/cache/.*|
+            .*tsconfig\.tsbuildinfo
+          )$
 
   # General file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks

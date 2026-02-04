@@ -246,7 +246,8 @@ export function teardown(data) {
 export function handleSummary(data) {
   return {
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
-    'summary.json': JSON.stringify(data),
+    // Output to full path so CI can find it (k6-action runs from repo root)
+    'tests/performance/summary.json': JSON.stringify(data),
   };
 }
 

@@ -40,7 +40,7 @@ runs:
         docker run -d --name keycloak \
           -p ${{ inputs.keycloak-port }}:8080 \
           -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
-          -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+          -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \  # pragma: allowlist secret
           -e KC_HTTP_RELATIVE_PATH=/auth \
           -v ${{ github.workspace }}/${{ inputs.realm-export-path }}:/opt/keycloak/data/import/realm.json \
           quay.io/keycloak/keycloak:${{ inputs.keycloak-version }} \
