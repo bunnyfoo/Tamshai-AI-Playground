@@ -479,6 +479,7 @@ resource "null_resource" "keycloak_set_passwords" {
 
           # Skip test-user.journey (uses TEST_USER_PASSWORD)
           if [ "$USERNAME" != "test-user.journey" ] && [ -n "$USERID" ]; then
+            # Set password
             HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
               "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USERID/reset-password" \
               -H "Authorization: Bearer $TOKEN" \
@@ -486,12 +487,19 @@ resource "null_resource" "keycloak_set_passwords" {
               -d "$CORP_PASSWORD_JSON")
 
             if [ "$HTTP_CODE" = "204" ]; then
+              # Also clear requiredActions (removes CONFIGURE_TOTP requirement)
+              # This enables integration tests to authenticate without MFA
+              curl -s -o /dev/null -X PUT \
+                "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USERID" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"requiredActions":[]}'
               CORP_COUNT=$((CORP_COUNT + 1))
             fi
           fi
         done
 
-        echo "✓ $CORP_COUNT corporate user passwords set successfully"
+        echo "✓ $CORP_COUNT corporate user passwords set and requiredActions cleared"
       else
         echo "WARNING: DEV_USER_PASSWORD not set - corporate users will have placeholder passwords"
       fi
