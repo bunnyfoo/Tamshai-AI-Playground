@@ -626,7 +626,7 @@ jobs:
         working-directory: services/mcp-gateway
         run: npm start &
         env:
-          PORT: 3100
+          PORT: 3110
           # CRITICAL: Use 127.0.0.1 to match test runner (jest.setup.js)
           # This ensures JWT issuer claim matches Gateway's expected issuer
           KEYCLOAK_URL: http://127.0.0.1:8180
@@ -642,7 +642,7 @@ jobs:
         run: |
           echo "Waiting for MCP Gateway to be ready..."
           for i in {1..30}; do
-            if curl -sf http://localhost:3100/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:3110/health > /dev/null 2>&1; then
               echo "MCP Gateway is ready!"
               sleep 2  # Grace period for full initialization
               break
@@ -679,7 +679,7 @@ jobs:
         working-directory: services/mcp-hr
         run: npm start &
         env:
-          PORT: 3101
+          PORT: 3111
           KEYCLOAK_URL: http://127.0.0.1:8180
           KEYCLOAK_REALM: tamshai-corp
           POSTGRES_HOST: localhost
@@ -703,7 +703,7 @@ jobs:
         working-directory: services/mcp-finance
         run: npm start &
         env:
-          PORT: 3102
+          PORT: 3112
           KEYCLOAK_URL: http://127.0.0.1:8180
           KEYCLOAK_REALM: tamshai-corp
           POSTGRES_HOST: localhost
@@ -727,7 +727,7 @@ jobs:
         working-directory: services/mcp-sales
         run: npm start &
         env:
-          PORT: 3103
+          PORT: 3113
           KEYCLOAK_URL: http://127.0.0.1:8180
           KEYCLOAK_REALM: tamshai-corp
           MONGODB_URL: mongodb://root:${{ env.MONGODB_PASSWORD }}@localhost:27018/tamshai_sales?authSource=admin
@@ -747,7 +747,7 @@ jobs:
         working-directory: services/mcp-support
         run: npm start &
         env:
-          PORT: 3104
+          PORT: 3114
           KEYCLOAK_URL: http://127.0.0.1:8180
           KEYCLOAK_REALM: tamshai-corp
           ELASTICSEARCH_URL: http://localhost:9201
@@ -776,10 +776,10 @@ jobs:
           }
 
           # Check each MCP server
-          check_health "MCP HR" 3101 || exit 1
-          check_health "MCP Finance" 3102 || exit 1
-          check_health "MCP Sales" 3103 || exit 1
-          check_health "MCP Support" 3104 || exit 1
+          check_health "MCP HR" 3111 || exit 1
+          check_health "MCP Finance" 3112 || exit 1
+          check_health "MCP Sales" 3113 || exit 1
+          check_health "MCP Support" 3114 || exit 1
 
           echo "✅ All MCP servers are ready!"
           sleep 2  # Grace period for full initialization
@@ -800,7 +800,7 @@ jobs:
           echo ""
 
           echo "=== MCP Gateway Health Check ==="
-          curl -sf http://localhost:3100/health && echo "✅ Gateway is healthy" || echo "❌ Gateway not healthy"
+          curl -sf http://localhost:3110/health && echo "✅ Gateway is healthy" || echo "❌ Gateway not healthy"
           echo ""
 
           echo "=== Test Token Acquisition ==="
@@ -851,12 +851,12 @@ jobs:
           KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
           KEYCLOAK_CLIENT_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
-          GATEWAY_URL: http://localhost:3100
-          # MCP server URLs - must match ports started above (3101-3104)
-          MCP_HR_URL: http://127.0.0.1:3101
-          MCP_FINANCE_URL: http://127.0.0.1:3102
-          MCP_SALES_URL: http://127.0.0.1:3103
-          MCP_SUPPORT_URL: http://127.0.0.1:3104
+          GATEWAY_URL: http://localhost:3110
+          # MCP server URLs - must match ports started above (3111-3114)
+          MCP_HR_URL: http://127.0.0.1:3111
+          MCP_FINANCE_URL: http://127.0.0.1:3112
+          MCP_SALES_URL: http://127.0.0.1:3113
+          MCP_SUPPORT_URL: http://127.0.0.1:3114
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
