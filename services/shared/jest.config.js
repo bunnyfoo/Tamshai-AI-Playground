@@ -1,15 +1,11 @@
-/** @type {import('jest').Config} */
+/** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   maxWorkers: '50%', // v1.5: Parallel test execution
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts'],
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.test.ts',
-    '!src/index.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/index.ts'],
   coverageThreshold: {
     global: {
       branches: 80,
@@ -18,10 +14,4 @@ module.exports = {
       statements: 80,
     },
   },
-  moduleFileExtensions: ['ts', 'js', 'json'],
-  transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
-  },
-  clearMocks: true,
-  resetMocks: true,
 };

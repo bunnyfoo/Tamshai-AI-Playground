@@ -16,6 +16,7 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -326,8 +327,24 @@ app.use(cors({
   credentials: true,
   // Required for cross-origin requests with Authorization header
   // Without this, browser strips Authorization header from preflight requests
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'Accept-Encoding'],
 }));
+
+// v1.5 Performance: Response compression (60-70% size reduction)
+// Excludes SSE streams which need real-time delivery
+app.use(compression({
+  filter: (req: Request, res: Response) => {
+    // Don't compress SSE streams - they need real-time delivery
+    if (req.headers.accept === 'text/event-stream') {
+      return false;
+    }
+    // Use default compression filter for other requests
+    return compression.filter(req, res);
+  },
+  level: 6,       // Balance between speed and compression ratio
+  threshold: 1024, // Only compress responses > 1KB
+}));
+
 app.use(express.json({ limit: '10mb' }));
 
 // Request ID middleware

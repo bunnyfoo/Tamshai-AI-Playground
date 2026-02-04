@@ -30,10 +30,12 @@ const envConfig: Record<string, { baseURL: string; ignoreHTTPSErrors: boolean }>
  */
 export default defineConfig({
   testDir: './specs',
-  fullyParallel: true,
+  // IMPORTANT: E2E tests must run sequentially due to TOTP authentication
+  // TOTP codes are time-based and auth sessions can conflict in parallel
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // Always sequential for TOTP-based authentication
   timeout: 60000, // 60 seconds per test (login can be slow)
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],
