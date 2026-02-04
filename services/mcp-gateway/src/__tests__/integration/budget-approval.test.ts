@@ -1062,7 +1062,7 @@ describe('Budget Approval Workflow - TDD RED PHASE', () => {
         );
 
         expect(response.data.status).toBe('success');
-        expect(response.data.data?.newStatus).toBe('PENDING_APPROVAL');
+        expect((response.data.data as { newStatus?: string })?.newStatus).toBe('PENDING_APPROVAL');
 
         // Cleanup
         await client.query(
