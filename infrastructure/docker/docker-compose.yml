@@ -644,7 +644,8 @@ services:
     container_name: tamshai-pg-web-customer-support
     environment:
       # Customer realm configuration (separate from internal tamshai realm)
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/realms/tamshai-customers
+      # Note: includes /auth path prefix matching KC_HTTP_RELATIVE_PATH=/auth
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-customers
       VITE_KEYCLOAK_CLIENT_ID: customer-portal
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
@@ -746,7 +747,9 @@ services:
       MONGO_INITDB_DATABASE: tamshai_sales
     volumes:
       - mongodb_data:/data/db
-      - ../../sample-data/sales-data.js:/docker-entrypoint-initdb.d/sales-data.js:ro
+      - ../../sample-data/sales-data.js:/docker-entrypoint-initdb.d/01-sales-data.js:ro
+      - ../../sample-data/support-data.js:/docker-entrypoint-initdb.d/02-support-data.js:ro
+      - ../../sample-data/support-customers.js:/docker-entrypoint-initdb.d/03-support-customers.js:ro
     ports:
       - "27028:27017"
     healthcheck:
