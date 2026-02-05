@@ -20,6 +20,7 @@ export default function ContactsPage() {
   const { accessToken, organizationName, customerProfile } = useCustomerAuth();
   const queryClient = useQueryClient();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [transferTarget, setTransferTarget] = useState<Contact | null>(null);
 
   const { data: contacts, isLoading, error } = useQuery({
     queryKey: ['orgContacts'],
@@ -153,10 +154,7 @@ export default function ContactsPage() {
                       contact.role !== 'lead' && (
                         <button
                           className="text-sm text-primary-600 hover:text-primary-800"
-                          onClick={() => {
-                            // Transfer lead functionality would go here
-                            alert('Transfer lead functionality coming soon');
-                          }}
+                          onClick={() => setTransferTarget(contact)}
                         >
                           Make Lead
                         </button>
@@ -180,6 +178,20 @@ export default function ContactsPage() {
           }}
         />
       )}
+
+      {/* Transfer Lead Modal */}
+      {transferTarget && (
+        <TransferLeadModal
+          accessToken={accessToken || ''}
+          targetContact={transferTarget}
+          currentUserName={`${customerProfile?.firstName || ''} ${customerProfile?.lastName || ''}`.trim() || 'You'}
+          onClose={() => setTransferTarget(null)}
+          onSuccess={() => {
+            setTransferTarget(null);
+            queryClient.invalidateQueries({ queryKey: ['orgContacts'] });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -188,6 +200,250 @@ interface InviteModalProps {
   accessToken: string;
   onClose: () => void;
   onSuccess: () => void;
+}
+
+// Transfer Lead Modal Component
+interface TransferLeadModalProps {
+  accessToken: string;
+  targetContact: Contact;
+  currentUserName: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function TransferLeadModal({
+  accessToken,
+  targetContact,
+  currentUserName,
+  onClose,
+  onSuccess,
+}: TransferLeadModalProps) {
+  const [step, setStep] = useState<'confirm' | 'pending' | 'success' | 'error'>('confirm');
+  const [confirmationId, setConfirmationId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  // Step 1: Initiate transfer (returns pending_confirmation)
+  const initiateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `${apiConfig.mcpGatewayUrl}/api/mcp/support/tools/customer_transfer_lead`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            newLeadUserId: targetContact.keycloak_user_id,
+          }),
+        }
+      );
+      if (!response.ok) throw new Error('Failed to initiate transfer');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.status === 'pending_confirmation') {
+        setConfirmationId(data.confirmationId);
+        setStep('pending');
+      } else if (data.status === 'success') {
+        setStep('success');
+        setTimeout(onSuccess, 1500);
+      } else {
+        setError(data.message || 'Transfer failed');
+        setStep('error');
+      }
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Failed to initiate transfer');
+      setStep('error');
+    },
+  });
+
+  // Step 2: Confirm the transfer
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      if (!confirmationId) throw new Error('No confirmation ID');
+      const response = await fetch(
+        `${apiConfig.mcpGatewayUrl}/api/confirm/${confirmationId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ approved: true }),
+        }
+      );
+      if (!response.ok) throw new Error('Failed to confirm transfer');
+      return response.json();
+    },
+    onSuccess: () => {
+      setStep('success');
+      setTimeout(onSuccess, 1500);
+    },
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : 'Failed to confirm transfer');
+      setStep('error');
+    },
+  });
+
+  // Cancel the pending transfer
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      if (!confirmationId) return;
+      await fetch(`${apiConfig.mcpGatewayUrl}/api/confirm/${confirmationId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ approved: false }),
+      });
+    },
+    onSettled: () => {
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="fixed inset-0 bg-black opacity-30" onClick={onClose}></div>
+        <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          {/* Confirmation Step */}
+          {step === 'confirm' && (
+            <>
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-amber-100">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
+                Transfer Lead Contact Role
+              </h2>
+              <p className="text-gray-600 text-center mb-6">
+                Are you sure you want to transfer the Lead Contact role to{' '}
+                <span className="font-semibold">
+                  {targetContact.first_name} {targetContact.last_name}
+                </span>
+                ?
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-amber-800 mb-2">What will happen:</h3>
+                <ul className="text-sm text-amber-700 space-y-1">
+                  <li>• You ({currentUserName}) will become a Basic Contact</li>
+                  <li>• {targetContact.first_name} {targetContact.last_name} will become the Lead Contact</li>
+                  <li>• You will lose access to this Contacts page</li>
+                  <li>• This action requires confirmation</li>
+                </ul>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => initiateMutation.mutate()}
+                  disabled={initiateMutation.isPending}
+                  className="px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {initiateMutation.isPending ? 'Processing...' : 'Transfer Role'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Pending Confirmation Step */}
+          {step === 'pending' && (
+            <>
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-primary-100">
+                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
+                Confirm Transfer
+              </h2>
+              <p className="text-gray-600 text-center mb-6">
+                Please confirm that you want to transfer the Lead Contact role to{' '}
+                <span className="font-semibold">
+                  {targetContact.first_name} {targetContact.last_name}
+                </span>
+                .
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600">
+                  <strong>Note:</strong> This action cannot be undone. The new Lead Contact
+                  would need to transfer the role back to you.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => cancelMutation.mutate()}
+                  disabled={cancelMutation.isPending || confirmMutation.isPending}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => confirmMutation.mutate()}
+                  disabled={confirmMutation.isPending || cancelMutation.isPending}
+                  className="px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {confirmMutation.isPending ? 'Confirming...' : 'Confirm Transfer'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Success Step */}
+          {step === 'success' && (
+            <>
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-green-100">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
+                Transfer Complete!
+              </h2>
+              <p className="text-gray-600 text-center">
+                {targetContact.first_name} {targetContact.last_name} is now the Lead Contact.
+                The page will refresh shortly.
+              </p>
+            </>
+          )}
+
+          {/* Error Step */}
+          {step === 'error' && (
+            <>
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-red-100">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
+                Transfer Failed
+              </h2>
+              <p className="text-red-600 text-center mb-4">{error}</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function InviteContactModal({ accessToken, onClose, onSuccess }: InviteModalProps) {
