@@ -20,6 +20,28 @@ import { storePendingConfirmation } from './utils/redis';
 import { ISupportBackend, UserContext } from './database/types';
 import { createSupportBackend } from './database/backend.factory';
 import { getCollection, buildRoleFilter } from './database/connection';
+// Customer support extensions (v1.4)
+import {
+  DualRealmUserContext,
+  isCustomerRealm,
+} from './auth/dual-realm-validator';
+import {
+  isCustomerUser,
+  toCustomerContext,
+  CustomerContext,
+} from './auth/customer-helpers';
+import {
+  customerListTickets,
+  customerGetTicket,
+  customerSubmitTicket,
+  customerAddComment,
+  customerSearchKB,
+  customerListContacts,
+  customerInviteContact,
+  customerTransferLead,
+  executeInviteContact,
+  executeTransferLead,
+} from './tools/customer-tools';
 
 dotenv.config();
 
@@ -952,9 +974,168 @@ app.post('/execute', async (req: Request, res: Response) => {
     case 'close_ticket':
       result = await executeCloseTicket(data, userContext);
       break;
+    // Customer actions (require customer context)
+    case 'invite_contact': {
+      const customerCtx = toCustomerContext(userContext as DualRealmUserContext);
+      if (!customerCtx) {
+        result = createErrorResponse('INVALID_CONTEXT', 'Customer context required', 'This action requires a customer account');
+        break;
+      }
+      result = await executeInviteContact(data, customerCtx);
+      break;
+    }
+    case 'transfer_lead': {
+      const customerCtx = toCustomerContext(userContext as DualRealmUserContext);
+      if (!customerCtx) {
+        result = createErrorResponse('INVALID_CONTEXT', 'Customer context required', 'This action requires a customer account');
+        break;
+      }
+      result = await executeTransferLead(data, customerCtx);
+      break;
+    }
     default:
       result = createErrorResponse('UNKNOWN_ACTION', `Unknown action: ${action}`, 'Check the action name and try again');
   }
+  res.json(result);
+});
+
+// =============================================================================
+// CUSTOMER TOOL ENDPOINTS (v1.4 - Customer Support Extension)
+// =============================================================================
+
+// Helper to validate and convert customer context
+function getCustomerContextFromRequest(req: Request, res: Response): CustomerContext | null {
+  const userContext = req.body.userContext as DualRealmUserContext;
+
+  if (!userContext?.userId) {
+    res.status(400).json({
+      status: 'error',
+      code: 'MISSING_USER_CONTEXT',
+      message: 'User context is required',
+    });
+    return null;
+  }
+
+  // Check if this is a customer realm user
+  if (!isCustomerRealm(userContext)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INVALID_REALM',
+      message: 'This endpoint is for customer portal users only. Internal users should use the standard support tools.',
+      suggestedAction: 'Use search_tickets, close_ticket, etc. for internal support operations.',
+    });
+    return null;
+  }
+
+  // Check if user has customer roles
+  if (!isCustomerUser(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: 'Access denied. This operation requires a customer role (lead-customer or basic-customer).',
+      suggestedAction: 'Contact your organization administrator for access.',
+    });
+    return null;
+  }
+
+  // Convert to CustomerContext
+  const customerContext = toCustomerContext(userContext);
+
+  if (!customerContext) {
+    res.status(400).json({
+      status: 'error',
+      code: 'MISSING_ORGANIZATION',
+      message: 'Customer user is missing organization information in their token.',
+      suggestedAction: 'Contact support to verify your organization is properly configured.',
+    });
+    return null;
+  }
+
+  return customerContext;
+}
+
+// TOOL: customer_list_tickets
+app.post('/tools/customer_list_tickets', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { status, limit, cursor } = req.body;
+  const result = await customerListTickets({ status, limit, cursor }, customerContext);
+  res.json(result);
+});
+
+// TOOL: customer_get_ticket
+app.post('/tools/customer_get_ticket', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { ticketId } = req.body;
+  const result = await customerGetTicket({ ticketId }, customerContext);
+  res.json(result);
+});
+
+// TOOL: customer_submit_ticket
+app.post('/tools/customer_submit_ticket', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { title, description, category, priority, visibility } = req.body;
+  const result = await customerSubmitTicket(
+    { title, description, category, priority, visibility },
+    customerContext
+  );
+  res.json(result);
+});
+
+// TOOL: customer_add_comment
+app.post('/tools/customer_add_comment', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { ticketId, content } = req.body;
+  const result = await customerAddComment({ ticketId, content }, customerContext);
+  res.json(result);
+});
+
+// TOOL: customer_search_kb
+app.post('/tools/customer_search_kb', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { query, category, limit } = req.body;
+  const result = await customerSearchKB({ query, category, limit }, customerContext);
+  res.json(result);
+});
+
+// TOOL: customer_list_contacts (Lead only)
+app.post('/tools/customer_list_contacts', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const result = await customerListContacts({}, customerContext);
+  res.json(result);
+});
+
+// TOOL: customer_invite_contact (Lead only, pending confirmation)
+app.post('/tools/customer_invite_contact', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { email, firstName, lastName, title, role } = req.body;
+  const result = await customerInviteContact(
+    { email, firstName, lastName, title, role },
+    customerContext
+  );
+  res.json(result);
+});
+
+// TOOL: customer_transfer_lead (Lead only, pending confirmation)
+app.post('/tools/customer_transfer_lead', async (req: Request, res: Response) => {
+  const customerContext = getCustomerContextFromRequest(req, res);
+  if (!customerContext) return;
+
+  const { newLeadUserId } = req.body;
+  const result = await customerTransferLead({ newLeadUserId }, customerContext);
   res.json(result);
 });
 

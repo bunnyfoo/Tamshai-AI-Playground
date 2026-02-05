@@ -22,6 +22,7 @@
 #   - Web Sales:     4013 (tamshai-dev uses 4003)
 #   - Web Support:   4014 (tamshai-dev uses 4004)
 #   - Web Payroll:   4015 (tamshai-dev uses 4005)
+#   - Web Customer:  4016 (tamshai-dev uses 4006) - Customer Support Portal
 #   - Caddy:         8443/8090 (tamshai-dev uses 443/80)
 #   - Website:       8085 (tamshai-dev uses 8080)
 #   - PostgreSQL:    5443 (tamshai-dev uses 5433)
@@ -622,6 +623,33 @@ services:
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
       - "4015:80"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      mcp-gateway:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - tamshai-network
+
+  # Customer Support Portal (External Customers - tamshai-customers realm)
+  web-customer-support:
+    build:
+      context: ../../clients/web
+      dockerfile: apps/customer-support/Dockerfile
+    container_name: tamshai-pg-web-customer-support
+    environment:
+      # Customer realm configuration (separate from internal tamshai realm)
+      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/realms/tamshai-customers
+      VITE_KEYCLOAK_CLIENT_ID: customer-portal
+      VITE_API_GATEWAY_URL: http://kong:8000
+      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
+    ports:
+      - "4016:80"
     depends_on:
       keycloak:
         condition: service_healthy
