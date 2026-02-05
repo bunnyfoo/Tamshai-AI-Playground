@@ -22,7 +22,7 @@
 #   - Web Sales:     4013 (tamshai-dev uses 4003)
 #   - Web Support:   4014 (tamshai-dev uses 4004)
 #   - Web Payroll:   4015 (tamshai-dev uses 4005)
-#   - Web Customer:  4016 (tamshai-dev uses 4006) - Customer Support Portal
+#   - Web Customer:  4017 (tamshai-dev uses 4006) - Customer Support Portal
 #   - Caddy:         8443/8090 (tamshai-dev uses 443/80)
 #   - Website:       8085 (tamshai-dev uses 8080)
 #   - PostgreSQL:    5443 (tamshai-dev uses 5433)
@@ -649,7 +649,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "4016:80"
+      - "4017:80"
     depends_on:
       keycloak:
         condition: service_healthy
