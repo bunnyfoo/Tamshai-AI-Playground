@@ -21,6 +21,7 @@ export default function TicketsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [organizationFilter, setOrganizationFilter] = useState('');
   const [pendingConfirmation, setPendingConfirmation] = useState<{
     confirmationId: string;
     message: string;
@@ -46,7 +47,7 @@ export default function TicketsPage() {
 
   // Fetch all tickets (auto-paginate to get complete results)
   const { data: ticketsResponse, isLoading, error } = useQuery({
-    queryKey: ['tickets', statusFilter, priorityFilter],
+    queryKey: ['tickets', statusFilter, priorityFilter, organizationFilter],
     queryFn: async () => {
       const token = getAccessToken();
       if (!token) throw new Error('Not authenticated');
@@ -56,6 +57,7 @@ export default function TicketsPage() {
         const params = new URLSearchParams();
         if (statusFilter) params.append('status', statusFilter);
         if (priorityFilter) params.append('priority', priorityFilter);
+        if (organizationFilter) params.append('organization_id', organizationFilter);
         if (cursor) params.append('cursor', cursor);
 
         const queryString = params.toString();
@@ -236,6 +238,15 @@ export default function TicketsPage() {
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const criticalTickets = tickets.filter(t => t.priority === 'critical' && t.status !== 'closed').length;
 
+  // Get unique organizations for filter dropdown
+  const uniqueOrganizations = Array.from(
+    new Map(
+      tickets
+        .filter(t => t.organization_id && t.organization_name)
+        .map(t => [t.organization_id, { id: t.organization_id!, name: t.organization_name! }])
+    ).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
   // DataTable columns
   const columns: ColumnDef<Ticket>[] = [
     {
@@ -272,6 +283,20 @@ export default function TicketsPage() {
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(String(value))}`}>
           {String(value)}
         </span>
+      ),
+    },
+    {
+      id: 'organization',
+      header: 'Organization',
+      accessor: 'organization_name',
+      sortable: true,
+      cell: (_value, row) => (
+        <div>
+          <div className="font-medium text-secondary-900">{String(row.organization_name || 'N/A')}</div>
+          {row.contact_email && (
+            <div className="text-xs text-secondary-500">{row.contact_email}</div>
+          )}
+        </div>
       ),
     },
     {
@@ -485,6 +510,23 @@ export default function TicketsPage() {
               <option value="low">Low</option>
             </select>
           </div>
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              Filter by Organization
+            </label>
+            <select
+              value={organizationFilter}
+              onChange={(e) => setOrganizationFilter(e.target.value)}
+              className="input"
+            >
+              <option value="">All Organizations</option>
+              {uniqueOrganizations.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={() => queryClient.invalidateQueries({ queryKey: ['tickets'] })}
             className="btn-secondary"
@@ -530,7 +572,7 @@ export default function TicketsPage() {
       {/* Stats */}
       <div className="mt-6 text-sm text-secondary-600 text-center">
         Showing {tickets.length} ticket{tickets.length !== 1 ? 's' : ''}
-        {(statusFilter || priorityFilter) && ` (filtered)`}
+        {(statusFilter || priorityFilter || organizationFilter) && ` (filtered)`}
       </div>
 
       {/* Bulk Action Confirmation Dialog */}

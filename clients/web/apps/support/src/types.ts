@@ -7,6 +7,7 @@ export interface Ticket {
   description: string;
   status: 'open' | 'in_progress' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'critical';
+  category?: string;
   created_by: string;
   assigned_to?: string;
   tags?: string[];
@@ -15,6 +16,70 @@ export interface Ticket {
   resolution?: string;
   closed_at?: string;
   closed_by?: string;
+  // Customer organization fields (for internal view)
+  organization_id?: string;
+  organization_name?: string;
+  // Contact info
+  contact_id?: string;
+  contact_email?: string;
+  contact_name?: string;
+  // Internal notes (never shown to customers)
+  internal_notes?: InternalNote[];
+  // Comments visible to customers
+  comments?: Comment[];
+}
+
+/**
+ * Internal Note (staff-only, hidden from customers)
+ */
+export interface InternalNote {
+  id: string;
+  text: string;
+  author_id: string;
+  author_name: string;
+  created_at: string;
+}
+
+/**
+ * Comment (visible to customers)
+ */
+export interface Comment {
+  id?: string;
+  text: string;
+  author?: string;
+  author_id?: string;
+  is_internal?: boolean;
+  created_at: string;
+}
+
+/**
+ * Customer Contact (for internal dashboard)
+ */
+export interface CustomerContact {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  organization_id: string;
+  organization_name: string;
+  role: 'lead' | 'basic';
+  title?: string;
+  phone?: string;
+  created_at: string;
+}
+
+/**
+ * Customer Organization
+ */
+export interface CustomerOrganization {
+  id: string;
+  name: string;
+  domain?: string;
+  subscription_tier: 'enterprise' | 'professional' | 'basic';
+  sla_tier: 'premium' | 'standard' | 'basic';
+  total_tickets?: number;
+  open_tickets?: number;
+  contacts_count?: number;
 }
 
 /**
