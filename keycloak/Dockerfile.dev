@@ -1,5 +1,5 @@
 # Keycloak for Local Development (tamshai-playground)
-# Bakes realm-export-dev.json into the image to avoid Docker Desktop volume mount issues
+# Bakes realm exports into the image to avoid Docker Desktop volume mount issues
 #
 # Usage:
 #   docker compose build keycloak  (rebuilds with latest realm export)
@@ -12,9 +12,11 @@
 
 FROM quay.io/keycloak/keycloak:24.0
 
-# Copy realm export into the image (not mounted as volume)
-# This ensures terraform destroy + apply always uses the latest file
-COPY realm-export-dev.json /opt/keycloak/data/import/realm-export.json
+# Copy realm exports into the image (not mounted as volume)
+# This ensures terraform destroy + apply always uses the latest files
+# Keycloak imports all JSON files in /opt/keycloak/data/import/ on startup
+COPY realm-export-dev.json /opt/keycloak/data/import/01-realm-tamshai-corp.json
+COPY realm-export-customers-dev.json /opt/keycloak/data/import/02-realm-tamshai-customers.json
 
 # Security: Explicitly run as keycloak user (UID 1000, inherited from base image)
 # This makes the non-root user explicit for security scanners
