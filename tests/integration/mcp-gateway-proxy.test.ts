@@ -440,15 +440,27 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
     expect(supportResponse.status).toBe(200);
   });
 
-  test('HR user can access finance endpoints via employee role (self-access)', async () => {
-    // All employees have self-access to Finance for expense reports
+  test('HR user can access expense reports via employee role (self-access)', async () => {
+    // v1.5: TIER 1 - All employees can access expense reports
     // Data filtering (self vs all) is enforced by PostgreSQL RLS
     const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
     const client = createGatewayClient(token);
 
-    const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_BUDGETS);
-    // Employee role grants gateway access; RLS filters data
+    const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_EXPENSE_REPORTS);
+    // Employee role grants gateway access; RLS filters to show only own expense reports
     expect(response.status).toBe(200);
+  });
+
+  test('HR user cannot access budgets (employee role denied for TIER 2)', async () => {
+    // v1.5: TIER 2 - Budgets require manager, finance, or executive role
+    // Employees without these roles are denied at the MCP server level
+    const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+    const client = createGatewayClient(token);
+
+    const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_BUDGETS);
+    // Employee role is denied by MCP Finance server (TIER 2 requires manager+)
+    expect(response.status).toBe(403);
+    expect(response.data.code).toBe('INSUFFICIENT_PERMISSIONS');
   });
 
   test('Finance user can access HR endpoints via employee role (self-access)', async () => {
