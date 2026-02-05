@@ -1,536 +1,425 @@
-# Integration Testing Suite - Implementation Summary
+# Integration Testing Suite - Summary
 
-**Created**: December 12, 2025
-**Last Updated**: January 1, 2026
-**Status**: ✅ Complete - All Tests Passing
-**Test Coverage**: 96 tests (89 passed, 7 skipped) across 19 MCP tools
-
----
-
-## Overview
-
-Comprehensive integration testing framework for the Tamshai Enterprise AI system, implementing Architecture v1.4 requirements with full coverage of RBAC, MCP tools, confirmation flows, and performance benchmarks.
+**Last Updated**: February 5, 2026
+**Status**: Active Development
+**Total Test Cases**: 295 across 13 test files in 4 locations
 
 ---
 
-## What Was Implemented
+## Test Locations
 
-### 1. Test Files Created
+Integration tests are spread across four directories:
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `tests/integration/mcp-tools.test.ts` | 900+ | Complete MCP tool testing (19 tools × 4-6 scenarios each) |
-| `tests/integration/README.md` | 600+ | Comprehensive test documentation |
-| `tests/integration/jest.config.js` | 20 | Jest configuration for TypeScript + timeouts |
-| `tests/integration/jest.setup.js` | 70 | Global health checks before test execution |
-| `tests/integration/package.json` | 40 | Dependencies and test scripts |
-| `tests/integration/tsconfig.json` | 20 | TypeScript configuration |
+| Location | Files | Test Cases | Purpose |
+|----------|-------|------------|---------|
+| `tests/integration/` | 5 | 117 | Cross-service E2E integration |
+| `services/mcp-gateway/src/__tests__/integration/` | 5 | 144 | Gateway-specific + TDD RED phase |
+| `services/mcp-hr/tests/integration/` | 1 | 9 | Identity provisioning |
+| `services/mcp-journey/tests/integration/` | 2 | 25 | Journey MCP server + knowledge index |
 
-**Total**: ~1,650 lines of test code and documentation
+---
 
-### 2. Test Coverage
+## Prerequisites
 
-#### MCP Tools (19 Total - 100% Coverage)
+### 1. Running Services
 
-**MCP HR Server (6 tools)**:
-- ✅ `list_employees` - Pagination, filtering, truncation
-- ✅ `get_employee` - Success, not found, LLM-friendly errors
-- ✅ `get_org_chart` - Organizational hierarchy
-- ✅ `get_performance_reviews` - Performance data with truncation
-- ✅ `delete_employee` - Confirmation flow, Redis storage
-- ✅ `update_salary` - Confirmation flow
+Docker services must be running. `jest.setup.js` verifies health and fails fast if services are down.
 
-**MCP Finance Server (5 tools)**:
-- ✅ `get_budget` - Department budgets, error handling
-- ✅ `list_invoices` - Filtering, truncation
-- ✅ `get_expense_report` - Employee expenses
-- ✅ `delete_invoice` - Confirmation flow
-- ✅ `approve_budget` - Confirmation flow
+```bash
+cd infrastructure/docker && docker compose up -d
+```
 
-**MCP Sales Server (5 tools)**:
-- ✅ `get_customer` - Customer details, not found errors
-- ✅ `list_opportunities` - Pipeline filtering, truncation
-- ✅ `get_pipeline` - Sales summary
-- ✅ `delete_customer` - Confirmation flow
-- ✅ `close_opportunity` - Win/loss confirmation
+Required: Keycloak, MCP Gateway, MCP HR, MCP Finance, MCP Sales, MCP Support, PostgreSQL, MongoDB, Redis.
 
-**MCP Support Server (3 tools)**:
-- ✅ `search_tickets` - Full-text search, filtering, truncation
-- ✅ `get_knowledge_article` - KB retrieval, errors
-- ✅ `close_ticket` - Confirmation flow
+### 2. Environment Secrets
 
-#### Architecture v1.4 Features (100% Coverage)
+Integration tests require `DEV_USER_PASSWORD` to authenticate test users against Keycloak. This secret is stored in GitHub Secrets and must be retrieved before running tests.
 
-**Truncation Warnings (Section 5.3)**:
-- ✅ LIMIT+1 pattern detection
-- ✅ Metadata with `truncated`, `totalCount`, `warning`
-- ✅ AI-visible warnings for >50 records
-- ✅ Exact counts for ≤50 records
+```bash
+# Retrieve secrets from GitHub (triggers export-test-secrets workflow)
+eval $(./scripts/secrets/read-github-secrets.sh --user-passwords --env)
+```
 
-**LLM-Friendly Errors (Section 7.4)**:
-- ✅ Discriminated union responses (`status: 'error'`)
-- ✅ Machine-readable `code` fields
-- ✅ `suggestedAction` guidance for AI self-correction
-- ✅ All read tools tested for error scenarios
+This sets `DEV_USER_PASSWORD` in your shell session. Without it, all tests that authenticate users will fail (empty password).
 
-**Human-in-the-Loop Confirmations (Section 5.6)**:
-- ✅ `status: 'pending_confirmation'` responses
-- ✅ `confirmationId` (UUID) generation
-- ✅ Redis storage with 5-minute TTL
-- ✅ `confirmationData` for UI display
-- ✅ All 8 write tools tested
+**Optional**: For AI query tests (SSE streaming, RBAC AI queries), also set:
 
-#### Multi-Role Access Control (Complete Coverage)
+```bash
+export CLAUDE_API_KEY=sk-ant-api03-...   # From Anthropic Console
+```
 
-**User Roles Tested** (7 total):
-| Role | Username | MCP Access | Tests |
-|------|----------|------------|-------|
-| Executive | eve.thompson | All 4 servers | 4 tests (HR, Finance, Sales, Support) |
-| HR Admin | alice.chen | HR only | 2 tests (authorized + cross-dept denial) |
-| Finance Admin | bob.martinez | Finance only | 2 tests (authorized + cross-dept denial) |
-| Sales Admin | carol.johnson | Sales only | 1 test (authorized access) |
-| Support Admin | dan.williams | Support only | 1 test (authorized access) |
-| Manager | nina.patel | Team data (RLS) | 1 test (filtered access) |
-| Intern | frank.davis | None | 2 tests (all MCPs denied) |
+Tests that require `CLAUDE_API_KEY` use the `testOrSkip` pattern and skip gracefully if not set.
 
-**Access Matrix Tested**:
-- ✅ Executive → All MCPs (4 positive tests)
-- ✅ Department admins → Own MCP (4 positive tests)
-- ✅ Department admins → Other MCPs (4 negative tests - 403 expected)
-- ✅ Intern → All MCPs (4 negative tests - 401/403 expected)
+### 3. Full Environment Variable Reference
 
-#### Performance Testing
+| Variable | Required | Default | Source |
+|----------|----------|---------|--------|
+| `DEV_USER_PASSWORD` | **Yes** | (empty) | `read-github-secrets.sh --user-passwords` |
+| `CLAUDE_API_KEY` | No | (empty, tests skip) | Anthropic Console |
+| `KEYCLOAK_ADMIN_PASSWORD` | No | `admin` | Local dev default |
+| `KEYCLOAK_URL` | No | `http://127.0.0.1:8190/auth` | Docker Compose |
+| `KEYCLOAK_REALM` | No | `tamshai-corp` | Docker Compose |
+| `GATEWAY_URL` | No | `http://127.0.0.1:3110` | Docker Compose |
+| `MCP_HR_URL` | No | `http://127.0.0.1:3111` | Docker Compose |
+| `MCP_FINANCE_URL` | No | `http://127.0.0.1:3112` | Docker Compose |
+| `MCP_SALES_URL` | No | `http://127.0.0.1:3113` | Docker Compose |
+| `MCP_SUPPORT_URL` | No | `http://127.0.0.1:3114` | Docker Compose |
+| `KEYCLOAK_CLIENT_SECRET` | No | `test-client-secret` | Keycloak config |
+| `REDIS_URL` | No | `redis://127.0.0.1:6390` | Docker Compose |
 
-**Benchmarks**:
-- ✅ Single query (50 records): < 2 seconds target
-- ✅ Truncation overhead: < 100ms target
-- ✅ Concurrent queries: 5 simultaneous requests
-- ✅ Health checks: < 500ms target
+### read-github-secrets.sh Options
 
-**Test Results** (current performance):
-| Test | Target | Actual | Status |
-|------|--------|--------|--------|
-| Single query | < 2s | ~800ms | ✅ Pass |
-| Truncation overhead | < 100ms | ~30ms | ✅ Pass |
-| Concurrent (5x) | All succeed | 5/5 | ✅ Pass |
-| Health check | < 500ms | ~150ms | ✅ Pass |
+```bash
+./scripts/secrets/read-github-secrets.sh --e2e              # E2E test secrets
+./scripts/secrets/read-github-secrets.sh --user-passwords   # DEV/STAGE/PROD passwords
+./scripts/secrets/read-github-secrets.sh --keycloak         # Keycloak admin password
+./scripts/secrets/read-github-secrets.sh --all              # All secrets
+./scripts/secrets/read-github-secrets.sh --all --env        # Output as export statements
+./scripts/secrets/read-github-secrets.sh --all --json       # Output as JSON
+```
+
+The script triggers a GitHub Actions workflow (`export-test-secrets.yml`), waits for completion, downloads the secrets artifact, outputs the values, then deletes the workflow run for security.
+
+**Prerequisite**: GitHub CLI (`gh`) must be authenticated with access to the repository.
 
 ---
 
 ## Test Execution
 
-### Quick Start
+### tests/integration/ (Primary Suite)
 
 ```bash
+# 1. Get secrets first
+eval $(./scripts/secrets/read-github-secrets.sh --user-passwords --env)
+
+# 2. Run tests
 cd tests/integration
-
-# Install dependencies
 npm install
-
-# Run all tests
-npm test
-
-# Run with coverage
-npm test:coverage
-
-# Run specific suite
-npm test:rbac     # RBAC tests only
-npm test:mcp      # MCP tool tests only
+npm test                          # All tests
+npm test -- rbac.test.ts          # RBAC only
+npm test -- mcp-tools.test.ts     # MCP tool tests only
+npm test -- sse-streaming.test.ts # SSE streaming only
 ```
 
-### Test Output Example
+**Config**: `jest.config.js` - 120s timeout, sequential execution (`maxWorkers: 1`), `jest.setup.js` runs health checks before tests.
 
-```
- PASS  tests/integration/mcp-tools.test.ts (25.3 s)
-  MCP HR Server - Read Tools
-    list_employees
-      ✓ Returns employees with success status (234 ms)
-      ✓ Includes truncation metadata when > 50 records (189 ms)
-      ✓ Filters by department when specified (212 ms)
-    get_employee
-      ✓ Returns employee details with success status (178 ms)
-      ✓ Returns LLM-friendly error for non-existent employee (145 ms)
-  MCP HR Server - Write Tools (Confirmations)
-    delete_employee
-      ✓ Returns pending_confirmation status (267 ms)
-      ✓ Stores confirmation in Redis with 5-minute TTL (234 ms)
-  ...
+### services/mcp-gateway/ (Service Integration)
 
-Test Suites: 2 passed, 2 total
-Tests:       78 passed, 78 total
-Snapshots:   0 total
-Time:        28.456 s
+```bash
+cd services/mcp-gateway
+npm run test:integration
 ```
+
+**Config**: `jest.integration.config.js` - 30s timeout, sequential execution, setup via `src/__tests__/integration/setup.ts`.
+
+### services/mcp-journey/ (Vitest)
+
+```bash
+cd services/mcp-journey
+npx vitest run tests/integration/
+```
+
+**Note**: Uses Vitest (not Jest).
 
 ---
 
-## Key Features
+## Test Files Inventory
 
-### 1. Automated Service Health Checks
+### tests/integration/
 
-Before tests run, `jest.setup.js` verifies all services:
+#### 1. rbac.test.ts (19 tests)
 
-```javascript
-beforeAll(async () => {
-  // Check Keycloak, MCP HR, Finance, Sales, Support
-  const allHealthy = await checkAllServices();
+RBAC and authorization testing against live Keycloak + MCP Gateway.
 
-  if (!allHealthy) {
-    throw new Error('Services not ready for integration tests');
-  }
-});
-```
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Authentication Tests | 3 | Valid/invalid credentials, non-existent user |
+| Authorization - User Info | 4 | Role verification per user (HR, Finance, Executive, Intern) |
+| Authorization - MCP Access | 5 | Cross-department access, self-access via employee role |
+| Authorization - AI Queries | 4 | `testOrSkip` - requires `CLAUDE_API_KEY` |
+| Data Filtering | 2 | Salary masking, contact detail filtering (60s timeout) |
+| Audit Logging | 1 | Query logging with user context |
 
-**Benefits**:
-- ✅ Fails fast if services aren't running
-- ✅ Clear error messages with fix instructions
-- ✅ Prevents 50+ test failures from single service issue
+**Conditional Tests**: 5 tests use `testOrSkip` pattern (skip if no `CLAUDE_API_KEY`).
 
-### 2. Realistic Test Scenarios
+**Env Vars**: `KEYCLOAK_URL` (default: `http://127.0.0.1:8190/auth`), `DEV_USER_PASSWORD`, `CLAUDE_API_KEY` (optional).
 
-Tests use actual sample data and real UUIDs:
+#### 2. mcp-tools.test.ts (42 tests)
 
-```typescript
-const TEST_USERS = {
-  hrUser: {
-    username: 'alice.chen',
-    userId: 'f104eddc-21ab-457c-a254-78051ad7ad67',  // Real UUID from database
-    roles: ['hr-read', 'hr-write'],
-  },
-  // ... 6 more users
-};
-```
+Comprehensive MCP tool testing across all 4 domain servers.
 
-**Benefits**:
-- ✅ Tests match production behavior
-- ✅ RLS policies tested with real user IDs
-- ✅ Confirmations use actual employee records
+| MCP Server | Read Tools | Write Tools | Notes |
+|------------|------------|-------------|-------|
+| HR | 5 (list_employees, get_employee) | 3 (delete_employee, update_salary) | Truncation, LLM errors |
+| Finance | 4 (get_budget, list_invoices) | 2 (delete_invoice, approve_budget) | Status filtering |
+| Sales | 5 (list_opportunities, get_customer) | 2 (close_opportunity, delete_customer) | Stage filtering |
+| Support | 4 (search_tickets, get_knowledge_article) | 1 (close_ticket) | Full-text search |
 
-### 3. Comprehensive Error Testing
+Also includes:
+- **Multi-Role Access Control** (7 tests) - Executive cross-dept, Intern denied, dept-specific boundaries
+- **Performance Tests** (3 tests) - Single query <2s, truncation overhead <100ms, 5 concurrent queries
+- **Health Checks** (4 tests) - All MCP servers healthy
 
-Every read tool tested for LLM-friendly errors:
+**Architecture v1.4 Coverage**:
+- LIMIT+1 truncation pattern with metadata
+- LLM-friendly error schemas with `suggestedAction`
+- Human-in-the-loop confirmations with `pending_confirmation` status
 
-```typescript
-test('Returns LLM-friendly error for non-existent employee', async () => {
-  const response = await hrClient.post('/tools/get_employee', {
-    employeeId: '00000000-0000-0000-0000-000000000000',
-  });
+#### 3. mcp-gateway-proxy.test.ts (29 tests, 4 skipped)
 
-  expect(response.data.status).toBe('error');
-  expect(response.data.code).toBe('EMPLOYEE_NOT_FOUND');
-  expect(response.data.suggestedAction).toContain('list_employees');
-});
-```
+End-to-end proxy routing through MCP Gateway to all domain servers.
 
-**Benefits**:
-- ✅ Validates Section 7.4 (LLM-friendly errors)
-- ✅ Ensures AI can self-correct
-- ✅ Tests error message clarity
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Health | 1 | Gateway health endpoint |
+| HR Endpoints | 4 | Skipped in CI (`isCI` check) |
+| Finance Endpoints | 4 | Skipped in CI |
+| Sales Endpoints | 2 | Skipped in CI |
+| Support Endpoints | 2 | Skipped in CI |
+| Payroll Endpoints | 7 | `describe.skip` (always skipped) |
+| Cross-Role Access | 4 | Executive all-dept, cross-dept employee role |
+| Response Validation | 3 | Payroll field validation (skipped) |
+| Error Handling | 2 | 401 unauthenticated, 404 not found |
 
-### 4. Confirmation Flow Validation
+**Skip Reasons**: MCP servers not accessible via Docker hostnames in CI; Payroll endpoints awaiting full integration.
 
-All write tools tested for full confirmation lifecycle:
+#### 4. query-scenarios.test.ts (22 tests)
 
-```typescript
-test('delete_employee returns pending_confirmation', async () => {
-  const response = await hrClient.post('/tools/delete_employee', {
-    employeeId: TEST_USERS.intern.userId,
-  });
+Natural language query routing and pagination scenarios.
 
-  // Validate confirmation response
-  expect(response.data.status).toBe('pending_confirmation');
-  expect(response.data.confirmationId).toBeDefined();
-  expect(response.data.message).toContain('Delete employee');
-  expect(response.data.confirmationData).toBeDefined();
+| Scenario | Tests | Notes |
+|----------|-------|-------|
+| "Who are my team members?" | 7 | Executive, HR Manager, Eng Manager, Intern |
+| "List all employees" | 4 | Cursor-based pagination (59 employees across pages) |
+| Query Routing | 2 | UUID routing to get_employee, pagination detection |
+| Budget Status Query | 4 | Summary with breakdowns, dept/fiscal year filtering |
+| Error Handling | 1 | Unknown user email error |
+| Health Checks | 3 | HR, Finance, Gateway accessible |
 
-  // TODO: Add Redis verification
-  // const confirmation = await redis.get(`pending:${confirmationId}`);
-  // expect(confirmation).toBeDefined();
-});
-```
+#### 5. sse-streaming.test.ts (5 tests)
 
-**Benefits**:
-- ✅ Validates Section 5.6 (confirmations)
-- ✅ Ensures Redis storage
-- ✅ Tests UI data completeness
+SSE streaming for AI query responses.
 
-### 5. Performance Regression Detection
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| POST /api/query | 4 | Executive/HR streaming, Intern limited access, progressive chunks |
+| Error Handling | 2 | Non-existent server, missing query body |
+| GET /api/query | 1 | EventSource-compatible endpoint |
+| Health Checks | 2 | Gateway and Keycloak accessible |
 
-Automated performance benchmarks:
-
-```typescript
-test('list_employees completes within 2 seconds', async () => {
-  const startTime = Date.now();
-  await hrClient.post('/tools/list_employees', { limit: 50 });
-  const duration = Date.now() - startTime;
-
-  expect(duration).toBeLessThan(2000);  // Fails if >2s
-});
-```
-
-**Benefits**:
-- ✅ Catches performance regressions in CI
-- ✅ Documents expected performance
-- ✅ Alerts team to slowdowns
+**Conditional**: 4 tests use `testOrSkip` (require `CLAUDE_API_KEY`). 90s timeout per AI test.
 
 ---
 
-## CI/CD Integration
+### services/mcp-gateway/src/__tests__/integration/
 
-### GitHub Actions Workflow
+#### 6. rls-policies.test.ts (37 tests) - TDD RED
 
-Ready for CI/CD with included workflow template:
+PostgreSQL Row-Level Security policy validation.
 
-```yaml
-name: Integration Tests
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Reference Tables (Public Read) | 4 | departments, grade_levels, fiscal_years, budget_categories |
+| HR Employees - SELECT | 5 | Intern self-only, manager team, cross-team denied |
+| HR Employee Write Ops | 6 | Salary update self/other, delete restrictions |
+| Finance Access by Role | 8 | Read/write separation, expense filtering |
+| Finance Write Ops | 5 | Approve permissions, role enforcement |
+| Cross-Schema Denial | 4 | HR cannot read Finance and vice versa |
+| Audit Table Access | 2 | Read-only for users |
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+**Status**: TDD RED phase - tests define expected RLS behavior before implementation.
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Start services
-        run: docker compose up -d
-      - name: Run tests
-        run: |
-          cd tests/integration
-          npm install
-          npm test -- --ci --coverage
-```
+#### 7. budget-approval.test.ts (32 tests) - TDD RED
 
-**Features**:
-- ✅ Runs on every PR
-- ✅ Blocks merge if tests fail
-- ✅ Uploads coverage reports
-- ✅ Dockerized environment = consistent results
+Finance budget approval workflow.
 
----
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Schema - approval columns | 8 | status, submitted_by/at, approved_by/at, version |
+| Approval History Table | 3 | Table existence, audit columns |
+| approve_budget Tool | 7 | Confirmation, Redis storage, status transition |
+| submit_budget Tool | 5 | Draft to PENDING_APPROVAL, optimistic locking |
+| Business Rules | 5 | Status transitions, role requirements |
 
-## Documentation
+**Status**: TDD RED phase (GitHub Issue #78).
 
-### README.md Includes:
+#### 8. expense-tracking.test.ts (22 tests) - TDD RED
 
-1. **Test Coverage Summary** - All 19 tools listed
-2. **Prerequisites** - Service requirements, test users, sample data
-3. **Running Tests** - Quick start, specific suites, watch mode
-4. **Test Results Interpretation** - Success criteria, common failures
-5. **Troubleshooting** - Debug mode, HTTP inspection, Redis checks
-6. **Performance Benchmarks** - Current metrics, targets
-7. **CI/CD Integration** - GitHub Actions template
-8. **Contributing** - How to add new tests
+Finance expense tracking schema and tools.
 
-**Size**: 600+ lines of comprehensive documentation
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Table Structure | 5 | Schema, columns, types, FKs, indexes |
+| get_expense_report Tool | 9 | Filtering, RLS, concurrency |
+| Sample Data | 3 | Records, categories, statuses |
+| RLS Policies | 5 | Self-only, manager team, finance-write all |
 
----
+**Status**: TDD RED phase (GitHub Issue #77).
 
-## Next Steps
+#### 9. schema-validation.test.ts (24 tests, 4 skipped)
 
-### Immediate (User Can Do Now)
+Validates database schemas match spec documents.
 
-1. **Install Dependencies**:
-   ```bash
-   cd tests/integration
-   npm install
-   ```
+**Status**: TDD RED phase. 4 tests explicitly skipped.
 
-2. **Run Tests**:
-   ```bash
-   npm test
-   ```
+#### 10. mcp-gateway-proxy.test.ts (29 tests)
 
-3. **Review Results**:
-   - Check for any failures
-   - Review coverage report
-   - Validate performance benchmarks
-
-### Medium-Term (As MCP Servers Mature)
-
-1. **Implement Missing Tools**:
-   - `get_org_chart` (MCP HR)
-   - `get_performance_reviews` (MCP HR)
-   - `update_salary` (MCP HR)
-   - `get_expense_report` (MCP Finance)
-   - `list_invoices`, `delete_invoice`, `approve_budget` (MCP Finance)
-   - All MCP Sales tools (5 total)
-   - All MCP Support tools (3 total)
-
-2. **Add Redis Verification**:
-   - Install `ioredis` client
-   - Add confirmation retrieval tests
-   - Validate TTL expiration
-
-3. **Expand RLS Testing**:
-   - Test manager-level access (team-only data)
-   - Test self-access for regular users
-   - Validate salary masking
-
-### Long-Term (Production Readiness)
-
-1. **Load Testing**:
-   - Use Apache JMeter or k6
-   - Test with 100+ concurrent users
-   - Identify bottlenecks
-
-2. **End-to-End Gateway Tests**:
-   - Test full AI query flow through Gateway
-   - Test multi-MCP tool calls
-   - Test SSE streaming
-
-3. **Security Testing**:
-   - Penetration testing
-   - SQL injection attempts
-   - Prompt injection testing
+Duplicate of `tests/integration/mcp-gateway-proxy.test.ts` with minor differences (runs under mcp-gateway's jest config).
 
 ---
 
-## Files Changed/Created
+### services/mcp-hr/tests/integration/
 
-### Test Files
+#### 11. identity-provisioning.test.ts (9 tests)
+
+Keycloak identity provisioning via IdentityService.
+
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| User creation/update | ~4 | Keycloak user lifecycle |
+| Group assignments | ~2 | Role-based group mapping |
+| Cleanup/rollback | ~2 | Atomic migration rollback |
+| Audit trail | ~1 | Provisioning audit records |
+
+**Dependencies**: Keycloak Admin API, PostgreSQL, Redis.
+
+---
+
+### services/mcp-journey/tests/integration/
+
+#### 12. mcp-server.test.ts (17 tests) - TDD RED
+
+MCP Journey server tool and resource endpoints.
+
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Health endpoint | 3 | Status, service name, uptime |
+| Tool endpoints | 5 | query_failures, lookup_adr, search_journey |
+| Resource endpoints | 4 | Read failure/decision resources, list, 404 |
+| Agent identity | 2 | Identity metadata, disclaimer |
+
+**Framework**: Vitest (not Jest).
+
+#### 13. knowledge-index.test.ts (8 tests) - TDD RED
+
+Semantic search and knowledge indexing.
+
+| Test Group | Tests | Notes |
+|------------|-------|-------|
+| Knowledge Index | 8 | Full-text search, embedding search, hybrid, CRUD |
+
+**Framework**: Vitest (not Jest).
+
+---
+
+## Test Categories Summary
+
+| Category | Test Count | Status |
+|----------|-----------|--------|
+| RBAC / Authorization | 19 | Active |
+| MCP Tool Coverage (19 tools) | 42 | Active |
+| Gateway Proxy Routing | 58 | Active (some skipped in CI) |
+| Query Scenarios | 22 | Active |
+| SSE Streaming | 5 | Active (conditional on API key) |
+| RLS Policies | 37 | TDD RED |
+| Budget Approval Workflow | 32 | TDD RED |
+| Expense Tracking | 22 | TDD RED |
+| Schema Validation | 24 | TDD RED |
+| Identity Provisioning | 9 | Active |
+| MCP Journey Server | 17 | TDD RED |
+| Knowledge Index | 8 | TDD RED |
+
+### By Maturity
+
+| Status | Tests | % |
+|--------|-------|---|
+| **Active** (can run against live services) | 155 | 53% |
+| **TDD RED** (expected to fail, spec-first) | 140 | 47% |
+| **Total** | 295 | 100% |
+
+---
+
+## Conditional Test Patterns
+
+### testOrSkip (Claude API Key)
+
+~12 tests skip automatically when `CLAUDE_API_KEY` is not set. These test actual AI query flows through Claude and require a valid API key starting with `sk-ant-api`.
+
+### isCI (CI Environment)
+
+~15 tests in `mcp-gateway-proxy.test.ts` skip in CI because MCP servers aren't accessible via Docker hostnames from the test runner.
+
+### describe.skip (Payroll)
+
+7 payroll endpoint tests are always skipped pending full proxy integration.
+
+---
+
+## Dependencies
+
+| Dependency | Required By | Purpose |
+|------------|-------------|---------|
+| Keycloak | All tests | Authentication, JWT tokens |
+| MCP Gateway (3100) | Proxy, RBAC, SSE, Query | Request routing |
+| MCP HR (3101) | Tools, Proxy, Query | Employee data |
+| MCP Finance (3102) | Tools, Proxy, Query | Budget/invoice data |
+| MCP Sales (3103) | Tools, Proxy | Opportunities/CRM |
+| MCP Support (3104) | Tools, Proxy | Tickets/KB |
+| MCP Payroll (3106) | Proxy (skipped) | Payroll data |
+| PostgreSQL (5433) | RLS, Schema, Identity | Relational data |
+| MongoDB (27018) | Schema validation | Sales/Support documents |
+| Redis (6380) | Confirmation flows | Token cache, pending actions |
+| Claude API | SSE, RBAC AI queries | AI response generation |
+
+---
+
+## Helper Scripts (tests/integration/)
+
+| Script | Purpose |
+|--------|---------|
+| `jest.setup.js` | Service health checks before test execution |
+| `create-flutter-client.js` | Create Flutter client in Keycloak |
+| `fix-flutter-client.js` | Fix Flutter client configuration |
+| `fix-totp.js` | Fix TOTP configuration for test users |
+| `setup-totp-for-testing.js` | Configure TOTP secrets for test users |
+| `restore-eve-totp.js` | Restore Eve Thompson's TOTP after tests |
+| `setup-keycloak-mappers.js` | Configure Keycloak protocol mappers |
+| `remove-offline-access.js` | Remove offline_access scope |
+
+---
+
+## File Structure
 
 ```
 tests/integration/
-├── rbac.test.ts              # RBAC integration tests
-├── mcp-tools.test.ts         # 900+ lines - Comprehensive tool tests
-├── query-scenarios.test.ts   # Query handling and pagination
-├── sse-streaming.test.ts     # SSE streaming and error handling
-├── README.md                 # 600+ lines - Complete documentation
-├── jest.config.js            # Jest configuration
-├── jest.setup.js             # 300+ lines - Health checks, TOTP handling
-├── package.json              # Dependencies
-├── tsconfig.json             # TypeScript config
-└── INTEGRATION_TEST_SUMMARY.md  # This file
+    rbac.test.ts                   # 19 tests - RBAC authorization
+    mcp-tools.test.ts              # 42 tests - All MCP tool coverage
+    mcp-gateway-proxy.test.ts      # 29 tests - Gateway proxy routing
+    query-scenarios.test.ts        # 22 tests - NL query routing
+    sse-streaming.test.ts          #  5 tests - SSE streaming
+    jest.config.js                 # 120s timeout, sequential
+    jest.setup.js                  # Health checks
+    package.json                   # Jest 30.2, ts-jest, axios
+    tsconfig.json                  # TypeScript config
+    *.js                           # Keycloak helper scripts
+
+services/mcp-gateway/src/__tests__/integration/
+    rls-policies.test.ts           # 37 tests - PostgreSQL RLS (RED)
+    budget-approval.test.ts        # 32 tests - Budget workflow (RED)
+    expense-tracking.test.ts       # 22 tests - Expense tracking (RED)
+    schema-validation.test.ts      # 24 tests - Schema vs spec (RED)
+    mcp-gateway-proxy.test.ts      # 29 tests - Proxy routing
+    setup.ts                       # Test setup, auth helpers
+
+services/mcp-hr/tests/integration/
+    identity-provisioning.test.ts  #  9 tests - Keycloak provisioning
+
+services/mcp-journey/tests/integration/
+    mcp-server.test.ts             # 17 tests - MCP Journey (RED, Vitest)
+    knowledge-index.test.ts        #  8 tests - Semantic search (RED, Vitest)
 ```
 
-### Existing Files (1 updated)
-
-```
-tests/integration/
-└── rbac.test.ts              # Existing - 327 lines (no changes)
-```
-
 ---
 
-## Test Statistics
-
-### Coverage by Category
-
-| Category | Tools/Tests | Status |
-|----------|-------------|--------|
-| **MCP Tools** | 19 tools × 4-6 tests each = ~76 tests | ✅ Complete |
-| **RBAC** | 18 tests (from existing rbac.test.ts) | ✅ Complete |
-| **v1.4 Features** | 40+ tests (pagination, errors, confirmations) | ✅ Complete |
-| **Performance** | 3 benchmarks | ✅ Complete |
-| **Health Checks** | 4 services | ✅ Complete |
-| **Multi-Role Access** | 13 role combinations | ✅ Complete |
-| **Query Scenarios** | Cursor-based pagination, employee counts | ✅ Complete |
-| **SSE Streaming** | Connection handling, error recovery | ✅ Complete |
-
-**Total Tests**: 96 integration tests (89 passed, 7 skipped in CI run 20642174604)
-
-### Estimated Test Execution Time
-
-- Health checks: ~5 seconds
-- RBAC tests: ~8 seconds
-- MCP tool tests: ~20 seconds
-- Performance tests: ~5 seconds
-
-**Total**: ~38 seconds for full suite
-
-### Code Quality
-
-- ✅ TypeScript strict mode enabled
-- ✅ Consistent naming conventions
-- ✅ JSDoc comments for all helper functions
-- ✅ Comprehensive error handling
-- ✅ DRY principles (helper functions for auth, clients)
-
----
-
-## Known Limitations
-
-### 1. MCP Server Implementation Status
-
-**Currently Implemented**:
-- ✅ MCP HR: 3/6 tools (list_employees, get_employee, delete_employee)
-- ✅ MCP Finance: 1/5 tools (get_budget)
-- ⏳ MCP Sales: 0/5 tools
-- ⏳ MCP Support: 0/3 tools
-
-**Impact**: Some tests will fail until tools are implemented.
-
-**Workaround**: Tests gracefully handle 404 errors.
-
-### 2. RLS Policies Not Fully Enabled
-
-**Current State**: RLS policies exist but are disabled (ENABLE = false)
-
-**Impact**: Manager and user-level access tests may pass incorrectly.
-
-**Fix**: Enable RLS in PostgreSQL:
-```sql
-ALTER TABLE hr.employees ENABLE ROW LEVEL SECURITY;
-```
-
-### 3. Redis Confirmation Verification
-
-**Current State**: Tests validate confirmation response but don't query Redis directly.
-
-**Impact**: Can't verify TTL expiration or storage format.
-
-**Fix**: Add ioredis client and verification tests.
-
----
-
-## Success Metrics
-
-### Immediate Success (This PR)
-
-- ✅ 78+ integration tests created
-- ✅ 100% MCP tool coverage (all 19 tools)
-- ✅ Complete documentation (600+ lines)
-- ✅ CI/CD ready (GitHub Actions template)
-- ✅ Performance benchmarks established
-
-### Medium-Term Success (Next 2 Weeks)
-
-- [ ] All MCP servers implement all tools
-- [ ] All 78 tests passing
-- [ ] Coverage > 80%
-- [ ] CI pipeline running on every PR
-
-### Long-Term Success (Production)
-
-- [ ] Load testing complete (100+ concurrent users)
-- [ ] Security testing complete (pen test, SAST)
-- [ ] Performance SLAs met (95th percentile < 1s)
-- [ ] Zero downtime deployments
-
----
-
-## Conclusion
-
-This integration testing suite provides **comprehensive coverage** of the Tamshai Enterprise AI system with:
-
-✅ **All 19 MCP tools tested** (read + write operations)
-✅ **Architecture v1.4 compliance** (pagination, errors, confirmations)
-✅ **Multi-role access control** (7 user roles × 4 MCP servers)
-✅ **Performance benchmarks** (regression detection)
-✅ **600+ lines of documentation** (onboarding, troubleshooting, CI/CD)
-✅ **Cursor-based pagination** (59 employees across 2 pages)
-✅ **CI/CD integration** (GitHub Actions - all tests passing)
-
-The test suite is **production-ready** and provides a strong foundation for ongoing development and quality assurance.
-
----
-
-**Created By**: Claude Sonnet 4.5
-**Date**: December 12, 2025
-**Updated**: January 1, 2026 (CI fixes: ObjectIds, pagination, Elasticsearch, SSE error handling)
-**Total Implementation Time**: ~2 hours initial + 4 hours CI fixes
-**Lines of Code**: ~2,000+ (tests + config + docs)
+*Last Updated: February 5, 2026*
+*Updated By: Claude-QA (Tamshai-QA)*
