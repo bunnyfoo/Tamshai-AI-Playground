@@ -87,13 +87,70 @@ const logger = winston.createLogger({
 const app = express();
 const PORT = parseInt(process.env.PORT || '3102');
 
-// Authorization helper - checks if user has Finance access
-function hasFinanceAccess(roles: string[]): boolean {
+// =============================================================================
+// TIERED AUTHORIZATION (v1.5 - Role-Based Access Control Enhancement)
+// =============================================================================
+
+/**
+ * TIER 1: Expenses - accessible by all employees (self-access via RLS)
+ *
+ * All employees can access their own expense reports.
+ * RLS policies in the database enforce self-access filtering.
+ */
+export function canAccessExpenses(roles: string[]): boolean {
+  return roles.some(role =>
+    role === 'employee' ||
+    role === 'manager' ||
+    role === 'finance-read' ||
+    role === 'finance-write' ||
+    role === 'executive'
+  );
+}
+
+/**
+ * TIER 2: Budgets - accessible by managers+ (department-level via RLS)
+ *
+ * Managers can view their department's budget.
+ * Finance users can view all budgets.
+ * Employees (non-managers) cannot access budgets.
+ */
+export function canAccessBudgets(roles: string[]): boolean {
+  return roles.some(role =>
+    role === 'manager' ||
+    role === 'finance-read' ||
+    role === 'finance-write' ||
+    role === 'executive'
+  );
+}
+
+/**
+ * TIER 3: Dashboard/ARR/Invoices - only finance personnel
+ *
+ * Company-wide financial data (ARR, all invoices, dashboard metrics)
+ * is restricted to Finance team and executives.
+ */
+export function canAccessDashboard(roles: string[]): boolean {
   return roles.some(role =>
     role === 'finance-read' ||
     role === 'finance-write' ||
     role === 'executive'
   );
+}
+
+/**
+ * Write operations - finance-write or executive only
+ * (unchanged from original implementation)
+ */
+function canWriteFinance(roles: string[]): boolean {
+  return roles.some(role =>
+    role === 'finance-write' ||
+    role === 'executive'
+  );
+}
+
+// Legacy alias for backward compatibility during transition
+function hasFinanceAccess(roles: string[]): boolean {
+  return canAccessDashboard(roles);
 }
 
 // Middleware
@@ -240,7 +297,7 @@ app.post('/query', async (req: Request, res: Response) => {
 // =============================================================================
 
 /**
- * Get Budget Tool
+ * Get Budget Tool (TIER 2 - Managers and above, department filtering via RLS)
  */
 app.post('/tools/get_budget', async (req: Request, res: Response) => {
   try {
@@ -255,12 +312,12 @@ app.post('/tools/get_budget', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 2: Managers and above can access budgets
+    if (!canAccessBudgets(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. Budget access requires manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -279,7 +336,7 @@ app.post('/tools/get_budget', async (req: Request, res: Response) => {
 });
 
 /**
- * List Invoices Tool (v1.4 with truncation detection)
+ * List Invoices Tool (TIER 3 - Finance personnel only)
  */
 app.post('/tools/list_invoices', async (req: Request, res: Response) => {
   try {
@@ -294,12 +351,12 @@ app.post('/tools/list_invoices', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 3: Finance personnel only
+    if (!canAccessDashboard(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. Invoice access requires finance-read, finance-write, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -318,7 +375,7 @@ app.post('/tools/list_invoices', async (req: Request, res: Response) => {
 });
 
 /**
- * List Budgets Tool (v1.4 with truncation detection)
+ * List Budgets Tool (TIER 2 - Managers and above, department filtering via RLS)
  */
 app.post('/tools/list_budgets', async (req: Request, res: Response) => {
   try {
@@ -333,12 +390,12 @@ app.post('/tools/list_budgets', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 2: Managers and above can access budgets
+    if (!canAccessBudgets(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. Budget access requires manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -357,7 +414,7 @@ app.post('/tools/list_budgets', async (req: Request, res: Response) => {
 });
 
 /**
- * Get Expense Report Tool
+ * Get Expense Report Tool (TIER 1 - All employees via RLS self-access)
  */
 app.post('/tools/get_expense_report', async (req: Request, res: Response) => {
   try {
@@ -372,13 +429,13 @@ app.post('/tools/get_expense_report', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 1: All employees can access (own reports via RLS)
+    if (!canAccessExpenses(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Expense report access requires employee, manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request appropriate access permissions.',
       });
       return;
     }
@@ -396,7 +453,7 @@ app.post('/tools/get_expense_report', async (req: Request, res: Response) => {
 });
 
 /**
- * List Expense Reports Tool
+ * List Expense Reports Tool (TIER 1 - All employees via RLS self-access)
  */
 app.post('/tools/list_expense_reports', async (req: Request, res: Response) => {
   try {
@@ -411,13 +468,13 @@ app.post('/tools/list_expense_reports', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 1: All employees can access (own reports via RLS)
+    if (!canAccessExpenses(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Expense report access requires employee, manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request appropriate access permissions.',
       });
       return;
     }
@@ -435,7 +492,7 @@ app.post('/tools/list_expense_reports', async (req: Request, res: Response) => {
 });
 
 /**
- * Get ARR Tool - Returns current ARR metrics
+ * Get ARR Tool - Returns current ARR metrics (TIER 3 - Finance personnel only)
  */
 app.post('/tools/get_arr', async (req: Request, res: Response) => {
   try {
@@ -450,12 +507,12 @@ app.post('/tools/get_arr', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 3: Finance personnel only (company-wide financial data)
+    if (!canAccessDashboard(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. ARR data requires finance-read, finance-write, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -474,7 +531,7 @@ app.post('/tools/get_arr', async (req: Request, res: Response) => {
 });
 
 /**
- * Get ARR Movement Tool - Returns ARR waterfall/movement data
+ * Get ARR Movement Tool - Returns ARR waterfall/movement data (TIER 3 - Finance personnel only)
  */
 app.post('/tools/get_arr_movement', async (req: Request, res: Response) => {
   try {
@@ -489,12 +546,12 @@ app.post('/tools/get_arr_movement', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - TIER 3: Finance personnel only (company-wide financial data)
+    if (!canAccessDashboard(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. ARR movement data requires finance-read, finance-write, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -513,7 +570,7 @@ app.post('/tools/get_arr_movement', async (req: Request, res: Response) => {
 });
 
 /**
- * Delete Invoice Tool (v1.4 with confirmation)
+ * Delete Invoice Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/delete_invoice', async (req: Request, res: Response) => {
   try {
@@ -528,13 +585,13 @@ app.post('/tools/delete_invoice', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Deleting invoices requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -552,7 +609,7 @@ app.post('/tools/delete_invoice', async (req: Request, res: Response) => {
 });
 
 /**
- * Approve Invoice Tool (v1.4 with confirmation)
+ * Approve Invoice Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/approve_invoice', async (req: Request, res: Response) => {
   try {
@@ -567,13 +624,13 @@ app.post('/tools/approve_invoice', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Approving invoices requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -591,7 +648,7 @@ app.post('/tools/approve_invoice', async (req: Request, res: Response) => {
 });
 
 /**
- * Pay Invoice Tool (v1.4 with confirmation)
+ * Pay Invoice Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/pay_invoice', async (req: Request, res: Response) => {
   try {
@@ -606,13 +663,13 @@ app.post('/tools/pay_invoice', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Paying invoices requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -630,7 +687,7 @@ app.post('/tools/pay_invoice', async (req: Request, res: Response) => {
 });
 
 /**
- * Approve Budget Tool (v1.5 with confirmation)
+ * Approve Budget Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/approve_budget', async (req: Request, res: Response) => {
   try {
@@ -645,13 +702,13 @@ app.post('/tools/approve_budget', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Approving budgets requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -669,7 +726,7 @@ app.post('/tools/approve_budget', async (req: Request, res: Response) => {
 });
 
 /**
- * Reject Budget Tool (v1.5 with confirmation)
+ * Reject Budget Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/reject_budget', async (req: Request, res: Response) => {
   try {
@@ -684,13 +741,13 @@ app.post('/tools/reject_budget', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Rejecting budgets requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -708,7 +765,7 @@ app.post('/tools/reject_budget', async (req: Request, res: Response) => {
 });
 
 /**
- * Delete Budget Tool (v1.5 with confirmation)
+ * Delete Budget Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/delete_budget', async (req: Request, res: Response) => {
   try {
@@ -723,13 +780,13 @@ app.post('/tools/delete_budget', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - must have Finance access
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access (finance-read, finance-write, or executive role). You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Deleting budgets requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -747,7 +804,7 @@ app.post('/tools/delete_budget', async (req: Request, res: Response) => {
 });
 
 /**
- * Approve Expense Report Tool (v1.5 with confirmation)
+ * Approve Expense Report Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/approve_expense_report', async (req: Request, res: Response) => {
   try {
@@ -762,12 +819,13 @@ app.post('/tools/approve_expense_report', async (req: Request, res: Response) =>
       return;
     }
 
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Approving expense reports requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -785,7 +843,7 @@ app.post('/tools/approve_expense_report', async (req: Request, res: Response) =>
 });
 
 /**
- * Reject Expense Report Tool (v1.5 with confirmation)
+ * Reject Expense Report Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/reject_expense_report', async (req: Request, res: Response) => {
   try {
@@ -800,12 +858,13 @@ app.post('/tools/reject_expense_report', async (req: Request, res: Response) => 
       return;
     }
 
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Rejecting expense reports requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -823,7 +882,7 @@ app.post('/tools/reject_expense_report', async (req: Request, res: Response) => 
 });
 
 /**
- * Reimburse Expense Report Tool (v1.5 with confirmation)
+ * Reimburse Expense Report Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) => {
   try {
@@ -838,12 +897,13 @@ app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) 
       return;
     }
 
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Reimbursing expense reports requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }
@@ -861,7 +921,7 @@ app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) 
 });
 
 /**
- * Delete Expense Report Tool (v1.5 with confirmation)
+ * Delete Expense Report Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/delete_expense_report', async (req: Request, res: Response) => {
   try {
@@ -876,12 +936,13 @@ app.post('/tools/delete_expense_report', async (req: Request, res: Response) => 
       return;
     }
 
-    if (!hasFinanceAccess(userContext.roles)) {
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. This operation requires Finance access. You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+        message: `Access denied. Deleting expense reports requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
       });
       return;
     }

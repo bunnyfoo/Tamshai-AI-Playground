@@ -165,8 +165,9 @@ const mcpServerConfigs: MCPServerConfig[] = [
   {
     name: 'finance',
     url: config.mcpServers.finance,
-    // 'employee' role grants self-access (own expenses); department roles grant full access
-    requiredRoles: ['employee', 'finance-read', 'finance-write', 'executive'],
+    // v1.5 Tiered access: employee (expenses), manager (budgets), finance (all)
+    // Actual data access controlled by MCP Finance server's tiered authorization
+    requiredRoles: ['employee', 'manager', 'finance-read', 'finance-write', 'executive'],
     description: 'Financial data including budgets, reports, invoices',
   },
   {
