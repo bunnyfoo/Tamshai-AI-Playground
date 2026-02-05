@@ -3,7 +3,7 @@
 #
 # Prerequisites:
 # 1. Add to hosts file (C:\Windows\System32\drivers\etc\hosts):
-#    127.0.0.1  tamshai-playground.local www.tamshai-playground.local
+#    127.0.0.1  tamshai-playground.local www.tamshai-playground.local customers.tamshai-playground.local
 #
 # 2. Accept the self-signed certificate warning in your browser
 #    OR install mkcert for trusted local certificates
@@ -11,6 +11,47 @@
 {
   # Enable local HTTPS with self-signed certs
   local_certs
+}
+
+# Customer Support Portal (External Customers)
+# Uses separate tamshai-customers realm for authentication
+customers.tamshai-playground.local {
+  encode gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    X-Frame-Options SAMEORIGIN
+    Referrer-Policy strict-origin-when-cross-origin
+    -Server
+  }
+
+  # Keycloak authentication (customer realm)
+  handle /auth/* {
+    reverse_proxy keycloak:8080
+  }
+
+  # API Gateway (customer tools via MCP Support)
+  handle /api/* {
+    # SSE streaming support
+    @sse {
+      path /api/query*
+      header Accept text/event-stream
+    }
+    reverse_proxy @sse kong:8000 {
+      flush_interval -1
+      transport http {
+        read_timeout 120s
+        write_timeout 120s
+      }
+    }
+
+    reverse_proxy kong:8000
+  }
+
+  # Customer Portal SPA
+  handle {
+    reverse_proxy web-customer-support:80
+  }
 }
 
 # HTTPS on tamshai-playground.local and www.tamshai-playground.local
