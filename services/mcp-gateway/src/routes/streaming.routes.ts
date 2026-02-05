@@ -17,6 +17,7 @@
 import { Router, Request, Response, RequestHandler } from 'express';
 import { Logger } from 'winston';
 import Anthropic from '@anthropic-ai/sdk';
+import type { TextBlockParam } from '@anthropic-ai/sdk/resources/messages';
 import {
   MCPToolResponse,
   isSuccessResponse,
@@ -335,12 +336,22 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
         ],
       });
 
+      // Track usage from stream events for cache metrics
+      let streamUsage: Record<string, unknown> = {};
+
       // Stream each chunk to the client
       for await (const chunk of stream) {
         // Check if client disconnected mid-stream
         if (streamClosed) {
           logger.info('Client disconnected mid-stream, aborting', { requestId });
           break;
+        }
+
+        if (chunk.type === 'message_start') {
+          const startEvent = chunk as unknown as { message?: { usage?: Record<string, unknown> } };
+          if (startEvent.message?.usage) {
+            streamUsage = startEvent.message.usage;
+          }
         }
 
         if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
@@ -365,7 +376,12 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
         res.end();
 
         const durationMs = Date.now() - startTime;
-        logger.info('SSE query completed', { requestId, durationMs });
+        logger.info('SSE query completed', {
+          requestId,
+          durationMs,
+          cacheCreationTokens: streamUsage.cache_creation_input_tokens ?? 0,
+          cacheReadTokens: streamUsage.cache_read_input_tokens ?? 0,
+        });
       }
     } catch (error) {
       // Only send error if client still connected
@@ -381,14 +397,17 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
   }
 
   /**
-   * Build system prompt for Claude with user context and data
+   * Build system prompt for Claude with user context and data.
+   *
+   * Returns TextBlockParam[] with cache_control on the data block
+   * to enable Anthropic's prompt caching (10% cost for cache reads).
    */
   function buildSystemPrompt(
     userContext: UserContext,
     dataContext: string,
     paginationInstructions: string,
     truncationWarnings: string[]
-  ): string {
+  ): TextBlockParam[] {
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -396,7 +415,7 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
       timeZone: 'UTC'
     });
 
-    return `You are an AI assistant for Tamshai Corp, a family investment management organization.
+    const instructions = `You are an AI assistant for Tamshai Corp, a family investment management organization.
 You have access to enterprise data based on the user's role permissions.
 The current user is "${userContext.username}" (email: ${userContext.email || 'unknown'}) with system roles: ${userContext.roles.join(', ')}.
 
@@ -413,10 +432,21 @@ When answering questions:
 3. Never make up or infer sensitive information not in the data
 4. Be concise and professional
 5. If asked about data you don't have access to, explain that the user's role doesn't have permission
-6. When asked about "my team", first identify the user in the employee data, then find their direct reports${paginationInstructions}${truncationWarnings.length > 0 ? '\n\n' + truncationWarnings.join('\n') : ''}
+6. When asked about "my team", first identify the user in the employee data, then find their direct reports${paginationInstructions}${truncationWarnings.length > 0 ? '\n\n' + truncationWarnings.join('\n') : ''}`;
 
-Available data context:
-${dataContext || 'No relevant data available for this query.'}`;
+    const dataBlock = `Available data context:\n${dataContext || 'No relevant data available for this query.'}`;
+
+    return [
+      {
+        type: "text" as const,
+        text: instructions,
+      },
+      {
+        type: "text" as const,
+        text: dataBlock,
+        cache_control: { type: "ephemeral" as const },
+      },
+    ];
   }
 
   /**
