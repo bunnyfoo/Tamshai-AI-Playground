@@ -246,7 +246,7 @@ All optimizations implemented and verified:
 | Throughput | **109.96 req/s** | >50 req/s | ✅ PASS |
 | Total Requests | 66,081 | - | - |
 
-**Note:** 50% error rate on authenticated endpoints (expected - DEV_USER_PASSWORD not set for load test). Public endpoint metrics above are accurate.
+**Note:** 50% error rate on authenticated endpoints because `DEV_USER_PASSWORD` was not set. See [Prerequisites](#prerequisites-for-authenticated-tests) below.
 
 ### Response Size (Compression)
 
@@ -263,6 +263,82 @@ All optimizations implemented and verified:
 | P99 Latency | <1000ms (internal target -25%) | **~10ms** | ✅ EXCEEDED |
 | Response Sizes | -60% reduction | **-75%** | ✅ EXCEEDED |
 | Throughput | >50 req/s | **110 req/s** | ✅ EXCEEDED |
+
+### Prerequisites for Authenticated Tests
+
+Integration tests and K6 load tests that hit authenticated endpoints require two environment variables:
+
+| Variable | Purpose | Source |
+|----------|---------|--------|
+| `DEV_USER_PASSWORD` | Test user password for Keycloak authentication | GitHub Secrets |
+| `KEYCLOAK_CLIENT_SECRET` | The `mcp-gateway` Keycloak client secret | Keycloak realm export (`mcp-gateway-secret` in dev) |
+
+**Step 1: Retrieve secrets from GitHub**
+
+The `DEV_USER_PASSWORD` is stored as a GitHub Secret. Retrieve it using:
+
+```bash
+# Option 1: Set env vars in current shell (recommended)
+eval $(./scripts/secrets/read-github-secrets.sh --user-passwords --env)
+
+# Option 2: View secrets as text
+./scripts/secrets/read-github-secrets.sh --user-passwords
+
+# Option 3: View as JSON
+./scripts/secrets/read-github-secrets.sh --user-passwords --json
+```
+
+**Available secret categories:**
+
+| Flag | Secrets Retrieved | Use Case |
+|------|-------------------|----------|
+| `--user-passwords` | `DEV_USER_PASSWORD`, `STAGE_USER_PASSWORD`, `PROD_USER_PASSWORD` | Integration tests, K6 load tests |
+| `--e2e` | `TEST_USER_PASSWORD`, `TEST_USER_TOTP_SECRET` | E2E Playwright tests |
+| `--keycloak` | Keycloak admin password | Keycloak admin API access |
+| `--all` | All of the above | Full test suite |
+
+**Prerequisites:** GitHub CLI (`gh`) must be authenticated as `bunnyfoo`. See `CLAUDE.md` for authentication instructions.
+
+**Step 2: Run tests with all required env vars**
+
+```bash
+# 1. Get secrets from GitHub
+eval $(./scripts/secrets/read-github-secrets.sh --user-passwords --env)
+
+# 2. Set Docker dev environment overrides
+export KEYCLOAK_CLIENT_SECRET='mcp-gateway-secret'
+export GATEWAY_URL='http://127.0.0.1:3110'
+export KEYCLOAK_URL='http://127.0.0.1:8190/auth'
+
+# Integration tests (all 5 suites)
+cd tests/integration && npm test
+
+# K6 performance tests (smoke - 30s, 1 VU, public endpoints only)
+cd tests/performance && k6 run scenarios/smoke.js
+
+# K6 performance tests (load - 10min, 50 VUs peak)
+# Note: authenticated endpoints require client_secret in load.js
+cd tests/performance && k6 run scenarios/load.js
+```
+
+**Docker dev port reference (must override defaults in K6/integration tests):**
+
+The K6 and integration test scripts have default ports that don't match the Docker dev environment.
+You **must** set these overrides when running against the Docker dev stack:
+
+| Variable | K6/Test Default | Docker Dev Value | Required Override |
+|----------|----------------|------------------|-------------------|
+| `GATEWAY_URL` | `http://localhost:3100` | `http://127.0.0.1:3110` | Yes |
+| `KEYCLOAK_URL` | `http://localhost:8180` (K6) / `http://127.0.0.1:8190/auth` (integration) | `http://127.0.0.1:8190/auth` | Yes (K6 needs `/auth` prefix) |
+| `KEYCLOAK_REALM` | `tamshai-corp` | `tamshai-corp` | No |
+| `MCP_HR_URL` | `http://127.0.0.1:3111` | `http://127.0.0.1:3111` | No |
+| `MCP_FINANCE_URL` | `http://127.0.0.1:3112` | `http://127.0.0.1:3112` | No |
+| `MCP_SALES_URL` | `http://127.0.0.1:3113` | `http://127.0.0.1:3113` | No |
+| `MCP_SUPPORT_URL` | `http://127.0.0.1:3114` | `http://127.0.0.1:3114` | No |
+
+**Important:** The K6 load test builds token URLs as `KEYCLOAK_URL/realms/...`, so `KEYCLOAK_URL` must include the `/auth` path prefix for Docker dev (i.e., `http://localhost:8190/auth`).
+
+**Important:** The K6 load test's `mcp-gateway` client is confidential in Docker dev and requires `client_secret` in the token request. The current `load.js` script does not send `client_secret`, so authenticated endpoints will fail unless the script is updated or the client is made public.
 
 ### Performance Summary
 
