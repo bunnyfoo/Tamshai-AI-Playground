@@ -16,6 +16,8 @@ export default function TicketDetailPage() {
   const canWrite = canModifySupport(userContext);
   const [newComment, setNewComment] = useState('');
   const [assignee, setAssignee] = useState('');
+  const [newInternalNote, setNewInternalNote] = useState('');
+  const [showInternalNotes, setShowInternalNotes] = useState(true);
 
   // Fetch ticket details
   const { data: ticketResponse, isLoading, error } = useQuery({
@@ -57,6 +59,49 @@ export default function TicketDetailPage() {
       setNewComment('');
       queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
     },
+  });
+
+  // Add internal note mutation
+  const addInternalNoteMutation = useMutation({
+    mutationFn: async (note: string) => {
+      const token = getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+
+      const response = await fetch(
+        `${apiConfig.mcpGatewayUrl}/api/mcp/support/add_internal_note`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ticketId, note }),
+        }
+      );
+      if (!response.ok) throw new Error('Failed to add internal note');
+      return response.json();
+    },
+    onSuccess: () => {
+      setNewInternalNote('');
+      queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+    },
+  });
+
+  // Fetch customer history (other tickets from same org)
+  const { data: customerHistoryResponse } = useQuery({
+    queryKey: ['customer-history', ticketResponse?.data?.organization_id],
+    queryFn: async () => {
+      const token = getAccessToken();
+      if (!token || !ticketResponse?.data?.organization_id) return null;
+
+      const response = await fetch(
+        `${apiConfig.mcpGatewayUrl}/api/mcp/support/search_tickets?organization_id=${ticketResponse.data.organization_id}&limit=5`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) return null;
+      return response.json() as Promise<APIResponse<Ticket[]>>;
+    },
+    enabled: !!ticketResponse?.data?.organization_id,
   });
 
   // Assign ticket mutation
@@ -217,10 +262,109 @@ export default function TicketDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Internal Notes (Staff Only) */}
+          {canWrite && (
+            <div className="card border-l-4 border-l-amber-500">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <span className="text-amber-600">🔒</span>
+                  Internal Notes
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                    Staff Only
+                  </span>
+                </h2>
+                <button
+                  onClick={() => setShowInternalNotes(!showInternalNotes)}
+                  className="text-sm text-secondary-500 hover:text-secondary-700"
+                >
+                  {showInternalNotes ? 'Hide' : 'Show'}
+                </button>
+              </div>
+
+              {showInternalNotes && (
+                <>
+                  {ticket.internal_notes && ticket.internal_notes.length > 0 ? (
+                    <div className="space-y-3 mb-4">
+                      {ticket.internal_notes.map((note, index) => (
+                        <div key={note.id || index} className="bg-amber-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-secondary-900">
+                              {note.author_name || 'Staff'}
+                            </span>
+                            <span className="text-xs text-secondary-500">
+                              {new Date(note.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-secondary-700 text-sm">{note.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-secondary-500 mb-4 text-sm">
+                      No internal notes yet. Add notes that are only visible to staff.
+                    </p>
+                  )}
+
+                  <div className="border-t pt-4">
+                    <textarea
+                      value={newInternalNote}
+                      onChange={(e) => setNewInternalNote(e.target.value)}
+                      placeholder="Add internal note (hidden from customers)..."
+                      className="input w-full mb-2 bg-amber-50 border-amber-200 focus:border-amber-400"
+                      rows={2}
+                    />
+                    <button
+                      onClick={() => addInternalNoteMutation.mutate(newInternalNote)}
+                      disabled={!newInternalNote.trim() || addInternalNoteMutation.isPending}
+                      className="btn-secondary text-amber-700 bg-amber-100 hover:bg-amber-200"
+                    >
+                      {addInternalNoteMutation.isPending ? 'Adding...' : 'Add Internal Note'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Customer Info */}
+          {ticket.organization_name && (
+            <div className="card border-l-4 border-l-primary-500">
+              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span>🏢</span>
+                Customer
+              </h2>
+              <dl className="space-y-2">
+                <div>
+                  <dt className="text-sm text-secondary-500">Organization</dt>
+                  <dd className="font-medium">{ticket.organization_name}</dd>
+                </div>
+                {ticket.contact_name && (
+                  <div>
+                    <dt className="text-sm text-secondary-500">Contact</dt>
+                    <dd>{ticket.contact_name}</dd>
+                  </div>
+                )}
+                {ticket.contact_email && (
+                  <div>
+                    <dt className="text-sm text-secondary-500">Email</dt>
+                    <dd>
+                      <a
+                        href={`mailto:${ticket.contact_email}`}
+                        className="text-primary-600 hover:underline"
+                      >
+                        {ticket.contact_email}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
           {/* Details */}
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">Details</h2>
@@ -249,6 +393,43 @@ export default function TicketDetailPage() {
               </div>
             </dl>
           </div>
+
+          {/* Customer History */}
+          {customerHistoryResponse?.data && customerHistoryResponse.data.length > 1 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span>📋</span>
+                Customer History
+              </h2>
+              <p className="text-xs text-secondary-500 mb-3">
+                Other tickets from {ticket.organization_name}
+              </p>
+              <div className="space-y-2">
+                {customerHistoryResponse.data
+                  .filter(t => t.id !== ticket.id)
+                  .slice(0, 4)
+                  .map(t => (
+                    <Link
+                      key={t.id}
+                      to={`/tickets/${t.id}`}
+                      className="block p-2 rounded hover:bg-secondary-50 border border-secondary-100"
+                    >
+                      <div className="font-medium text-sm text-secondary-900 truncate">
+                        {t.title}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${getStatusColor(t.status)}`}>
+                          {t.status}
+                        </span>
+                        <span className="text-xs text-secondary-500">
+                          {new Date(t.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           {canWrite && (
