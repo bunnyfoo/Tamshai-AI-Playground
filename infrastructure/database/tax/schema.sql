@@ -1,8 +1,22 @@
 -- Tax Database Schema
 -- MCP Tax Server - Port 3107
 
+-- Connect to tax database (required for Docker init scripts)
+\c tamshai_tax;
+
 -- Create schema
 CREATE SCHEMA IF NOT EXISTS tax;
+
+-- Grant permissions to tamshai user (admin/sync operations)
+GRANT USAGE ON SCHEMA tax TO tamshai;
+GRANT ALL ON ALL TABLES IN SCHEMA tax TO tamshai;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA tax TO tamshai;
+ALTER DEFAULT PRIVILEGES IN SCHEMA tax GRANT ALL ON TABLES TO tamshai;
+ALTER DEFAULT PRIVILEGES IN SCHEMA tax GRANT ALL ON SEQUENCES TO tamshai;
+
+-- IMPORTANT: Allow tamshai to bypass Row-Level Security policies
+-- Required for admin operations and integration tests
+ALTER USER tamshai BYPASSRLS;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -232,6 +246,16 @@ CREATE POLICY tax_calendar_write ON tax.calendar_events
         current_setting('app.current_user_roles', true) LIKE '%tax-write%'
         OR current_setting('app.current_user_roles', true) LIKE '%executive%'
     );
+
+-- Create tamshai_app user for RLS-enforced operations (used by MCP servers and tests)
+-- This user does NOT have BYPASSRLS - RLS policies will be enforced
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'tamshai_app') THEN
+        CREATE ROLE tamshai_app WITH LOGIN PASSWORD 'changeme';
+    END IF;
+END
+$$;
 
 -- Grant permissions to tamshai_app user (without BYPASSRLS)
 GRANT USAGE ON SCHEMA tax TO tamshai_app;
