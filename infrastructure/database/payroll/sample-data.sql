@@ -2,6 +2,9 @@
 -- Sample employees, pay runs, pay stubs, contractors, etc.
 -- Employee IDs reference hr.employees for cross-service joins
 
+-- Connect to payroll database (required for Docker init scripts)
+\c tamshai_payroll;
+
 -- Clear existing data (for reseeding)
 TRUNCATE payroll.contractor_payments CASCADE;
 TRUNCATE payroll.contractors CASCADE;

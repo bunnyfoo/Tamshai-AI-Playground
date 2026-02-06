@@ -1,6 +1,9 @@
 -- Tax Sample Data
 -- Sample sales tax rates, quarterly estimates, filings, registrations, etc.
 
+-- Connect to tax database (required for Docker init scripts)
+\c tamshai_tax;
+
 -- Clear existing data (for reseeding)
 TRUNCATE tax.calendar_events CASCADE;
 TRUNCATE tax.audit_logs CASCADE;
