@@ -1,28 +1,7 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { createViteConfig } from '../../vite.config.base';
 
-export default defineConfig({
-  plugins: [react()],
-  // Base path for when deployed at /payroll/
-  base: '/payroll/',
-  server: {
-    port: 4005,
-    host: true,
-  },
-  preview: {
-    port: 4005,
-    host: true,
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
-  },
-  resolve: {
-    alias: {
-      '@tamshai/ui': path.resolve(__dirname, '../../packages/ui/src'),
-      '@tamshai/auth': path.resolve(__dirname, '../../packages/auth/src'),
-      '@tamshai/tailwind-config': path.resolve(__dirname, '../../packages/tailwind-config'),
-    },
-  },
+export default createViteConfig({
+  basePath: '/payroll/',
+  port: 4005,
+  sourcemap: true,
 });
