@@ -12,10 +12,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
+      branches: 90,
+      functions: 85,  // Callbacks (retryStrategy, event handlers) are hard to test
+      lines: 90,
+      statements: 90,
     },
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
