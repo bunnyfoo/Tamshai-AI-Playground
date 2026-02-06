@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "test": "jest --testPathIgnorePatterns=integration",
+    "test": "jest --testPathIgnorePatterns=integration --forceExit --detectOpenHandles",
     "test:integration": "jest --testPathPattern=integration --runInBand",
     "test:all": "jest --runInBand",
     "test:coverage": "jest --coverage --testPathIgnorePatterns=integration",

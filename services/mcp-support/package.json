@@ -10,7 +10,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest --testPathIgnorePatterns=integration",
+    "test": "jest --testPathIgnorePatterns=integration --forceExit --detectOpenHandles",
     "test:integration": "jest --testPathPattern=integration --runInBand --testTimeout=60000",
     "test:all": "jest --runInBand --testTimeout=60000",
     "test:coverage": "jest --coverage",
