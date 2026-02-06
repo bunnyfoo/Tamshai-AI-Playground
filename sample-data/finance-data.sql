@@ -368,7 +368,21 @@ INSERT INTO finance.department_budgets (budget_id, department_code, department, 
 SELECT 'BUD-TEST-PENDING-1', 'ENG', 'Engineering', 2026, id, 3000000, 3000000, 0, 3000000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '1 day'
 FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 -- Budget submitted by bob.martinez (finance-write user) for separation of duties test
 -- bob.martinez cannot approve this budget because he submitted it
@@ -376,51 +390,167 @@ INSERT INTO finance.department_budgets (budget_id, department_code, department, 
 SELECT 'BUD-TEST-SOD', 'FIN', 'Finance', 2026, id, 500000, 500000, 0, 500000, 'PENDING_APPROVAL',
     '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1'::uuid, NOW() - interval '2 days'
 FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 -- Additional test budgets for various test scenarios
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-PENDING-2', 'HR', 'Human Resources', 2026, id, 850000, 850000, 0, 850000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '3 days'
 FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-PENDING-3', 'SALES', 'Sales', 2026, id, 1400000, 1400000, 0, 1400000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '4 days'
 FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 -- Additional test fixture budgets (each test needs its own to avoid state conflicts)
+-- BUD-TEST-REJECT-1 uses EXP-TRV to avoid conflict with BUD-TEST-PENDING-2 (HR, 2026, EXP-SAL)
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-REJECT-1', 'HR', 'Human Resources', 2026, id, 750000, 750000, 0, 750000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '5 days'
-FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+FROM finance.budget_categories WHERE code = 'EXP-TRV'
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
+-- BUD-TEST-AUDIT-1 uses EXP-PRO (not EXP-SAL) to avoid unique constraint conflict with BUD-TEST-SOD
+-- Both would otherwise use (FIN, 2026, EXP-SAL) violating (department_code, fiscal_year, category_id) uniqueness
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-AUDIT-1', 'FIN', 'Finance', 2026, id, 450000, 450000, 0, 450000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '6 days'
-FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+FROM finance.budget_categories WHERE code = 'EXP-PRO'
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-AUDIT-2', 'MKT', 'Marketing', 2026, id, 800000, 800000, 0, 800000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '7 days'
 FROM finance.budget_categories WHERE code = 'EXP-MKT'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-AUDIT-3', 'IT', 'IT', 2026, id, 600000, 600000, 0, 600000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '8 days'
 FROM finance.budget_categories WHERE code = 'EXP-TECH'
-ON CONFLICT DO NOTHING;
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
+-- BUD-TEST-RULES-1 uses EXP-FAC to avoid conflict with BUD-TEST-PENDING-3 (SALES, 2026, EXP-SAL)
 INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
 SELECT 'BUD-TEST-RULES-1', 'SALES', 'Sales', 2026, id, 1200000, 1200000, 0, 1200000, 'PENDING_APPROVAL',
     'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '9 days'
-FROM finance.budget_categories WHERE code = 'EXP-SAL'
-ON CONFLICT DO NOTHING;
+FROM finance.budget_categories WHERE code = 'EXP-FAC'
+ON CONFLICT (budget_id) DO UPDATE SET
+    department_code = EXCLUDED.department_code,
+    department = EXCLUDED.department,
+    fiscal_year = EXCLUDED.fiscal_year,
+    category_id = EXCLUDED.category_id,
+    budgeted_amount = EXCLUDED.budgeted_amount,
+    amount = EXCLUDED.amount,
+    actual_amount = EXCLUDED.actual_amount,
+    forecast_amount = EXCLUDED.forecast_amount,
+    status = EXCLUDED.status,
+    submitted_by = EXCLUDED.submitted_by,
+    submitted_at = EXCLUDED.submitted_at,
+    approved_by = NULL,
+    approved_at = NULL,
+    rejection_reason = NULL;
 
 -- =============================================================================
 -- BUDGET APPROVAL HISTORY (v1.5 - Issue #78)
@@ -1349,6 +1479,78 @@ INSERT INTO finance.expense_reports (id, report_number, employee_id, department_
 VALUES
     ('e1000000-0000-0000-0000-000000000108', 'EXP-2026-008', 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b', 'EXEC', 'Board Meeting Travel - New York', 4850.00, 'SUBMITTED', '2026-02-01', '2026-02-01 16:30:00')
 ON CONFLICT (report_number) DO NOTHING;
+
+-- =============================================================================
+-- DEDICATED TEST FIXTURES FOR INTEGRATION TESTS (v1.5)
+-- These fixtures are used exclusively by workflow tests to avoid interference.
+-- Each test gets its own dedicated record to prevent parallel test conflicts.
+-- IDs use 2xx range to distinguish from sample data (1xx range).
+-- =============================================================================
+
+-- Approval Test Fixtures (SUBMITTED status, ready for approval)
+-- TEST_APR_PERM: For permission check test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000201', 'EXP-TEST-APR-01', 'e1000000-0000-0000-0000-000000000052', 'ENG', 'Test Approval - Permission Check', 250.00, 'SUBMITTED', '2026-02-01', '2026-02-01 09:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- TEST_APR_CONFIRM: For confirmation flow test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000202', 'EXP-TEST-APR-02', 'e1000000-0000-0000-0000-000000000052', 'ENG', 'Test Approval - Confirmation Flow', 350.00, 'SUBMITTED', '2026-02-01', '2026-02-01 10:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- TEST_APR_EXEC: For execute approval test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000203', 'EXP-TEST-APR-03', 'e1000000-0000-0000-0000-000000000052', 'ENG', 'Test Approval - Execute Action', 450.00, 'SUBMITTED', '2026-02-01', '2026-02-01 11:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Rejection Test Fixtures (UNDER_REVIEW status, ready for rejection)
+-- TEST_REJ_CONFIRM: For rejection confirmation flow test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000211', 'EXP-TEST-REJ-01', 'f104eddc-21ab-457c-a254-78051ad7ad67', 'HR', 'Test Rejection - Confirmation Flow', 500.00, 'UNDER_REVIEW', '2026-02-01', '2026-02-01 12:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- TEST_REJ_EXEC: For execute rejection test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000212', 'EXP-TEST-REJ-02', 'f104eddc-21ab-457c-a254-78051ad7ad67', 'HR', 'Test Rejection - Execute Action', 600.00, 'UNDER_REVIEW', '2026-02-01', '2026-02-01 13:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Reimbursement Test Fixtures (APPROVED status, ready for reimbursement)
+-- TEST_RMB_STATUS: For status check/permission test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at, approved_at, approved_by)
+VALUES
+    ('e1000000-0000-0000-0000-000000000221', 'EXP-TEST-RMB-01', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', 'FIN', 'Test Reimbursement - Status Check', 700.00, 'APPROVED', '2026-02-01', '2026-02-01 14:00:00', '2026-02-02 10:00:00', 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- TEST_RMB_EXEC: For execute reimbursement test
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at, approved_at, approved_by)
+VALUES
+    ('e1000000-0000-0000-0000-000000000222', 'EXP-TEST-RMB-02', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', 'FIN', 'Test Reimbursement - Execute Action', 800.00, 'APPROVED', '2026-02-01', '2026-02-01 15:00:00', '2026-02-02 11:00:00', 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Denied Confirmation Test Fixture (SUBMITTED status, for testing denied confirmation)
+-- TEST_DENY: For denied confirmation test (approval request that gets denied)
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000231', 'EXP-TEST-DENY-01', 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b', 'EXEC', 'Test Denied Confirmation Flow', 900.00, 'SUBMITTED', '2026-02-01', '2026-02-01 16:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Add expense items for test fixtures (1 item each for simplicity)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000201', '2026-02-01', 'MEALS', 'Test approval item', 'Test Vendor', 250.00, true),
+    ('e1000000-0000-0000-0000-000000000202', '2026-02-01', 'MEALS', 'Test approval item', 'Test Vendor', 350.00, true),
+    ('e1000000-0000-0000-0000-000000000203', '2026-02-01', 'MEALS', 'Test approval item', 'Test Vendor', 450.00, true),
+    ('e1000000-0000-0000-0000-000000000211', '2026-02-01', 'TRAVEL', 'Test rejection item', 'Test Vendor', 500.00, true),
+    ('e1000000-0000-0000-0000-000000000212', '2026-02-01', 'TRAVEL', 'Test rejection item', 'Test Vendor', 600.00, true),
+    ('e1000000-0000-0000-0000-000000000221', '2026-02-01', 'SOFTWARE', 'Test reimbursement item', 'Test Vendor', 700.00, true),
+    ('e1000000-0000-0000-0000-000000000222', '2026-02-01', 'SOFTWARE', 'Test reimbursement item', 'Test Vendor', 800.00, true),
+    ('e1000000-0000-0000-0000-000000000231', '2026-02-01', 'OTHER', 'Test deny item', 'Test Vendor', 900.00, true)
+ON CONFLICT DO NOTHING;
 
 -- =============================================================================
 -- EXPENSE ITEMS SAMPLE DATA (v1.5)
