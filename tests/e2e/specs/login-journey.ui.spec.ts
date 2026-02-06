@@ -361,9 +361,16 @@ test.describe('Employee Login Journey', () => {
     // Navigate to employee login
     await page.goto(`${urls.site}/employee-login.html`);
 
-    // Click SSO button (goes to /app/ which redirects to Keycloak)
+    // Click SSO button (goes to /app/ portal)
     const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
     await ssoButton.first().click();
+
+    // Wait for portal to load
+    await page.waitForURL(/\/app\/?/, { timeout: 10000 });
+
+    // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
+    const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
+    await employeeLoginBtn.first().click();
 
     // Wait for redirect to Keycloak (portal redirects to Keycloak for auth)
     // Note: Realm is configurable via KEYCLOAK_REALM env var (default: tamshai-corp)
@@ -387,9 +394,16 @@ test.describe('Employee Login Journey', () => {
     // Start at employee login page
     await page.goto(`${urls.site}/employee-login.html`);
 
-    // Click SSO button to go to Keycloak
+    // Click SSO button to go to portal
     const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
     await ssoButton.first().click();
+
+    // Wait for portal to load
+    await page.waitForURL(/\/app\/?/, { timeout: 10000 });
+
+    // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
+    const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
+    await employeeLoginBtn.first().click();
 
     // Wait for Keycloak login page
     await waitForKeycloakLogin(page);
@@ -459,9 +473,16 @@ test.describe('Employee Login Journey', () => {
     // Navigate to login
     await page.goto(`${urls.site}/employee-login.html`);
 
-    // Click SSO
+    // Click SSO to go to portal
     const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
     await ssoButton.first().click();
+
+    // Wait for portal to load
+    await page.waitForURL(/\/app\/?/, { timeout: 10000 });
+
+    // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
+    const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
+    await employeeLoginBtn.first().click();
 
     // Wait for Keycloak
     await waitForKeycloakLogin(page);

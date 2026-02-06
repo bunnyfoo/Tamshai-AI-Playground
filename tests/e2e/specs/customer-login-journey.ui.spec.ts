@@ -116,10 +116,10 @@ test.describe('Customer Login Journey', () => {
     // Verify page loaded
     await expect(page).toHaveTitle(/Tamshai/i);
 
-    // Verify Customer Login button exists
-    // The WelcomePage has a "Customer Support" button that links to customer portal
-    const customerButton = page.locator('a:has-text("Customer"), button:has-text("Customer"), a:has-text("Support Portal")');
-    await expect(customerButton.first()).toBeVisible({ timeout: 10000 });
+    // Verify Client Login button exists
+    // The WelcomePage has a "Client Login" button that links to customer portal
+    const clientButton = page.locator('a:has-text("Client"), button:has-text("Client"), a:has-text("Client Login")');
+    await expect(clientButton.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should redirect to customer Keycloak realm when accessing portal', async ({ page }) => {
