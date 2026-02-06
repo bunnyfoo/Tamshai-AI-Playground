@@ -75,6 +75,46 @@ export async function confirmationExists(confirmationId: string): Promise<boolea
 }
 
 /**
+ * Get pending confirmation data from Redis
+ *
+ * @param confirmationId - UUID for the confirmation
+ * @returns Confirmation data or null if not found/expired
+ */
+export async function getPendingConfirmation(
+  confirmationId: string
+): Promise<Record<string, unknown> | null> {
+  const key = `pending:${confirmationId}`;
+
+  try {
+    const data = await redis.get(key);
+    if (!data) {
+      logger.warn('Confirmation not found or expired', { confirmationId });
+      return null;
+    }
+    return JSON.parse(data);
+  } catch (error) {
+    logger.error('Failed to get pending confirmation', { confirmationId, error });
+    return null;
+  }
+}
+
+/**
+ * Delete a pending confirmation from Redis
+ *
+ * @param confirmationId - UUID for the confirmation
+ */
+export async function deletePendingConfirmation(confirmationId: string): Promise<void> {
+  const key = `pending:${confirmationId}`;
+
+  try {
+    await redis.del(key);
+    logger.info('Deleted pending confirmation', { confirmationId });
+  } catch (error) {
+    logger.error('Failed to delete pending confirmation', { confirmationId, error });
+  }
+}
+
+/**
  * Close Redis connection (for graceful shutdown)
  */
 export async function closeRedis(): Promise<void> {

@@ -123,8 +123,10 @@ export async function rejectBudget(
         mcpServer: 'finance',
         userId: userContext.userId,
         timestamp: Date.now(),
-        budgetId: budget.id,
-        budgetDisplayId: budget.budget_id,
+        // Internal UUID for database operations
+        budgetUUID: budget.id,
+        // Test-friendly fields
+        budgetId: budget.budget_id,
         department: budget.department,
         departmentCode: budget.department_code,
         fiscalYear: budget.fiscal_year,
@@ -167,7 +169,8 @@ export async function executeRejectBudget(
   userContext: UserContext
 ): Promise<MCPToolResponse> {
   return withErrorHandling('execute_reject_budget', async () => {
-    const budgetId = confirmationData.budgetId as string;
+    // Use budgetUUID for database operations (internal ID)
+    const budgetUUID = confirmationData.budgetUUID as string;
     const rejectionReason = confirmationData.rejectionReason as string;
 
     try {
@@ -177,27 +180,38 @@ export async function executeRejectBudget(
         `
         UPDATE finance.department_budgets
         SET status = 'REJECTED',
-            rejection_reason = $2,
+            rejection_reason = $2::text,
             updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1::uuid
           AND status = 'PENDING_APPROVAL'
         RETURNING id, budget_id, department, department_code, fiscal_year, budgeted_amount
         `,
-        [budgetId, rejectionReason]
+        [budgetUUID, rejectionReason]
       );
 
       if (result.rowCount === 0) {
-        return handleBudgetNotFound(budgetId);
+        return handleBudgetNotFound(budgetUUID);
       }
 
       const rejected = result.rows[0];
 
+      // Create audit trail entry
+      await queryWithRLS(
+        userContext,
+        `
+        INSERT INTO finance.budget_approval_history
+          (budget_id, action, actor_id, action_at, comments)
+        VALUES ($1::uuid, 'REJECTED', $2::uuid, NOW(), $3::text)
+        `,
+        [budgetUUID, userContext.userId, rejectionReason]
+      );
+
       return createSuccessResponse({
         success: true,
         message: `Budget for ${rejected.department} (FY${rejected.fiscal_year}) has been rejected - $${Number(rejected.budgeted_amount).toLocaleString()}`,
-        budgetId: rejected.id,
-        budgetDisplayId: rejected.budget_id,
-        newStatus: 'REJECTED',
+        budgetId: rejected.budget_id,
+        budgetUUID: rejected.id,
+        status: 'REJECTED',
         rejectionReason,
       });
     } catch (error) {
