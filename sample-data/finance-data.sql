@@ -715,6 +715,29 @@ CREATE INDEX IF NOT EXISTS idx_invoices_date ON finance.invoices(invoice_date);
 CREATE INDEX IF NOT EXISTS idx_reports_type_year ON finance.financial_reports(report_type, fiscal_year);
 
 -- =============================================================================
+-- TRIGGERS
+-- =============================================================================
+
+-- Trigger function to auto-increment budget version when approved budgets are modified
+-- This supports optimistic locking for concurrent budget modifications
+CREATE OR REPLACE FUNCTION finance.increment_budget_version()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status = 'APPROVED' AND NEW.budgeted_amount != OLD.budgeted_amount THEN
+        NEW.version := OLD.version + 1;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply trigger to department_budgets table
+DROP TRIGGER IF EXISTS budget_version_trigger ON finance.department_budgets;
+CREATE TRIGGER budget_version_trigger
+    BEFORE UPDATE ON finance.department_budgets
+    FOR EACH ROW
+    EXECUTE FUNCTION finance.increment_budget_version();
+
+-- =============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =============================================================================
 
