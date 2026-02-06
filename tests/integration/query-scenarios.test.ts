@@ -40,7 +40,7 @@ const CONFIG = {
   mcpHrUrl: process.env.MCP_HR_URL || 'http://127.0.0.1:3111',
   mcpFinanceUrl: process.env.MCP_FINANCE_URL || 'http://127.0.0.1:3112',
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'test-client-secret',
+  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'mcp-gateway-secret',
 };
 
 // Test user password from environment variable

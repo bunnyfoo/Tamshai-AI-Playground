@@ -308,21 +308,17 @@ beforeAll(async () => {
 /**
  * Global teardown - runs once after all tests
  *
- * NOTE: In CI mode, we skip restoration because:
- * 1. Keycloak instance is ephemeral (destroyed after CI run)
- * 2. afterAll runs after EACH test file, not after all tests
- * 3. Restoring TOTP mid-run breaks subsequent test files
+ * NOTE: We skip restoration in ALL environments because:
+ * 1. afterAll runs after EACH test file, not after all tests
+ * 2. Restoring TOTP mid-run breaks subsequent test files (401 errors)
+ * 3. Users with CONFIGURE_TOTP required action cannot authenticate via direct grants
+ *
+ * To restore TOTP requirements after testing, manually run:
+ *   cd keycloak/scripts && ./docker-sync-realm.sh dev
  */
 afterAll(async () => {
-  const isCI = process.env.CI === 'true';
-
-  if (isCI) {
-    console.log('\n✅ All integration tests complete (CI mode - skipping user restoration)');
-    return;
-  }
-
-  // Restore test users to their original state (local dev only)
-  await restoreTestUsers();
-
-  console.log('\n✅ All integration tests complete');
-}, 30000); // 30 second timeout for user restoration
+  // Skip restoration to prevent breaking subsequent test files
+  // Each test file's beforeAll removes CONFIGURE_TOTP,
+  // but afterAll runs before the next file's beforeAll
+  console.log('\n✅ All integration tests complete (skipping TOTP restoration to prevent mid-run breakage)');
+}, 30000); // 30 second timeout

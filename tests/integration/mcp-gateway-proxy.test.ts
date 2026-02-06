@@ -77,7 +77,7 @@ const CONFIG = {
   keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'test-client-secret',
+  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'mcp-gateway-secret',
 };
 
 const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
