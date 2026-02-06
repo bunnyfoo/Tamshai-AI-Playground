@@ -8,6 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY turbo.json ./
 COPY tsconfig.json ./
+COPY vite.config.base.ts ./
 
 # Copy all workspace packages
 COPY packages/ ./packages/
