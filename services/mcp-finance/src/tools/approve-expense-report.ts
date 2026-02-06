@@ -1,12 +1,12 @@
 /**
  * Approve Expense Report Tool (v1.5 with Human-in-the-Loop Confirmation)
  *
- * Approves a pending expense, changing its status from PENDING to APPROVED.
+ * Approves a submitted expense report, changing its status from SUBMITTED/UNDER_REVIEW to APPROVED.
  * Uses human-in-the-loop confirmation (Section 5.6).
  *
  * Features:
  * - Permission check (finance-write or executive)
- * - Status validation (only PENDING expenses can be approved)
+ * - Status validation (only SUBMITTED/UNDER_REVIEW reports can be approved)
  * - Audit trail (approved_by, approved_at)
  */
 
@@ -31,14 +31,14 @@ import { storePendingConfirmation } from '../utils/redis';
  * Input schema for approve_expense_report tool
  */
 export const ApproveExpenseReportInputSchema = z.object({
-  expenseId: z.string().uuid('Expense ID must be a valid UUID'),
+  reportId: z.string().uuid('Report ID must be a valid UUID'),
   approverNotes: z.string().max(500).optional(),
 });
 
 export type ApproveExpenseReportInput = z.infer<typeof ApproveExpenseReportInputSchema>;
 
 /**
- * Check if user has permission to approve expenses
+ * Check if user has permission to approve expense reports
  */
 function hasApprovePermission(roles: string[]): boolean {
   return roles.includes('finance-write') || roles.includes('executive');
@@ -58,48 +58,52 @@ export async function approveExpenseReport(
     }
 
     // Validate input
-    const { expenseId, approverNotes } = ApproveExpenseReportInputSchema.parse(input);
+    const { reportId, approverNotes } = ApproveExpenseReportInputSchema.parse(input);
 
     try {
-      // 2. Verify expense exists and get details
-      const expenseResult = await queryWithRLS(
+      // 2. Verify expense report exists and get details
+      const reportResult = await queryWithRLS(
         userContext,
         `
         SELECT
-          e.id,
-          e.employee_id,
-          e.department_id,
-          e.expense_date,
-          e.category,
-          e.description,
-          e.amount,
-          e.status,
-          e.receipt_path
-        FROM finance.expenses e
-        WHERE e.id = $1
+          er.id,
+          er.report_number,
+          er.employee_id,
+          er.department_code,
+          er.title,
+          er.total_amount,
+          er.status,
+          er.submission_date,
+          (SELECT COUNT(*) FROM finance.expense_items ei WHERE ei.expense_report_id = er.id) as item_count
+        FROM finance.expense_reports er
+        WHERE er.id = $1
         `,
-        [expenseId]
+        [reportId]
       );
 
-      if (expenseResult.rowCount === 0) {
-        return handleExpenseReportNotFound(expenseId);
+      if (reportResult.rowCount === 0) {
+        return handleExpenseReportNotFound(reportId);
       }
 
-      const expense = expenseResult.rows[0];
+      const report = reportResult.rows[0];
 
-      // 3. Check if expense is in PENDING status
-      if (expense.status !== 'PENDING') {
-        const suggestedAction = expense.status === 'APPROVED'
-          ? 'This expense has already been approved. Use reimburse_expense_report to mark it as reimbursed.'
-          : expense.status === 'REIMBURSED'
-            ? 'This expense has already been reimbursed.'
-            : 'Only PENDING expenses can be approved.';
+      // 3. Check if report is in an approvable status (SUBMITTED or UNDER_REVIEW)
+      if (report.status !== 'SUBMITTED' && report.status !== 'UNDER_REVIEW') {
+        const suggestedAction = report.status === 'APPROVED'
+          ? 'This expense report has already been approved. Use reimburse_expense_report to mark it as reimbursed.'
+          : report.status === 'REIMBURSED'
+            ? 'This expense report has already been reimbursed.'
+            : report.status === 'DRAFT'
+              ? 'This expense report is still in DRAFT status. The employee must submit it first.'
+              : report.status === 'REJECTED'
+                ? 'This expense report has been rejected. The employee may resubmit with corrections.'
+                : 'Only SUBMITTED or UNDER_REVIEW expense reports can be approved.';
 
         return createErrorResponse(
-          'INVALID_EXPENSE_STATUS',
-          `Cannot approve expense "${expenseId}" because it is in "${expense.status}" status`,
+          'INVALID_EXPENSE_REPORT_STATUS',
+          `Cannot approve expense report "${report.report_number}" because it is in "${report.status}" status`,
           suggestedAction,
-          { expenseId, currentStatus: expense.status, requiredStatus: 'PENDING' }
+          { reportId, reportNumber: report.report_number, currentStatus: report.status, requiredStatus: 'SUBMITTED or UNDER_REVIEW' }
         );
       }
 
@@ -111,29 +115,31 @@ export async function approveExpenseReport(
         mcpServer: 'finance',
         userId: userContext.userId,
         timestamp: Date.now(),
-        expenseId: expense.id,
-        employeeId: expense.employee_id,
-        category: expense.category,
-        description: expense.description,
-        amount: expense.amount,
-        status: expense.status,
+        reportId: report.id,
+        reportNumber: report.report_number,
+        employeeId: report.employee_id,
+        departmentCode: report.department_code,
+        title: report.title,
+        totalAmount: report.total_amount,
+        itemCount: report.item_count,
+        status: report.status,
         approverNotes: approverNotes || null,
       };
 
       await storePendingConfirmation(confirmationId, confirmationData, 300);
 
       // 5. Return pending_confirmation response
-      const message = `✅ **Approve Expense?**
+      const message = `✅ **Approve Expense Report?**
 
-**Expense ID:** ${expenseId}
-**Category:** ${expense.category}
-**Description:** ${expense.description}
-**Amount:** $${Number(expense.amount).toLocaleString()}
-**Date:** ${expense.expense_date}
-${expense.receipt_path ? `**Receipt:** Attached` : '**Receipt:** Not attached'}
+**Report Number:** ${report.report_number}
+**Title:** ${report.title}
+**Department:** ${report.department_code}
+**Total Amount:** $${Number(report.total_amount).toLocaleString()}
+**Items:** ${report.item_count} expense(s)
+**Submitted:** ${report.submission_date || 'N/A'}
 ${approverNotes ? `**Your Notes:** ${approverNotes}` : ''}
 
-This will change the expense status from PENDING to APPROVED.`;
+This will change the expense report status from ${report.status} to APPROVED.`;
 
       return createPendingConfirmationResponse(
         confirmationId,
@@ -154,37 +160,38 @@ export async function executeApproveExpenseReport(
   userContext: UserContext
 ): Promise<MCPToolResponse> {
   return withErrorHandling('execute_approve_expense_report', async () => {
-    const expenseId = confirmationData.expenseId as string;
+    const reportId = confirmationData.reportId as string;
 
     try {
       const approverId = userContext.userId;
 
-      // Update expense status to APPROVED
+      // Update expense report status to APPROVED
       const result = await queryWithRLS(
         userContext,
         `
-        UPDATE finance.expenses
+        UPDATE finance.expense_reports
         SET status = 'APPROVED',
             approved_by = $2,
             approved_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
-          AND status = 'PENDING'
-        RETURNING id, category, description, amount
+          AND (status = 'SUBMITTED' OR status = 'UNDER_REVIEW')
+        RETURNING id, report_number, title, total_amount
         `,
-        [expenseId, approverId]
+        [reportId, approverId]
       );
 
       if (result.rowCount === 0) {
-        return handleExpenseReportNotFound(expenseId);
+        return handleExpenseReportNotFound(reportId);
       }
 
       const approved = result.rows[0];
 
       return createSuccessResponse({
         success: true,
-        message: `Expense for ${approved.description} ($${Number(approved.amount).toLocaleString()}) has been approved`,
-        expenseId: approved.id,
+        message: `Expense report ${approved.report_number} "${approved.title}" ($${Number(approved.total_amount).toLocaleString()}) has been approved`,
+        reportId: approved.id,
+        reportNumber: approved.report_number,
         newStatus: 'APPROVED',
       });
     } catch (error) {

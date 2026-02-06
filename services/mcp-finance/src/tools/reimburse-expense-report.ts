@@ -1,13 +1,14 @@
 /**
  * Reimburse Expense Report Tool (v1.5 with Human-in-the-Loop Confirmation)
  *
- * Marks an approved expense as reimbursed, changing status from APPROVED to REIMBURSED.
+ * Marks an approved expense report as reimbursed, changing status from APPROVED to REIMBURSED.
  * Uses human-in-the-loop confirmation (Section 5.6).
  *
  * Features:
  * - Permission check (finance-write or executive)
- * - Status validation (only APPROVED expenses can be reimbursed)
- * - Payment tracking
+ * - Status validation (only APPROVED reports can be reimbursed)
+ * - Payment reference tracking
+ * - Audit trail (reimbursed_by, reimbursed_at, payment_reference)
  */
 
 import { z } from 'zod';
@@ -31,7 +32,7 @@ import { storePendingConfirmation } from '../utils/redis';
  * Input schema for reimburse_expense_report tool
  */
 export const ReimburseExpenseReportInputSchema = z.object({
-  expenseId: z.string().uuid('Expense ID must be a valid UUID'),
+  reportId: z.string().uuid('Report ID must be a valid UUID'),
   paymentReference: z.string().max(100).optional(),
   paymentNotes: z.string().max(500).optional(),
 });
@@ -39,7 +40,7 @@ export const ReimburseExpenseReportInputSchema = z.object({
 export type ReimburseExpenseReportInput = z.infer<typeof ReimburseExpenseReportInputSchema>;
 
 /**
- * Check if user has permission to mark expenses as reimbursed
+ * Check if user has permission to mark expense reports as reimbursed
  */
 function hasReimbursePermission(roles: string[]): boolean {
   return roles.includes('finance-write') || roles.includes('executive');
@@ -59,51 +60,53 @@ export async function reimburseExpenseReport(
     }
 
     // Validate input
-    const { expenseId, paymentReference, paymentNotes } = ReimburseExpenseReportInputSchema.parse(input);
+    const { reportId, paymentReference, paymentNotes } = ReimburseExpenseReportInputSchema.parse(input);
 
     try {
-      // 2. Verify expense exists and get details
-      const expenseResult = await queryWithRLS(
+      // 2. Verify expense report exists and get details
+      const reportResult = await queryWithRLS(
         userContext,
         `
         SELECT
-          e.id,
-          e.employee_id,
-          e.department_id,
-          e.expense_date,
-          e.category,
-          e.description,
-          e.amount,
-          e.status,
-          e.approved_by,
-          e.approved_at
-        FROM finance.expenses e
-        WHERE e.id = $1
+          er.id,
+          er.report_number,
+          er.employee_id,
+          er.department_code,
+          er.title,
+          er.total_amount,
+          er.status,
+          er.approved_by,
+          er.approved_at,
+          (SELECT COUNT(*) FROM finance.expense_items ei WHERE ei.expense_report_id = er.id) as item_count
+        FROM finance.expense_reports er
+        WHERE er.id = $1
         `,
-        [expenseId]
+        [reportId]
       );
 
-      if (expenseResult.rowCount === 0) {
-        return handleExpenseReportNotFound(expenseId);
+      if (reportResult.rowCount === 0) {
+        return handleExpenseReportNotFound(reportId);
       }
 
-      const expense = expenseResult.rows[0];
+      const report = reportResult.rows[0];
 
-      // 3. Check if expense is in APPROVED status
-      if (expense.status !== 'APPROVED') {
-        const suggestedAction = expense.status === 'PENDING'
-          ? 'This expense must be approved first. Use approve_expense_report.'
-          : expense.status === 'REJECTED'
-            ? 'This expense was rejected and cannot be reimbursed.'
-            : expense.status === 'REIMBURSED'
-              ? 'This expense has already been reimbursed.'
-              : 'Only APPROVED expenses can be marked as reimbursed.';
+      // 3. Check if report is in APPROVED status
+      if (report.status !== 'APPROVED') {
+        const suggestedAction = report.status === 'SUBMITTED' || report.status === 'UNDER_REVIEW'
+          ? 'This expense report must be approved first. Use approve_expense_report.'
+          : report.status === 'REJECTED'
+            ? 'This expense report was rejected and cannot be reimbursed.'
+            : report.status === 'REIMBURSED'
+              ? 'This expense report has already been reimbursed.'
+              : report.status === 'DRAFT'
+                ? 'This expense report is still in DRAFT status and cannot be reimbursed.'
+                : 'Only APPROVED expense reports can be marked as reimbursed.';
 
         return createErrorResponse(
-          'INVALID_EXPENSE_STATUS',
-          `Cannot reimburse expense "${expenseId}" because it is in "${expense.status}" status`,
+          'INVALID_EXPENSE_REPORT_STATUS',
+          `Cannot reimburse expense report "${report.report_number}" because it is in "${report.status}" status`,
           suggestedAction,
-          { expenseId, currentStatus: expense.status, requiredStatus: 'APPROVED' }
+          { reportId, reportNumber: report.report_number, currentStatus: report.status, requiredStatus: 'APPROVED' }
         );
       }
 
@@ -115,12 +118,14 @@ export async function reimburseExpenseReport(
         mcpServer: 'finance',
         userId: userContext.userId,
         timestamp: Date.now(),
-        expenseId: expense.id,
-        employeeId: expense.employee_id,
-        category: expense.category,
-        description: expense.description,
-        amount: expense.amount,
-        status: expense.status,
+        reportId: report.id,
+        reportNumber: report.report_number,
+        employeeId: report.employee_id,
+        departmentCode: report.department_code,
+        title: report.title,
+        totalAmount: report.total_amount,
+        itemCount: report.item_count,
+        status: report.status,
         paymentReference: paymentReference || null,
         paymentNotes: paymentNotes || null,
       };
@@ -128,18 +133,19 @@ export async function reimburseExpenseReport(
       await storePendingConfirmation(confirmationId, confirmationData, 300);
 
       // 5. Return pending_confirmation response
-      const message = `💰 **Mark Expense as Reimbursed?**
+      const message = `💰 **Mark Expense Report as Reimbursed?**
 
-**Expense ID:** ${expenseId}
-**Category:** ${expense.category}
-**Description:** ${expense.description}
-**Amount:** $${Number(expense.amount).toLocaleString()}
-**Date:** ${expense.expense_date}
-**Approved At:** ${expense.approved_at || 'N/A'}
+**Report Number:** ${report.report_number}
+**Title:** ${report.title}
+**Department:** ${report.department_code}
+**Total Amount:** $${Number(report.total_amount).toLocaleString()}
+**Items:** ${report.item_count} expense(s)
+**Approved At:** ${report.approved_at || 'N/A'}
 ${paymentReference ? `**Payment Reference:** ${paymentReference}` : ''}
 ${paymentNotes ? `**Notes:** ${paymentNotes}` : ''}
 
-This will change the expense status from APPROVED to REIMBURSED.`;
+This will change the expense report status from APPROVED to REIMBURSED.
+The employee will be notified of the payment.`;
 
       return createPendingConfirmationResponse(
         confirmationId,
@@ -160,34 +166,42 @@ export async function executeReimburseExpenseReport(
   userContext: UserContext
 ): Promise<MCPToolResponse> {
   return withErrorHandling('execute_reimburse_expense_report', async () => {
-    const expenseId = confirmationData.expenseId as string;
+    const reportId = confirmationData.reportId as string;
+    const paymentReference = confirmationData.paymentReference as string | null;
 
     try {
-      // Update expense status to REIMBURSED
+      const reimburserId = userContext.userId;
+
+      // Update expense report status to REIMBURSED
       const result = await queryWithRLS(
         userContext,
         `
-        UPDATE finance.expenses
+        UPDATE finance.expense_reports
         SET status = 'REIMBURSED',
+            reimbursed_by = $2,
+            reimbursed_at = NOW(),
+            payment_reference = $3,
             updated_at = NOW()
         WHERE id = $1
           AND status = 'APPROVED'
-        RETURNING id, category, description, amount
+        RETURNING id, report_number, title, total_amount
         `,
-        [expenseId]
+        [reportId, reimburserId, paymentReference]
       );
 
       if (result.rowCount === 0) {
-        return handleExpenseReportNotFound(expenseId);
+        return handleExpenseReportNotFound(reportId);
       }
 
       const reimbursed = result.rows[0];
 
       return createSuccessResponse({
         success: true,
-        message: `Expense for ${reimbursed.description} ($${Number(reimbursed.amount).toLocaleString()}) has been marked as reimbursed`,
-        expenseId: reimbursed.id,
+        message: `Expense report ${reimbursed.report_number} "${reimbursed.title}" ($${Number(reimbursed.total_amount).toLocaleString()}) has been marked as reimbursed`,
+        reportId: reimbursed.id,
+        reportNumber: reimbursed.report_number,
         newStatus: 'REIMBURSED',
+        paymentReference,
       });
     } catch (error) {
       return handleDatabaseError(error as Error, 'execute_reimburse_expense_report');
