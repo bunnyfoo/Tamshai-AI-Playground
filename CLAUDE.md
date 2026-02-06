@@ -752,6 +752,19 @@ export TEST_USER_TOTP_SECRET="<custom-totp-secret>"
 
 **Important**: The `test-user.journey` account is a dedicated service account for E2E testing that exists in all environments (dev, stage, prod). It has no data access privileges (safe for testing) and uses the same credentials across all environments.
 
+**Customer Portal Test Users**:
+```bash
+# Customer user password (GitHub Secret: CUSTOMER_USER_PASSWORD)
+export CUSTOMER_USER_PASSWORD="***REDACTED_PASSWORD***"  # Default for local dev
+
+# Customer test users (all use the same password):
+# - jane.smith@acme.com (Lead - Acme Corporation)
+# - bob.developer@acme.com (Basic - Acme Corporation)
+# - mike.manager@globex.com (Lead - Globex Industries)
+```
+
+**Important**: Customer users are provisioned in the `tamshai-customers` realm (separate from employee realm). They do NOT require TOTP - only username/password authentication.
+
 **TOTP Code Generation**:
 ```bash
 # Generate TOTP code manually for testing (test-user.journey)
@@ -962,6 +975,7 @@ Transform sample applications into enterprise-grade modules with unified UX, add
 |-------|-------------|--------|
 | Phase 1 | Specification Reorganization | ⏳ Planned |
 | Phase 2 | App Enhancements (HR, Finance, Sales, Support) | ⏳ Planned |
+| Phase 2.1 | **Expense Reports (v1.5)** | 🔄 **In Progress** |
 | Phase 3.1 | **Payroll Module** | ✅ **Complete** |
 | Phase 3.2 | Tax Module | ⏳ Planned |
 | Phase 4 | Data Layer Expansion | ⏳ Planned |
@@ -990,11 +1004,36 @@ Transform sample applications into enterprise-grade modules with unified UX, add
 - Keycloak: payroll-read, payroll-write roles, Payroll-Team group
 - PostgreSQL: tamshai_payroll database
 
+### Phase 2.1 - Expense Reports v1.5 (In Progress)
+
+**Database Schema** (`sample-data/finance-data.sql`):
+- `finance.expense_reports` - Container table with workflow status tracking
+- `finance.expense_items` - Line items with receipt tracking
+- Status workflow: DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED → REIMBURSED (or REJECTED)
+- RLS policies for 3-tier access (self, manager, finance)
+
+**MCP Finance Tools** (port 3112):
+- `list_expense_reports` - Cursor-based pagination, status/department/date filters
+- `get_expense_report` - Full report with line items
+- `approve_expense_report` - Human-in-the-loop confirmation (SUBMITTED/UNDER_REVIEW → APPROVED)
+- `reject_expense_report` - Requires rejection reason, confirmation flow
+- `reimburse_expense_report` - Payment reference tracking (APPROVED → REIMBURSED)
+
+**Integration Tests** (`services/mcp-gateway/src/__tests__/integration/expense-reports.test.ts`):
+- 32 test cases covering schema, RLS, tools, and workflow
+- Test fixture reset for idempotent test runs
+- 8 test expense reports across all status states
+
+**Sample Data**:
+- 8 expense reports across various statuses and departments
+- 25+ line items covering travel, meals, supplies, software, equipment
+- Realistic amounts ($500-$4,200 per report)
+
 ### Next Steps
 
-1. Phase 3.2: Tax Module (TDD RED → GREEN)
-2. Phase 2: Enhance existing apps (HR, Finance, Sales, Support)
-3. Phase 4: Data layer expansion with sample data
+1. Run and validate expense reports integration tests
+2. Phase 3.2: Tax Module (TDD RED → GREEN)
+3. Phase 2: Enhance existing apps (HR, Finance, Sales, Support)
 4. Phase 6: Cross-app E2E testing
 
 ### Completed Foundation Work
@@ -1255,9 +1294,25 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 
 ## Current Implementation State
 
-**Last Updated**: 2026-02-03
-**Active Phase**: Enterprise UX Hardening Initiative Complete (Phases 0-6)
+**Last Updated**: 2026-02-06
+**Active Phase**: Expense Reports v1.5 Implementation
 **Working Branch**: main
+
+### Current Work: Expense Reports v1.5
+
+**Status**: Integration tests created, MCP tools implemented, database schema complete
+
+**Completed**:
+- ✅ Database schema (expense_reports, expense_items tables)
+- ✅ RLS policies (self, manager, finance access)
+- ✅ MCP tools (list, get, approve, reject, reimburse)
+- ✅ Human-in-the-loop confirmation flows
+- ✅ Sample data (8 reports, 25+ line items)
+- ✅ Integration tests (32 test cases)
+
+**In Progress**:
+- 🔄 Test fixture reset validation
+- 🔄 Budget approval test reliability fixes
 
 ### Enterprise UX Hardening Complete (v1.5)
 
@@ -1299,9 +1354,10 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 ### Technical Debt Log
 - Finance app vitest configuration needs workspace package resolution fix
 - Pre-existing test failures in Finance/Budget/Expense pages (module mocking)
+- Budget approval tests require fixture reset for idempotent runs
 
 ### Next Phase: Tax Module
-Ready to begin Phase 3.2 - Tax Module implementation using TDD:
+After completing expense reports v1.5, begin Phase 3.2 - Tax Module implementation using TDD:
 1. Write failing tests (RED phase)
 2. Implement minimal code (GREEN phase)
 3. MCP Tax server (port 3107)
@@ -1309,6 +1365,6 @@ Ready to begin Phase 3.2 - Tax Module implementation using TDD:
 
 ---
 
-*Last Updated: February 3, 2026*
-*Architecture Version: 1.5 (Enterprise UX Hardening Complete)*
-*Document Version: 3.1 (UX Hardening Phases 0-6 Complete)*
+*Last Updated: February 6, 2026*
+*Architecture Version: 1.5 (Expense Reports Implementation)*
+*Document Version: 3.2 (Expense Reports v1.5 In Progress)*

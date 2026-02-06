@@ -8,7 +8,7 @@
     "copy-assets": "node -e \"require('fs').copyFileSync('src/openapi.yaml', 'dist/openapi.yaml')\"",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "test": "jest",
+    "test": "jest --forceExit --detectOpenHandles",
     "test:integration": "jest --config jest.integration.config.js",
     "lint": "eslint src/**/*.ts",
     "typecheck": "tsc --noEmit",
@@ -70,6 +70,7 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "maxWorkers": "50%",
+    "setupFiles": ["./jest.setup.js"],
     "testMatch": [
       "**/*.test.ts",
       "**/*.spec.ts"
