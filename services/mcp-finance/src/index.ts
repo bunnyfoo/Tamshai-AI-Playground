@@ -1055,11 +1055,25 @@ app.post('/execute', async (req: Request, res: Response) => {
       action = confirmationData.action as string;
       data = confirmationData;
 
-      // If rejected, switch approve actions to reject actions
+      // If rejected (approved === false), handle the cancellation
       if (approved === false) {
+        // For budget approvals, convert to rejection
         if (action === 'approve_budget') {
           action = 'reject_budget';
           data = { ...confirmationData, rejectionReason: rejectionReason || 'Rejected by user' };
+        } else {
+          // For all other actions (expense reports, invoices, etc.),
+          // a denied confirmation means cancel the action without executing
+          await deletePendingConfirmation(confirmationId);
+          res.json({
+            status: 'success',
+            data: {
+              cancelled: true,
+              message: 'Confirmation denied. No action was taken.',
+              action: confirmationData.action,
+            },
+          });
+          return;
         }
       }
 
