@@ -112,6 +112,8 @@ npm run test:integration
 
 **Config**: `jest.integration.config.js` - 30s timeout, sequential execution, setup via `src/__tests__/integration/setup.ts`.
 
+**Parallelized Keycloak Setup**: The setup uses `Promise.all` to prepare/restore all 8 test users concurrently, reducing setup time from ~8 sequential HTTP round-trips to ~1 parallel round-trip.
+
 ### services/mcp-journey/ (Vitest)
 
 ```bash
@@ -421,5 +423,41 @@ services/mcp-journey/tests/integration/
 
 ---
 
-*Last Updated: February 5, 2026*
-*Updated By: Claude-QA (Tamshai-QA)*
+---
+
+## Troubleshooting
+
+### Connection Pool Exhaustion
+
+**Symptom**: Tests fail with `AggregateError:` (empty) or `remaining connection slots are reserved for roles with the SUPERUSER attribute`
+
+**Cause**: Database connections leak when tests fail before cleanup. Leaked connections accumulate across test runs until PostgreSQL's `max_connections` (100) is exceeded.
+
+**Solution**: Clear leaked idle connections:
+
+```bash
+# Check connection count
+docker exec tamshai-pg-postgres psql -U postgres -c "SELECT count(*) FROM pg_stat_activity;"
+
+# If count > 20, terminate idle tamshai_app connections
+docker exec tamshai-pg-postgres psql -U postgres -c \
+  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = 'tamshai_app' AND state = 'idle';"
+```
+
+### Port Configuration
+
+Integration tests use these default ports (matching `infrastructure/docker/docker-compose.yml`):
+
+| Service | Port | Environment Variable |
+|---------|------|---------------------|
+| PostgreSQL | 5443 | `POSTGRES_PORT` |
+| Keycloak | 8190 | `KEYCLOAK_URL` |
+| MCP Gateway | 3110 | `MCP_GATEWAY_URL` |
+| Redis | 6390 | `REDIS_URL` |
+
+If your Docker environment uses different ports, set the corresponding environment variable before running tests.
+
+---
+
+*Last Updated: February 6, 2026*
+*Updated By: Claude-Dev (Tamshai-Dev)*
