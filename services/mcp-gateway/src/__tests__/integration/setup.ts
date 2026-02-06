@@ -487,6 +487,95 @@ async function restoreTestUsers(): Promise<void> {
 // Increase timeout for slow database operations
 jest.setTimeout(30000);
 
+/**
+ * Reset budget test fixtures to their initial states
+ *
+ * This function resets all test fixture budgets to their original states
+ * before each test run, ensuring tests are isolated and repeatable.
+ *
+ * Test Fixtures Reset:
+ * - BUD-TEST-PENDING-* : Reset to PENDING_APPROVAL, submitted by nina.patel
+ * - BUD-TEST-REJECT-1  : Reset to PENDING_APPROVAL, submitted by nina.patel
+ * - BUD-TEST-AUDIT-*   : Reset to PENDING_APPROVAL, submitted by nina.patel
+ * - BUD-TEST-RULES-1   : Reset to PENDING_APPROVAL, submitted by nina.patel
+ * - BUD-TEST-SOD       : Reset to PENDING_APPROVAL, submitted by bob.martinez
+ * - BUD-ENG-2024-SAL   : Reset to DRAFT, no submitter
+ * - BUD-MKT-2024-MKT   : Reset to DRAFT, no submitter
+ *
+ * Also cleans up budget_approval_history for test fixtures to avoid
+ * duplicate audit entries.
+ */
+export async function resetBudgetTestFixtures(): Promise<void> {
+  const pool = getAdminPoolFinance();
+
+  // User IDs (from TEST_USERS)
+  const ninaPatelId = 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'; // manager
+  const bobMartinezId = '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1'; // financeWrite
+
+  // Reset PENDING_APPROVAL fixtures (submitted by nina.patel)
+  await pool.query(`
+    UPDATE finance.department_budgets
+    SET status = 'PENDING_APPROVAL',
+        submitted_by = $1::uuid,
+        submitted_at = NOW() - interval '1 day',
+        approved_by = NULL,
+        approved_at = NULL,
+        rejection_reason = NULL,
+        version = 1
+    WHERE budget_id IN (
+      'BUD-TEST-PENDING-1', 'BUD-TEST-PENDING-2', 'BUD-TEST-PENDING-3',
+      'BUD-TEST-REJECT-1', 'BUD-TEST-AUDIT-1', 'BUD-TEST-AUDIT-2',
+      'BUD-TEST-AUDIT-3', 'BUD-TEST-RULES-1'
+    )
+  `, [ninaPatelId]);
+
+  // Reset SOD fixture (submitted by bob.martinez for separation of duties test)
+  await pool.query(`
+    UPDATE finance.department_budgets
+    SET status = 'PENDING_APPROVAL',
+        submitted_by = $1::uuid,
+        submitted_at = NOW() - interval '2 days',
+        approved_by = NULL,
+        approved_at = NULL,
+        rejection_reason = NULL,
+        version = 1
+    WHERE budget_id = 'BUD-TEST-SOD'
+  `, [bobMartinezId]);
+
+  // Reset DRAFT fixtures (2024 budgets used in submit_budget tests)
+  await pool.query(`
+    UPDATE finance.department_budgets
+    SET status = 'DRAFT',
+        submitted_by = NULL,
+        submitted_at = NULL,
+        approved_by = NULL,
+        approved_at = NULL,
+        rejection_reason = NULL,
+        version = 1
+    WHERE budget_id IN (
+      'BUD-ENG-2024-SAL', 'BUD-MKT-2024-MKT', 'BUD-HR-2024-SAL',
+      'BUD-FIN-2024-SAL', 'BUD-IT-2024-TECH', 'BUD-SALES-2024-SAL',
+      'BUD-EXEC-2024-SAL'
+    )
+  `);
+
+  // Clean up approval history for test fixtures to avoid duplicate audit entries
+  await pool.query(`
+    DELETE FROM finance.budget_approval_history
+    WHERE budget_id IN (
+      SELECT id FROM finance.department_budgets
+      WHERE budget_id LIKE 'BUD-TEST-%'
+        OR budget_id IN (
+          'BUD-ENG-2024-SAL', 'BUD-MKT-2024-MKT', 'BUD-HR-2024-SAL',
+          'BUD-FIN-2024-SAL', 'BUD-IT-2024-TECH', 'BUD-SALES-2024-SAL',
+          'BUD-EXEC-2024-SAL'
+        )
+    )
+  `);
+
+  console.log('   ✅ Budget test fixtures reset to initial states');
+}
+
 // Global setup - prepare test users (remove CONFIGURE_TOTP)
 beforeAll(async () => {
   const isCI = process.env.CI === 'true';
