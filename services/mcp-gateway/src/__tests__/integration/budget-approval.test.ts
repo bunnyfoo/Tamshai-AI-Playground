@@ -401,6 +401,11 @@ describe('Budget Approval Workflow - TDD RED PHASE', () => {
     });
 
     describe('confirmation flow (v1.4 pattern)', () => {
+      // Reset fixtures before each test to ensure idempotent test runs
+      beforeEach(async () => {
+        await resetBudgetTestFixtures();
+      });
+
       test('should return pending_confirmation status', async () => {
         // TDD RED: Tool returns NOT_IMPLEMENTED in v1.3
         // In v1.5, should return pending_confirmation for valid request
@@ -550,6 +555,11 @@ describe('Budget Approval Workflow - TDD RED PHASE', () => {
     });
 
     describe('audit trail', () => {
+      // Reset fixtures before each test to ensure idempotent test runs
+      beforeEach(async () => {
+        await resetBudgetTestFixtures();
+      });
+
       test('should create budget_approval_history entry on approval', async () => {
         // TDD RED: No approval history table in v1.3
 
@@ -732,6 +742,11 @@ describe('Budget Approval Workflow - TDD RED PHASE', () => {
   // ============================================================
 
   describe('submit_budget MCP Tool', () => {
+    // Reset fixtures before each test to ensure idempotent test runs
+    beforeEach(async () => {
+      await resetBudgetTestFixtures();
+    });
+
     test('should change budget status from DRAFT to PENDING_APPROVAL', async () => {
       // TDD RED: Tool does not exist in v1.3
       // Use a DRAFT budget for this test
@@ -877,6 +892,11 @@ describe('Budget Approval Workflow - TDD RED PHASE', () => {
   // ============================================================
 
   describe('Budget Approval Business Rules', () => {
+    // Reset fixtures before each test to ensure idempotent test runs
+    beforeEach(async () => {
+      await resetBudgetTestFixtures();
+    });
+
     test('only department heads can submit budgets', async () => {
       // TDD RED: No submission workflow in v1.3
       // Use DRAFT budgets for submission tests
