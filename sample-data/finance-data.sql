@@ -359,6 +359,70 @@ SELECT 'BUD-IT-2025-TECH', 'IT', 'IT', 2025, id, 680000, 680000, 610000, 670000,
 ON CONFLICT DO NOTHING;
 
 -- =============================================================================
+-- TEST FIXTURE BUDGETS (for integration tests)
+-- These budgets are in PENDING_APPROVAL status for testing approval workflow
+-- =============================================================================
+
+-- Budget in PENDING_APPROVAL status for approval tests (submitted by nina.patel - manager)
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-PENDING-1', 'ENG', 'Engineering', 2026, id, 3000000, 3000000, 0, 3000000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '1 day'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+-- Budget submitted by bob.martinez (finance-write user) for separation of duties test
+-- bob.martinez cannot approve this budget because he submitted it
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-SOD', 'FIN', 'Finance', 2026, id, 500000, 500000, 0, 500000, 'PENDING_APPROVAL',
+    '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1'::uuid, NOW() - interval '2 days'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+-- Additional test budgets for various test scenarios
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-PENDING-2', 'HR', 'Human Resources', 2026, id, 850000, 850000, 0, 850000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '3 days'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-PENDING-3', 'SALES', 'Sales', 2026, id, 1400000, 1400000, 0, 1400000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '4 days'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+-- Additional test fixture budgets (each test needs its own to avoid state conflicts)
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-REJECT-1', 'HR', 'Human Resources', 2026, id, 750000, 750000, 0, 750000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '5 days'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-AUDIT-1', 'FIN', 'Finance', 2026, id, 450000, 450000, 0, 450000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '6 days'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-AUDIT-2', 'MKT', 'Marketing', 2026, id, 800000, 800000, 0, 800000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '7 days'
+FROM finance.budget_categories WHERE code = 'EXP-MKT'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-AUDIT-3', 'IT', 'IT', 2026, id, 600000, 600000, 0, 600000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '8 days'
+FROM finance.budget_categories WHERE code = 'EXP-TECH'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO finance.department_budgets (budget_id, department_code, department, fiscal_year, category_id, budgeted_amount, amount, actual_amount, forecast_amount, status, submitted_by, submitted_at)
+SELECT 'BUD-TEST-RULES-1', 'SALES', 'Sales', 2026, id, 1200000, 1200000, 0, 1200000, 'PENDING_APPROVAL',
+    'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'::uuid, NOW() - interval '9 days'
+FROM finance.budget_categories WHERE code = 'EXP-SAL'
+ON CONFLICT DO NOTHING;
+
+-- =============================================================================
 -- BUDGET APPROVAL HISTORY (v1.5 - Issue #78)
 -- Audit trail for all budget approval workflow actions
 -- =============================================================================
@@ -1071,6 +1135,290 @@ CREATE TABLE IF NOT EXISTS finance.access_audit_log (
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON finance.access_audit_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_audit_user ON finance.access_audit_log(user_email);
 CREATE INDEX IF NOT EXISTS idx_audit_action ON finance.access_audit_log(action);
+
+-- =============================================================================
+-- EXPENSE REPORTS TABLE (v1.5 - Issue #77)
+-- Groups multiple expenses into reports for submission/approval workflow
+-- =============================================================================
+
+-- Create expense report status enum type
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'expense_report_status' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'finance')) THEN
+        CREATE TYPE finance.expense_report_status AS ENUM ('DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'REIMBURSED');
+    END IF;
+END
+$$;
+
+-- Create the expense_reports table
+CREATE TABLE IF NOT EXISTS finance.expense_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    report_number VARCHAR(30) NOT NULL UNIQUE,
+    employee_id UUID NOT NULL,
+    department_code VARCHAR(10) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    total_amount DECIMAL(12, 2) DEFAULT 0,
+    status finance.expense_report_status DEFAULT 'DRAFT',
+    submission_date DATE,
+    submitted_at TIMESTAMP,
+    approved_at TIMESTAMP,
+    approved_by UUID,
+    rejected_at TIMESTAMP,
+    rejected_by UUID,
+    rejection_reason TEXT,
+    reimbursed_at TIMESTAMP,
+    reimbursed_by UUID,
+    payment_reference VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create the expense_items table (line items within a report)
+CREATE TABLE IF NOT EXISTS finance.expense_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    expense_report_id UUID NOT NULL REFERENCES finance.expense_reports(id) ON DELETE CASCADE,
+    expense_date DATE NOT NULL,
+    category finance.expense_category NOT NULL,
+    description VARCHAR(500) NOT NULL,
+    vendor VARCHAR(200),
+    amount DECIMAL(12, 2) NOT NULL CHECK (amount > 0),
+    currency CHAR(3) DEFAULT 'USD',
+    receipt_url VARCHAR(500),
+    receipt_required BOOLEAN DEFAULT true,
+    receipt_uploaded BOOLEAN DEFAULT false,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes for expense_reports
+CREATE INDEX IF NOT EXISTS idx_expense_reports_employee ON finance.expense_reports(employee_id);
+CREATE INDEX IF NOT EXISTS idx_expense_reports_department ON finance.expense_reports(department_code);
+CREATE INDEX IF NOT EXISTS idx_expense_reports_status ON finance.expense_reports(status);
+CREATE INDEX IF NOT EXISTS idx_expense_reports_submission_date ON finance.expense_reports(submission_date);
+
+-- Indexes for expense_items
+CREATE INDEX IF NOT EXISTS idx_expense_items_report ON finance.expense_items(expense_report_id);
+CREATE INDEX IF NOT EXISTS idx_expense_items_category ON finance.expense_items(category);
+CREATE INDEX IF NOT EXISTS idx_expense_items_date ON finance.expense_items(expense_date);
+
+-- =============================================================================
+-- EXPENSE REPORTS RLS (v1.5)
+-- 3-tier access: Self, Manager, Finance
+-- =============================================================================
+ALTER TABLE finance.expense_reports ENABLE ROW LEVEL SECURITY;
+
+-- Policy 1: Employees can see their own expense reports
+CREATE POLICY expense_reports_self_access ON finance.expense_reports
+    FOR SELECT
+    USING (
+        employee_id::text = current_setting('app.current_user_id', true)
+    );
+
+-- Policy 2: Finance-read can see all expense reports
+CREATE POLICY expense_reports_finance_read ON finance.expense_reports
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%finance-read%'
+        OR current_setting('app.current_user_roles', true) LIKE '%finance-write%'
+    );
+
+-- Policy 3: Executive role can see all expense reports
+CREATE POLICY expense_reports_executive_access ON finance.expense_reports
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%executive%'
+    );
+
+-- Policy 4: Manager can see their department's expense reports
+CREATE POLICY expense_reports_manager_access ON finance.expense_reports
+    FOR SELECT
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%manager%'
+        AND department_code = current_setting('app.current_user_department', true)
+    );
+
+-- Policy 5: Employees can insert their own expense reports
+CREATE POLICY expense_reports_self_insert ON finance.expense_reports
+    FOR INSERT
+    WITH CHECK (
+        employee_id::text = current_setting('app.current_user_id', true)
+    );
+
+-- Policy 6: Employees can update their own DRAFT expense reports
+CREATE POLICY expense_reports_self_update ON finance.expense_reports
+    FOR UPDATE
+    USING (
+        employee_id::text = current_setting('app.current_user_id', true)
+        AND status = 'DRAFT'
+    );
+
+-- Policy 7: Finance-write can update any expense report (for approval/rejection/reimbursement)
+CREATE POLICY expense_reports_finance_update ON finance.expense_reports
+    FOR UPDATE
+    USING (
+        current_setting('app.current_user_roles', true) LIKE '%finance-write%'
+    );
+
+-- =============================================================================
+-- EXPENSE ITEMS RLS (v1.5)
+-- Access controlled via parent expense_report
+-- =============================================================================
+ALTER TABLE finance.expense_items ENABLE ROW LEVEL SECURITY;
+
+-- Policy 1: Users can see expense items for their accessible expense reports
+CREATE POLICY expense_items_report_access ON finance.expense_items
+    FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM finance.expense_reports er
+            WHERE er.id = expense_items.expense_report_id
+        )
+    );
+
+-- Policy 2: Users can insert expense items into their own DRAFT reports
+CREATE POLICY expense_items_self_insert ON finance.expense_items
+    FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM finance.expense_reports er
+            WHERE er.id = expense_items.expense_report_id
+            AND er.employee_id::text = current_setting('app.current_user_id', true)
+            AND er.status = 'DRAFT'
+        )
+    );
+
+-- =============================================================================
+-- EXPENSE REPORTS SAMPLE DATA (v1.5)
+-- Employee IDs from hr-data.sql
+-- =============================================================================
+
+-- Employee IDs:
+-- Eve Thompson (CEO): e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+-- Alice Chen (VP HR): f104eddc-21ab-457c-a254-78051ad7ad67
+-- Bob Martinez (Finance): 1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1
+-- Carol Johnson (Sales): c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c
+-- Nina Patel (Engineering Mgr): a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+-- Marcus Johnson (Engineer): e1000000-0000-0000-0000-000000000052
+-- Frank Davis (IT Intern): b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
+
+-- Report 1: Nina Patel - Approved Conference Trip
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at, approved_at, approved_by)
+VALUES
+    ('e1000000-0000-0000-0000-000000000101', 'EXP-2026-001', 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d', 'ENG', 'Tech Conference Travel - San Francisco', 2450.00, 'APPROVED', '2026-01-15', '2026-01-15 09:00:00', '2026-01-17 14:30:00', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 2: Marcus Johnson - Pending Team Lunch
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000102', 'EXP-2026-002', 'e1000000-0000-0000-0000-000000000052', 'ENG', 'Team Celebration Lunch', 385.50, 'SUBMITTED', '2026-01-20', '2026-01-20 10:15:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 3: Carol Johnson - Reimbursed Client Dinner
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at, approved_at, approved_by, reimbursed_at, reimbursed_by, payment_reference)
+VALUES
+    ('e1000000-0000-0000-0000-000000000103', 'EXP-2026-003', 'c0e1c8a4-5d6e-4f9b-8a3c-7e2d1f0b9a8c', 'SALES', 'Client Dinner - Acme Corp Deal', 875.00, 'REIMBURSED', '2026-01-10', '2026-01-10 16:00:00', '2026-01-12 09:00:00', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', '2026-01-18 11:00:00', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', 'ACH-20260118-001')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 4: Frank Davis - Draft Office Supplies
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, notes)
+VALUES
+    ('e1000000-0000-0000-0000-000000000104', 'EXP-2026-004', 'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e', 'IT', 'Office Supplies Q1 2026', 156.75, 'DRAFT', 'Need to add keyboard receipt')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 5: Alice Chen - Under Review HR Conference
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000105', 'EXP-2026-005', 'f104eddc-21ab-457c-a254-78051ad7ad67', 'HR', 'HR Leadership Summit 2026', 3200.00, 'UNDER_REVIEW', '2026-01-25', '2026-01-25 14:00:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 6: Nina Patel - Rejected Training (missing receipts)
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at, rejected_at, rejected_by, rejection_reason)
+VALUES
+    ('e1000000-0000-0000-0000-000000000106', 'EXP-2026-006', 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d', 'ENG', 'Cloud Certification Training', 599.00, 'REJECTED', '2026-01-05', '2026-01-05 11:00:00', '2026-01-07 09:30:00', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', 'Missing receipts for online course purchases. Please upload all receipts and resubmit.')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 7: Bob Martinez - Approved Software Subscription
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at, approved_at, approved_by)
+VALUES
+    ('e1000000-0000-0000-0000-000000000107', 'EXP-2026-007', '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1', 'FIN', 'Accounting Software Annual Subscription', 1200.00, 'APPROVED', '2026-01-02', '2026-01-02 08:00:00', '2026-01-03 10:00:00', 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- Report 8: Eve Thompson - Executive Travel (Pending)
+INSERT INTO finance.expense_reports (id, report_number, employee_id, department_code, title, total_amount, status, submission_date, submitted_at)
+VALUES
+    ('e1000000-0000-0000-0000-000000000108', 'EXP-2026-008', 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b', 'EXEC', 'Board Meeting Travel - New York', 4850.00, 'SUBMITTED', '2026-02-01', '2026-02-01 16:30:00')
+ON CONFLICT (report_number) DO NOTHING;
+
+-- =============================================================================
+-- EXPENSE ITEMS SAMPLE DATA (v1.5)
+-- Line items for each expense report
+-- =============================================================================
+
+-- Items for Report 1: Nina Patel Conference Trip ($2450.00 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000101', '2026-01-12', 'TRAVEL', 'Roundtrip flight SFO', 'United Airlines', 650.00, true),
+    ('e1000000-0000-0000-0000-000000000101', '2026-01-12', 'TRAVEL', 'Hotel - 3 nights', 'Marriott Union Square', 1200.00, true),
+    ('e1000000-0000-0000-0000-000000000101', '2026-01-13', 'MEALS', 'Dinner with speaker', 'Boulevard Restaurant', 185.00, true),
+    ('e1000000-0000-0000-0000-000000000101', '2026-01-14', 'TRAVEL', 'Uber to/from airport', 'Uber', 125.00, true),
+    ('e1000000-0000-0000-0000-000000000101', '2026-01-13', 'OTHER', 'Conference registration fee', 'TechConf 2026', 290.00, true)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 2: Marcus Johnson Team Lunch ($385.50 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000102', '2026-01-18', 'MEALS', 'Team lunch - sprint completion', 'Pasta Palace', 285.50, true),
+    ('e1000000-0000-0000-0000-000000000102', '2026-01-18', 'MEALS', 'Desserts and coffee', 'Sweet Treats Cafe', 100.00, true)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 3: Carol Johnson Client Dinner ($875.00 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000103', '2026-01-08', 'MEALS', 'Client dinner - Acme Corp negotiations', 'The Capital Grille', 650.00, true),
+    ('e1000000-0000-0000-0000-000000000103', '2026-01-08', 'OTHER', 'Parking - downtown garage', 'City Center Parking', 45.00, true),
+    ('e1000000-0000-0000-0000-000000000103', '2026-01-08', 'TRAVEL', 'Rideshare home', 'Lyft', 180.00, true)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 4: Frank Davis Office Supplies ($156.75 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded, receipt_required)
+VALUES
+    ('e1000000-0000-0000-0000-000000000104', '2026-01-22', 'SUPPLIES', 'Mechanical keyboard', 'Amazon', 89.99, false, true),
+    ('e1000000-0000-0000-0000-000000000104', '2026-01-22', 'SUPPLIES', 'USB-C hub', 'Amazon', 45.99, true, true),
+    ('e1000000-0000-0000-0000-000000000104', '2026-01-23', 'SUPPLIES', 'Notebook and pens', 'Office Depot', 20.77, true, true)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 5: Alice Chen HR Conference ($3200.00 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000105', '2026-01-22', 'TRAVEL', 'Flight to Chicago', 'American Airlines', 485.00, true),
+    ('e1000000-0000-0000-0000-000000000105', '2026-01-22', 'TRAVEL', 'Hotel - 4 nights', 'Hilton Chicago', 1600.00, true),
+    ('e1000000-0000-0000-0000-000000000105', '2026-01-23', 'OTHER', 'Conference registration', 'SHRM Leadership Summit', 895.00, true),
+    ('e1000000-0000-0000-0000-000000000105', '2026-01-24', 'MEALS', 'Networking dinner', 'Chicago Cut Steakhouse', 220.00, true)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 6: Nina Patel Training ($599.00 total) - Missing receipt
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded, receipt_required, notes)
+VALUES
+    ('e1000000-0000-0000-0000-000000000106', '2026-01-03', 'OTHER', 'AWS Solutions Architect course', 'Udemy', 199.00, false, true, 'Need to download receipt from Udemy'),
+    ('e1000000-0000-0000-0000-000000000106', '2026-01-04', 'OTHER', 'AWS Practice exams', 'Tutorials Dojo', 50.00, false, true, 'Email receipt requested'),
+    ('e1000000-0000-0000-0000-000000000106', '2026-01-05', 'SOFTWARE', 'AWS certification exam fee', 'AWS', 350.00, true, true, NULL)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 7: Bob Martinez Software ($1200.00 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000107', '2026-01-01', 'SOFTWARE', 'QuickBooks Online - Annual subscription', 'Intuit', 1200.00, true)
+ON CONFLICT DO NOTHING;
+
+-- Items for Report 8: Eve Thompson Executive Travel ($4850.00 total)
+INSERT INTO finance.expense_items (expense_report_id, expense_date, category, description, vendor, amount, receipt_uploaded)
+VALUES
+    ('e1000000-0000-0000-0000-000000000108', '2026-01-28', 'TRAVEL', 'Business class flight to NYC', 'Delta Airlines', 2200.00, true),
+    ('e1000000-0000-0000-0000-000000000108', '2026-01-28', 'TRAVEL', 'Hotel - The Plaza 2 nights', 'The Plaza Hotel', 1800.00, true),
+    ('e1000000-0000-0000-0000-000000000108', '2026-01-29', 'MEALS', 'Board dinner', 'Per Se', 650.00, true),
+    ('e1000000-0000-0000-0000-000000000108', '2026-01-30', 'TRAVEL', 'Car service', 'Blacklane', 200.00, true)
+ON CONFLICT DO NOTHING;
 
 -- =============================================================================
 -- GRANTS
