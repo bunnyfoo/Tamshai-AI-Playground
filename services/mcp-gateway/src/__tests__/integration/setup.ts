@@ -29,12 +29,17 @@ const KEYCLOAK_CONFIG = {
 // IMPORTANT: Use tamshai_app user (not tamshai) to enforce RLS policies
 // The tamshai user has BYPASSRLS for sync operations, but tests need RLS enforced
 // NOTE: Default port is 5443 to match infrastructure/docker/docker-compose.yml
+//
+// Password precedence for tamshai_app user:
+// 1. TAMSHAI_APP_PASSWORD (explicit app user password)
+// 2. 'changeme' (matches CREATE ROLE in sample-data/*.sql)
+// Note: POSTGRES_PASSWORD is the postgres superuser password, NOT tamshai_app
 const DB_CONFIG_HR = {
   host: process.env.POSTGRES_HOST || 'localhost',
   port: parseInt(process.env.POSTGRES_PORT || '5443'),
   database: process.env.POSTGRES_DB || 'tamshai_hr',
   user: process.env.POSTGRES_USER || 'tamshai_app',
-  password: process.env.POSTGRES_PASSWORD || 'changeme',
+  password: process.env.TAMSHAI_APP_PASSWORD || 'changeme',
 };
 
 const DB_CONFIG_FINANCE = {
@@ -42,7 +47,17 @@ const DB_CONFIG_FINANCE = {
   port: parseInt(process.env.POSTGRES_PORT || '5443'),
   database: 'tamshai_finance',
   user: process.env.POSTGRES_USER || 'tamshai_app',
-  password: process.env.POSTGRES_PASSWORD || 'changeme',
+  password: process.env.TAMSHAI_APP_PASSWORD || 'changeme',
+};
+
+// Admin config with tamshai superuser for fixture resets (bypasses RLS)
+// Requires TAMSHAI_DB_PASSWORD environment variable
+const DB_CONFIG_ADMIN_FINANCE = {
+  host: process.env.POSTGRES_HOST || 'localhost',
+  port: parseInt(process.env.POSTGRES_PORT || '5443'),
+  database: 'tamshai_finance',
+  user: 'tamshai',  // Superuser with BYPASSRLS for fixture resets
+  password: process.env.TAMSHAI_DB_PASSWORD,
 };
 
 // Default config - HR database (used as default for legacy compatibility)
@@ -52,6 +67,7 @@ const DB_CONFIG = DB_CONFIG_HR;
 // Connection pools for different test users
 let adminPool: Pool | null = null;
 let adminPoolFinance: Pool | null = null;
+let adminPoolFinanceReset: Pool | null = null;  // For fixture resets
 
 // Keycloak admin token for TOTP management
 let keycloakAdminToken: string | null = null;
@@ -89,6 +105,17 @@ export function getAdminPoolFinance(): Pool {
     adminPoolFinance = new Pool(DB_CONFIG_FINANCE);
   }
   return adminPoolFinance;
+}
+
+/**
+ * Get admin database connection pool for Finance database with BYPASSRLS
+ * Use this for fixture resets that need to update all records regardless of RLS
+ */
+export function getAdminPoolFinanceReset(): Pool {
+  if (!adminPoolFinanceReset) {
+    adminPoolFinanceReset = new Pool(DB_CONFIG_ADMIN_FINANCE);
+  }
+  return adminPoolFinanceReset;
 }
 
 // Map userId to email for RLS policy lookups
@@ -506,7 +533,8 @@ jest.setTimeout(30000);
  * duplicate audit entries.
  */
 export async function resetBudgetTestFixtures(): Promise<void> {
-  const pool = getAdminPoolFinance();
+  // Use admin pool with BYPASSRLS to reset fixtures
+  const pool = getAdminPoolFinanceReset();
 
   // User IDs (from TEST_USERS)
   const ninaPatelId = 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d'; // manager
@@ -613,5 +641,9 @@ afterAll(async () => {
   if (adminPoolFinance) {
     await adminPoolFinance.end();
     adminPoolFinance = null;
+  }
+  if (adminPoolFinanceReset) {
+    await adminPoolFinanceReset.end();
+    adminPoolFinanceReset = null;
   }
 }, 30000);
