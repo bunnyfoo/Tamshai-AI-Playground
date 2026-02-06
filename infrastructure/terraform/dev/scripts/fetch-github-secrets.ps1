@@ -34,6 +34,12 @@ $output = @{
     "test_user_totp_secret_raw" = ""
     "gemini_api_key" = ""
     "claude_api_key" = ""
+    # Database passwords (environment-specific)
+    "mongodb_password" = ""
+    "postgres_password" = ""
+    "tamshai_db_password" = ""
+    "keycloak_db_password" = ""
+    "redis_password" = ""
 }
 
 try {
@@ -105,6 +111,32 @@ try {
     $claudeApiFile = Join-Path $tempDir "CLAUDE_API_KEY"
     if (Test-Path $claudeApiFile) {
         $output["claude_api_key"] = (Get-Content $claudeApiFile -Raw).Trim()
+    }
+
+    # Read database passwords (environment-specific)
+    $mongoDbPwdFile = Join-Path $tempDir "MONGODB_${environment}_PASSWORD"
+    if (Test-Path $mongoDbPwdFile) {
+        $output["mongodb_password"] = (Get-Content $mongoDbPwdFile -Raw).Trim()
+    }
+
+    $postgresPwdFile = Join-Path $tempDir "POSTGRES_${environment}_PASSWORD"
+    if (Test-Path $postgresPwdFile) {
+        $output["postgres_password"] = (Get-Content $postgresPwdFile -Raw).Trim()
+    }
+
+    $tamshaiDbPwdFile = Join-Path $tempDir "TAMSHAI_DB_${environment}_PASSWORD"
+    if (Test-Path $tamshaiDbPwdFile) {
+        $output["tamshai_db_password"] = (Get-Content $tamshaiDbPwdFile -Raw).Trim()
+    }
+
+    $keycloakDbPwdFile = Join-Path $tempDir "KEYCLOAK_DB_${environment}_PASSWORD"
+    if (Test-Path $keycloakDbPwdFile) {
+        $output["keycloak_db_password"] = (Get-Content $keycloakDbPwdFile -Raw).Trim()
+    }
+
+    $redisPwdFile = Join-Path $tempDir "REDIS_${environment}_PASSWORD"
+    if (Test-Path $redisPwdFile) {
+        $output["redis_password"] = (Get-Content $redisPwdFile -Raw).Trim()
     }
 
     # Cleanup temp directory

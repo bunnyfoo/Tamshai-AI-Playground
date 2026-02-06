@@ -211,6 +211,27 @@ resource "null_resource" "validate_github_secrets" {
       condition     = length(data.external.github_secrets.result.claude_api_key) > 0
       error_message = "GitHub secret CLAUDE_API_KEY is required but not set. Run: gh secret set CLAUDE_API_KEY --body '<api-key>'"
     }
+    # Database passwords (environment-specific)
+    precondition {
+      condition     = length(data.external.github_secrets.result.mongodb_password) > 0
+      error_message = "GitHub secret MONGODB_${upper(var.environment)}_PASSWORD is required but not set. Run: gh secret set MONGODB_${upper(var.environment)}_PASSWORD --body '<password>'"
+    }
+    precondition {
+      condition     = length(data.external.github_secrets.result.postgres_password) > 0
+      error_message = "GitHub secret POSTGRES_${upper(var.environment)}_PASSWORD is required but not set. Run: gh secret set POSTGRES_${upper(var.environment)}_PASSWORD --body '<password>'"
+    }
+    precondition {
+      condition     = length(data.external.github_secrets.result.tamshai_db_password) > 0
+      error_message = "GitHub secret TAMSHAI_DB_${upper(var.environment)}_PASSWORD is required but not set. Run: gh secret set TAMSHAI_DB_${upper(var.environment)}_PASSWORD --body '<password>'"
+    }
+    precondition {
+      condition     = length(data.external.github_secrets.result.keycloak_db_password) > 0
+      error_message = "GitHub secret KEYCLOAK_DB_${upper(var.environment)}_PASSWORD is required but not set. Run: gh secret set KEYCLOAK_DB_${upper(var.environment)}_PASSWORD --body '<password>'"
+    }
+    precondition {
+      condition     = length(data.external.github_secrets.result.redis_password) > 0
+      error_message = "GitHub secret REDIS_${upper(var.environment)}_PASSWORD is required but not set. Run: gh secret set REDIS_${upper(var.environment)}_PASSWORD --body '<password>'"
+    }
   }
 }
 
@@ -223,11 +244,11 @@ resource "local_file" "docker_env" {
 
   filename = local.env_file
   content = templatefile("${path.module}/templates/docker.env.tftpl", {
-    # Database credentials
-    postgres_password    = var.postgres_password
-    tamshai_db_password  = var.tamshai_db_password
-    keycloak_db_password = var.keycloak_db_password
-    mongodb_password     = var.mongodb_root_password
+    # Database credentials (from GitHub secrets, environment-specific)
+    postgres_password    = data.external.github_secrets.result.postgres_password
+    tamshai_db_password  = data.external.github_secrets.result.tamshai_db_password
+    keycloak_db_password = data.external.github_secrets.result.keycloak_db_password
+    mongodb_password     = data.external.github_secrets.result.mongodb_password
 
     # Keycloak
     keycloak_admin          = "admin"
@@ -238,7 +259,7 @@ resource "local_file" "docker_env" {
     minio_root_password = var.minio_root_password
 
     # Redis
-    redis_password = var.redis_password
+    redis_password = data.external.github_secrets.result.redis_password
 
     # MCP Gateway
     # Use fetched key from GitHub secrets (CLAUDE_API_KEY), fallback to variable

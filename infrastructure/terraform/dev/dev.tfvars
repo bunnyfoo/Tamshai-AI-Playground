@@ -39,12 +39,15 @@ auto_remove_volumes = true # Remove volumes on destroy (full data reset for Phoe
 # =============================================================================
 # DATABASE CREDENTIALS
 # =============================================================================
-# Note: Set these via TF_VAR_* environment variables (see setup-terraform-dev-env.ps1)
+# All database passwords are fetched from GitHub Secrets (environment-specific):
 #
-# postgres_password     - Set via TF_VAR_postgres_password
-# tamshai_db_password   - Set via TF_VAR_tamshai_db_password
-# keycloak_db_password  - Set via TF_VAR_keycloak_db_password (REQUIRED NOW)
-# mongodb_root_password - Set via TF_VAR_mongodb_root_password
+# MONGODB_DEV_PASSWORD      - MongoDB root password
+# POSTGRES_DEV_PASSWORD     - PostgreSQL postgres user password
+# TAMSHAI_DB_DEV_PASSWORD   - PostgreSQL tamshai user password
+# KEYCLOAK_DB_DEV_PASSWORD  - Keycloak database password
+# REDIS_DEV_PASSWORD        - Redis password
+#
+# These are fetched via the export-test-secrets.yml workflow
 
 # =============================================================================
 # KEYCLOAK CONFIGURATION
@@ -98,11 +101,14 @@ redis_password = "" # No password for dev
 # DEFAULTS (Overridden by TF_VAR_* environment variables)
 # =============================================================================
 
-# Database defaults (dev-only credentials - match docker-compose.yml defaults)
-postgres_password     = "postgres_password"
-tamshai_db_password   = "tamshai_password"
-keycloak_db_password  = "keycloak_password"
-mongodb_root_password = "tamshai_password"
+# Database passwords - from GitHub Secrets (environment-specific)
+# These are fetched via fetch-github-secrets.ps1 workflow:
+#   - MONGODB_DEV_PASSWORD
+#   - POSTGRES_DEV_PASSWORD
+#   - TAMSHAI_DB_DEV_PASSWORD
+#   - KEYCLOAK_DB_DEV_PASSWORD
+#   - REDIS_DEV_PASSWORD
+# NOTE: No hardcoded values - passwords come from GitHub secrets
 
 # Keycloak defaults
 keycloak_admin_password = "admin"
