@@ -72,8 +72,8 @@ const MCP_ENDPOINTS = {
 
 // Test configuration
 const CONFIG = {
-  mcpGatewayUrl: process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3100',
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8180',
+  mcpGatewayUrl: process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3110',
+  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190',
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'mcp-gateway-secret',
