@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 *.js.map
+.turbo/
 
 # Environment files (contain secrets)
 .env
