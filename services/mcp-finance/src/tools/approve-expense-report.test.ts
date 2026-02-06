@@ -11,7 +11,6 @@ jest.mock('../utils/redis', () => ({ storePendingConfirmation: jest.fn().mockRes
 jest.mock('uuid', () => ({ v4: () => 'test-confirmation-id' }));
 
 import { queryWithRLS } from '../database/connection';
-import { storePendingConfirmation } from '../utils/redis';
 
 const mockQueryWithRLS = queryWithRLS as jest.MockedFunction<typeof queryWithRLS>;
 
@@ -23,56 +22,64 @@ describe('approveExpenseReport', () => {
 
   it('should reject users without finance-write role', async () => {
     const result = await approveExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       readUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.code).toBe('INSUFFICIENT_PERMISSIONS');
   });
 
-  it('should return error when expense not found', async () => {
+  it('should return error when expense report not found', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
     const result = await approveExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.code).toBe('EXPENSE_REPORT_NOT_FOUND');
   });
 
-  it('should reject approval of non-PENDING expenses', async () => {
+  it('should reject approval of non-SUBMITTED/UNDER_REVIEW reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
       status: 'APPROVED',
-      category: 'TRAVEL',
-      description: 'Flight',
-      amount: 500,
+      submission_date: '2024-01-15',
+      item_count: 3,
     }]));
     const result = await approveExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
-    if (isErrorResponse(result)) expect(result.code).toBe('INVALID_EXPENSE_STATUS');
+    if (isErrorResponse(result)) expect(result.code).toBe('INVALID_EXPENSE_REPORT_STATUS');
   });
 
-  it('should return pending_confirmation for PENDING expenses', async () => {
+  it('should return pending_confirmation for SUBMITTED reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
-      status: 'PENDING',
-      category: 'TRAVEL',
-      description: 'Flight to NYC',
-      amount: 500,
-      expense_date: '2025-01-15',
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
+      status: 'SUBMITTED',
+      submission_date: '2024-01-15',
+      item_count: 3,
     }]));
     const result = await approveExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isPendingConfirmationResponse(result)).toBe(true);
     if (isPendingConfirmationResponse(result)) {
       expect(result.action).toBe('approve_expense_report');
-      expect(result.message).toContain('Flight to NYC');
+      expect(result.message).toContain('Q1 Travel Expenses');
+      expect(result.message).toContain('EXP-2024-001');
     }
   });
 });
@@ -82,15 +89,15 @@ describe('executeApproveExpenseReport', () => {
 
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it('should approve expense and return success', async () => {
+  it('should approve expense report and return success', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
-      category: 'TRAVEL',
-      description: 'Flight to NYC',
-      amount: 500,
+      report_number: 'EXP-2024-001',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
     }]));
     const result = await executeApproveExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isSuccessResponse(result)).toBe(true);
@@ -101,10 +108,10 @@ describe('executeApproveExpenseReport', () => {
     }
   });
 
-  it('should return error when expense no longer pending', async () => {
+  it('should return error when expense report no longer in approvable status', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
     const result = await executeApproveExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);

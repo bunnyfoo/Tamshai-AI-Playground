@@ -22,70 +22,80 @@ describe('reimburseExpenseReport', () => {
 
   it('should reject users without finance-write role', async () => {
     const result = await reimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       readUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.code).toBe('INSUFFICIENT_PERMISSIONS');
   });
 
-  it('should return error when expense not found', async () => {
+  it('should return error when expense report not found', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
     const result = await reimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.code).toBe('EXPENSE_REPORT_NOT_FOUND');
   });
 
-  it('should reject reimbursement of PENDING expenses', async () => {
+  it('should reject reimbursement of SUBMITTED reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
-      status: 'PENDING',
-      category: 'TRAVEL',
-      description: 'Flight',
-      amount: 500,
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
+      status: 'SUBMITTED',
+      approved_at: null,
+      item_count: 3,
     }]));
     const result = await reimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) {
-      expect(result.code).toBe('INVALID_EXPENSE_STATUS');
+      expect(result.code).toBe('INVALID_EXPENSE_REPORT_STATUS');
       expect(result.suggestedAction).toContain('approved first');
     }
   });
 
-  it('should reject reimbursement of already REIMBURSED expenses', async () => {
+  it('should reject reimbursement of already REIMBURSED reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
       status: 'REIMBURSED',
-      category: 'TRAVEL',
-      description: 'Flight',
-      amount: 500,
+      approved_at: '2024-01-20',
+      item_count: 3,
     }]));
     const result = await reimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.suggestedAction).toContain('already been reimbursed');
   });
 
-  it('should return pending_confirmation for APPROVED expenses', async () => {
+  it('should return pending_confirmation for APPROVED reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
       status: 'APPROVED',
-      category: 'TRAVEL',
-      description: 'Flight to NYC',
-      amount: 500,
-      expense_date: '2025-01-15',
-      approved_at: '2025-01-20',
+      approved_at: '2024-01-20',
+      item_count: 3,
     }]));
     const result = await reimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isPendingConfirmationResponse(result)).toBe(true);
@@ -101,15 +111,15 @@ describe('executeReimburseExpenseReport', () => {
 
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it('should reimburse expense and return success', async () => {
+  it('should reimburse expense report and return success', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
-      category: 'TRAVEL',
-      description: 'Flight to NYC',
-      amount: 500,
+      report_number: 'EXP-2024-001',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
     }]));
     const result = await executeReimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isSuccessResponse(result)).toBe(true);
@@ -120,10 +130,10 @@ describe('executeReimburseExpenseReport', () => {
     }
   });
 
-  it('should return error when expense no longer approved', async () => {
+  it('should return error when expense report no longer approved', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
     const result = await executeReimburseExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);

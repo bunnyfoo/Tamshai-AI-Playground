@@ -32,6 +32,10 @@ import {
   ApproveBudgetInputSchema,
 } from './tools/approve-budget';
 import {
+  submitBudget,
+  SubmitBudgetInputSchema,
+} from './tools/submit-budget';
+import {
   rejectBudget,
   executeRejectBudget,
   RejectBudgetInputSchema,
@@ -72,6 +76,7 @@ import {
   DeleteExpenseReportInputSchema,
 } from './tools/delete-expense-report';
 import { MCPToolResponse } from './types/response';
+import { getPendingConfirmation, deletePendingConfirmation } from './utils/redis';
 
 dotenv.config();
 
@@ -687,11 +692,57 @@ app.post('/tools/pay_invoice', async (req: Request, res: Response) => {
 });
 
 /**
+ * Submit Budget Tool (WRITE - department heads/managers only)
+ *
+ * Allows department heads to submit their department's budget for approval.
+ * Changes status from DRAFT to PENDING_APPROVAL.
+ */
+app.post('/tools/submit_budget', async (req: Request, res: Response) => {
+  try {
+    const { userContext, budgetId, comments } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - managers, executives, and finance-write can submit budgets
+    const canSubmit = userContext.roles.some((role: string) =>
+      role === 'manager' || role === 'executive' || role === 'finance-write'
+    );
+
+    if (!canSubmit) {
+      res.json({
+        status: 'error',
+        code: 'UNAUTHORIZED',
+        message: `Access denied. Submitting budgets requires manager, executive, or finance-write role. Only department heads can submit budgets for approval. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your department head to submit this budget for approval.',
+      });
+      return;
+    }
+
+    const result = await submitBudget({ budgetId, comments }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('submit_budget error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to submit budget',
+    });
+  }
+});
+
+/**
  * Approve Budget Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/approve_budget', async (req: Request, res: Response) => {
   try {
-    const { userContext, budgetId, approverNotes } = req.body;
+    const { userContext, budgetId, approvedAmount, approverNotes } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -703,17 +754,18 @@ app.post('/tools/approve_budget', async (req: Request, res: Response) => {
     }
 
     // Authorization check - WRITE: finance-write or executive only
+    // Note: Return JSON error (not 403 HTTP) for consistent MCP tool response format
     if (!canWriteFinance(userContext.roles)) {
-      res.status(403).json({
+      res.json({
         status: 'error',
-        code: 'INSUFFICIENT_PERMISSIONS',
+        code: 'UNAUTHORIZED',
         message: `Access denied. Approving budgets requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
-        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
+        suggestedAction: 'Contact your administrator to request finance-write access permissions.',
       });
       return;
     }
 
-    const result = await approveBudget({ budgetId, approverNotes }, userContext);
+    const result = await approveBudget({ budgetId, approvedAmount, approverNotes }, userContext);
     res.json(result);
   } catch (error) {
     logger.error('approve_budget error:', error);
@@ -808,7 +860,7 @@ app.post('/tools/delete_budget', async (req: Request, res: Response) => {
  */
 app.post('/tools/approve_expense_report', async (req: Request, res: Response) => {
   try {
-    const { userContext, expenseId, approverNotes } = req.body;
+    const { userContext, reportId, approverNotes } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -830,7 +882,7 @@ app.post('/tools/approve_expense_report', async (req: Request, res: Response) =>
       return;
     }
 
-    const result = await approveExpenseReport({ expenseId, approverNotes }, userContext);
+    const result = await approveExpenseReport({ reportId, approverNotes }, userContext);
     res.json(result);
   } catch (error) {
     logger.error('approve_expense_report error:', error);
@@ -847,7 +899,7 @@ app.post('/tools/approve_expense_report', async (req: Request, res: Response) =>
  */
 app.post('/tools/reject_expense_report', async (req: Request, res: Response) => {
   try {
-    const { userContext, expenseId, rejectionReason } = req.body;
+    const { userContext, reportId, rejectionReason } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -869,7 +921,7 @@ app.post('/tools/reject_expense_report', async (req: Request, res: Response) => 
       return;
     }
 
-    const result = await rejectExpenseReport({ expenseId, rejectionReason }, userContext);
+    const result = await rejectExpenseReport({ reportId, rejectionReason }, userContext);
     res.json(result);
   } catch (error) {
     logger.error('reject_expense_report error:', error);
@@ -886,7 +938,7 @@ app.post('/tools/reject_expense_report', async (req: Request, res: Response) => 
  */
 app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) => {
   try {
-    const { userContext, expenseId, paymentReference, paymentNotes } = req.body;
+    const { userContext, reportId, paymentReference, paymentNotes } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -908,7 +960,7 @@ app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) 
       return;
     }
 
-    const result = await reimburseExpenseReport({ expenseId, paymentReference, paymentNotes }, userContext);
+    const result = await reimburseExpenseReport({ reportId, paymentReference, paymentNotes }, userContext);
     res.json(result);
   } catch (error) {
     logger.error('reimburse_expense_report error:', error);
@@ -925,7 +977,7 @@ app.post('/tools/reimburse_expense_report', async (req: Request, res: Response) 
  */
 app.post('/tools/delete_expense_report', async (req: Request, res: Response) => {
   try {
-    const { userContext, expenseId, reason } = req.body;
+    const { userContext, reportId, reason } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -947,7 +999,7 @@ app.post('/tools/delete_expense_report', async (req: Request, res: Response) => 
       return;
     }
 
-    const result = await deleteExpenseReport({ expenseId, reason }, userContext);
+    const result = await deleteExpenseReport({ reportId, reason }, userContext);
     res.json(result);
   } catch (error) {
     logger.error('delete_expense_report error:', error);
@@ -966,12 +1018,15 @@ app.post('/tools/delete_expense_report', async (req: Request, res: Response) => 
 /**
  * Execute a confirmed action
  *
- * This endpoint is called by the Gateway after the user approves a
- * pending confirmation. It executes the actual write operation.
+ * This endpoint supports two patterns:
+ * 1. Direct: { action, data, userContext } - Called by Gateway with pre-loaded data
+ * 2. ConfirmationId: { confirmationId, approved, userContext } - Looks up from Redis
+ *
+ * For pattern 2, if approved=false, the action becomes a rejection.
  */
 app.post('/execute', async (req: Request, res: Response) => {
   try {
-    const { action, data, userContext } = req.body;
+    let { action, data, userContext, confirmationId, approved, rejectionReason, comments } = req.body;
 
     if (!userContext?.userId) {
       res.status(400).json({
@@ -982,9 +1037,45 @@ app.post('/execute', async (req: Request, res: Response) => {
       return;
     }
 
+    // Pattern 2: ConfirmationId flow - look up from Redis
+    if (confirmationId && !action) {
+      const confirmationData = await getPendingConfirmation(confirmationId);
+
+      if (!confirmationData) {
+        res.json({
+          status: 'error',
+          code: 'CONFIRMATION_NOT_FOUND',
+          message: 'Confirmation not found or expired. Please request the action again.',
+          suggestedAction: 'The confirmation may have expired (5 minute TTL). Re-initiate the action.',
+        });
+        return;
+      }
+
+      // Determine action and transform data based on approved flag
+      action = confirmationData.action as string;
+      data = confirmationData;
+
+      // If rejected, switch approve actions to reject actions
+      if (approved === false) {
+        if (action === 'approve_budget') {
+          action = 'reject_budget';
+          data = { ...confirmationData, rejectionReason: rejectionReason || 'Rejected by user' };
+        }
+      }
+
+      // Add comments to data if provided
+      if (comments) {
+        data = { ...data, approverNotes: comments, comments };
+      }
+
+      // Delete the confirmation after use
+      await deletePendingConfirmation(confirmationId);
+    }
+
     logger.info('Executing confirmed action', {
       action,
       userId: userContext.userId,
+      hasConfirmationId: !!confirmationId,
     });
 
     let result: MCPToolResponse;
