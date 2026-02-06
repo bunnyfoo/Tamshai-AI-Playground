@@ -1,12 +1,12 @@
 /**
  * Delete Expense Report Tool (v1.5 with Human-in-the-Loop Confirmation)
  *
- * Deletes an expense. Only PENDING or REJECTED expenses can be deleted.
+ * Deletes an expense report. Only DRAFT or REJECTED reports can be deleted.
  * Uses human-in-the-loop confirmation (Section 5.6).
  *
  * Features:
  * - Permission check (finance-write or executive)
- * - Status validation (only PENDING or REJECTED expenses can be deleted)
+ * - Status validation (only DRAFT or REJECTED reports can be deleted)
  * - Permanent deletion with confirmation
  */
 
@@ -31,14 +31,14 @@ import { storePendingConfirmation } from '../utils/redis';
  * Input schema for delete_expense_report tool
  */
 export const DeleteExpenseReportInputSchema = z.object({
-  expenseId: z.string().uuid('Expense ID must be a valid UUID'),
+  reportId: z.string().uuid('Report ID must be a valid UUID'),
   reason: z.string().max(500).optional(),
 });
 
 export type DeleteExpenseReportInput = z.infer<typeof DeleteExpenseReportInputSchema>;
 
 /**
- * Check if user has permission to delete expenses
+ * Check if user has permission to delete expense reports
  */
 function hasDeletePermission(roles: string[]): boolean {
   return roles.includes('finance-write') || roles.includes('executive');
@@ -58,47 +58,49 @@ export async function deleteExpenseReport(
     }
 
     // Validate input
-    const { expenseId, reason } = DeleteExpenseReportInputSchema.parse(input);
+    const { reportId, reason } = DeleteExpenseReportInputSchema.parse(input);
 
     try {
-      // 2. Verify expense exists and get details
-      const expenseResult = await queryWithRLS(
+      // 2. Verify expense report exists and get details
+      const reportResult = await queryWithRLS(
         userContext,
         `
         SELECT
-          e.id,
-          e.employee_id,
-          e.department_id,
-          e.expense_date,
-          e.category,
-          e.description,
-          e.amount,
-          e.status
-        FROM finance.expenses e
-        WHERE e.id = $1
+          er.id,
+          er.report_number,
+          er.employee_id,
+          er.department_code,
+          er.title,
+          er.total_amount,
+          er.status,
+          (SELECT COUNT(*) FROM finance.expense_items ei WHERE ei.expense_report_id = er.id) as item_count
+        FROM finance.expense_reports er
+        WHERE er.id = $1
         `,
-        [expenseId]
+        [reportId]
       );
 
-      if (expenseResult.rowCount === 0) {
-        return handleExpenseReportNotFound(expenseId);
+      if (reportResult.rowCount === 0) {
+        return handleExpenseReportNotFound(reportId);
       }
 
-      const expense = expenseResult.rows[0];
+      const report = reportResult.rows[0];
 
-      // 3. Check if expense can be deleted (only PENDING or REJECTED)
-      if (expense.status !== 'PENDING' && expense.status !== 'REJECTED') {
-        const suggestedAction = expense.status === 'APPROVED'
-          ? 'Approved expenses cannot be deleted. They must be reimbursed or archived.'
-          : expense.status === 'REIMBURSED'
-            ? 'Reimbursed expenses cannot be deleted. They are kept for audit purposes.'
-            : 'Only PENDING or REJECTED expenses can be deleted.';
+      // 3. Check if expense report can be deleted (only DRAFT or REJECTED)
+      if (report.status !== 'DRAFT' && report.status !== 'REJECTED') {
+        const suggestedAction = report.status === 'APPROVED'
+          ? 'Approved expense reports cannot be deleted. They must be reimbursed first.'
+          : report.status === 'REIMBURSED'
+            ? 'Reimbursed expense reports cannot be deleted. They are kept for audit purposes.'
+            : report.status === 'SUBMITTED' || report.status === 'UNDER_REVIEW'
+              ? 'Submitted expense reports cannot be deleted. They must be rejected first.'
+              : 'Only DRAFT or REJECTED expense reports can be deleted.';
 
         return createErrorResponse(
-          'CANNOT_DELETE_EXPENSE',
-          `Cannot delete expense "${expenseId}" because it is in "${expense.status}" status`,
+          'CANNOT_DELETE_EXPENSE_REPORT',
+          `Cannot delete expense report "${report.report_number}" because it is in "${report.status}" status`,
           suggestedAction,
-          { expenseId, currentStatus: expense.status, allowedStatuses: ['PENDING', 'REJECTED'] }
+          { reportId, reportNumber: report.report_number, currentStatus: report.status, allowedStatuses: ['DRAFT', 'REJECTED'] }
         );
       }
 
@@ -110,29 +112,31 @@ export async function deleteExpenseReport(
         mcpServer: 'finance',
         userId: userContext.userId,
         timestamp: Date.now(),
-        expenseId: expense.id,
-        employeeId: expense.employee_id,
-        category: expense.category,
-        description: expense.description,
-        amount: expense.amount,
-        status: expense.status,
+        reportId: report.id,
+        reportNumber: report.report_number,
+        employeeId: report.employee_id,
+        departmentCode: report.department_code,
+        title: report.title,
+        totalAmount: report.total_amount,
+        itemCount: report.item_count,
+        status: report.status,
         reason: reason || 'No reason provided',
       };
 
       await storePendingConfirmation(confirmationId, confirmationData, 300);
 
       // 5. Return pending_confirmation response
-      const message = `🗑️ **Delete Expense?**
+      const message = `🗑️ **Delete Expense Report?**
 
-**Expense ID:** ${expenseId}
-**Category:** ${expense.category}
-**Description:** ${expense.description}
-**Amount:** $${Number(expense.amount).toLocaleString()}
-**Date:** ${expense.expense_date}
-**Current Status:** ${expense.status}
+**Report Number:** ${report.report_number}
+**Title:** ${report.title}
+**Department:** ${report.department_code}
+**Total Amount:** $${Number(report.total_amount).toLocaleString()}
+**Items:** ${report.item_count} expense(s)
+**Current Status:** ${report.status}
 ${reason ? `**Reason:** ${reason}` : ''}
 
-⚠️ This action will permanently delete this expense and cannot be undone.`;
+⚠️ This action will permanently delete this expense report and all its line items. This cannot be undone.`;
 
       return createPendingConfirmationResponse(
         confirmationId,
@@ -153,31 +157,39 @@ export async function executeDeleteExpenseReport(
   userContext: UserContext
 ): Promise<MCPToolResponse> {
   return withErrorHandling('execute_delete_expense_report', async () => {
-    const expenseId = confirmationData.expenseId as string;
+    const reportId = confirmationData.reportId as string;
 
     try {
-      // Delete the expense (only if PENDING or REJECTED)
+      // Delete the expense items first (cascade)
+      await queryWithRLS(
+        userContext,
+        `DELETE FROM finance.expense_items WHERE expense_report_id = $1`,
+        [reportId]
+      );
+
+      // Delete the expense report (only if DRAFT or REJECTED)
       const result = await queryWithRLS(
         userContext,
         `
-        DELETE FROM finance.expenses
+        DELETE FROM finance.expense_reports
         WHERE id = $1
-          AND status IN ('PENDING', 'REJECTED')
-        RETURNING id, category, description, amount
+          AND status IN ('DRAFT', 'REJECTED')
+        RETURNING id, report_number, title, total_amount
         `,
-        [expenseId]
+        [reportId]
       );
 
       if (result.rowCount === 0) {
-        return handleExpenseReportNotFound(expenseId);
+        return handleExpenseReportNotFound(reportId);
       }
 
       const deleted = result.rows[0];
 
       return createSuccessResponse({
         success: true,
-        message: `Expense for ${deleted.description} ($${Number(deleted.amount).toLocaleString()}) has been deleted`,
-        expenseId: deleted.id,
+        message: `Expense report ${deleted.report_number} "${deleted.title}" ($${Number(deleted.total_amount).toLocaleString()}) has been deleted`,
+        reportId: deleted.id,
+        reportNumber: deleted.report_number,
       });
     } catch (error) {
       return handleDatabaseError(error as Error, 'execute_delete_expense_report');

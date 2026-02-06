@@ -171,7 +171,7 @@ describe('approveBudget', () => {
 
       expect(isErrorResponse(result)).toBe(true);
       if (isErrorResponse(result)) {
-        expect(result.code).toBe('INVALID_BUDGET_STATUS');
+        expect(result.code).toBe('INVALID_STATUS');
         expect(result.suggestedAction).toContain('submitted for approval');
       }
     });
@@ -192,7 +192,7 @@ describe('approveBudget', () => {
 
       expect(isErrorResponse(result)).toBe(true);
       if (isErrorResponse(result)) {
-        expect(result.code).toBe('INVALID_BUDGET_STATUS');
+        expect(result.code).toBe('INVALID_STATUS');
         expect(result.suggestedAction).toContain('already been approved');
       }
     });
@@ -250,7 +250,7 @@ describe('approveBudget', () => {
         expect.objectContaining({
           action: 'approve_budget',
           mcpServer: 'finance',
-          budgetId: 'budget-001',
+          budgetId: 'BUD-2025-ENG', // Uses budget_id from DB, not input
         }),
         300
       );
@@ -324,24 +324,27 @@ describe('executeApproveBudget', () => {
       fiscal_year: 2025,
       budgeted_amount: 500000,
     };
-    mockQueryWithRLS.mockResolvedValue(createMockDbResult([approvedBudget]));
+    // First call for UPDATE, second call for INSERT (audit trail)
+    mockQueryWithRLS
+      .mockResolvedValueOnce(createMockDbResult([approvedBudget]))
+      .mockResolvedValueOnce(createMockDbResult([]));
 
-    const confirmationData = { budgetId: 'budget-001', action: 'approve_budget', approverNotes: null };
+    const confirmationData = { budgetUUID: 'budget-001', action: 'approve_budget', approverNotes: null };
     const result = await executeApproveBudget(confirmationData, writeUserContext);
 
     expect(isSuccessResponse(result)).toBe(true);
     if (isSuccessResponse(result)) {
-      const data = result.data as { success: boolean; message: string; newStatus: string };
+      const data = result.data as { success: boolean; message: string; status: string };
       expect(data.success).toBe(true);
       expect(data.message).toContain('Engineering');
-      expect(data.newStatus).toBe('APPROVED');
+      expect(data.status).toBe('APPROVED');
     }
   });
 
   it('should return error when budget no longer exists or status changed', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
 
-    const confirmationData = { budgetId: 'already-approved', action: 'approve_budget' };
+    const confirmationData = { budgetUUID: 'already-approved', action: 'approve_budget' };
     const result = await executeApproveBudget(confirmationData, writeUserContext);
 
     expect(isErrorResponse(result)).toBe(true);
@@ -353,7 +356,7 @@ describe('executeApproveBudget', () => {
   it('should handle database errors', async () => {
     mockQueryWithRLS.mockRejectedValue(new Error('Database unavailable'));
 
-    const confirmationData = { budgetId: 'budget-001', action: 'approve_budget' };
+    const confirmationData = { budgetUUID: 'budget-001', action: 'approve_budget' };
     const result = await executeApproveBudget(confirmationData, writeUserContext);
 
     expect(isErrorResponse(result)).toBe(true);

@@ -300,10 +300,13 @@ describe('executeRejectBudget', () => {
       fiscal_year: 2025,
       budgeted_amount: 500000,
     };
-    mockQueryWithRLS.mockResolvedValue(createMockDbResult([rejectedBudget]));
+    // First call for UPDATE, second call for INSERT (audit trail)
+    mockQueryWithRLS
+      .mockResolvedValueOnce(createMockDbResult([rejectedBudget]))
+      .mockResolvedValueOnce(createMockDbResult([]));
 
     const confirmationData = {
-      budgetId: 'budget-001',
+      budgetUUID: 'budget-001',
       action: 'reject_budget',
       rejectionReason: 'Budget exceeds allocated limits',
     };
@@ -311,10 +314,10 @@ describe('executeRejectBudget', () => {
 
     expect(isSuccessResponse(result)).toBe(true);
     if (isSuccessResponse(result)) {
-      const data = result.data as { success: boolean; message: string; newStatus: string; rejectionReason: string };
+      const data = result.data as { success: boolean; message: string; status: string; rejectionReason: string };
       expect(data.success).toBe(true);
       expect(data.message).toContain('rejected');
-      expect(data.newStatus).toBe('REJECTED');
+      expect(data.status).toBe('REJECTED');
       expect(data.rejectionReason).toBe('Budget exceeds allocated limits');
     }
   });
@@ -323,7 +326,7 @@ describe('executeRejectBudget', () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
 
     const confirmationData = {
-      budgetId: 'already-rejected',
+      budgetUUID: 'already-rejected',
       action: 'reject_budget',
       rejectionReason: 'N/A',
     };
@@ -339,7 +342,7 @@ describe('executeRejectBudget', () => {
     mockQueryWithRLS.mockRejectedValue(new Error('Database unavailable'));
 
     const confirmationData = {
-      budgetId: 'budget-001',
+      budgetUUID: 'budget-001',
       action: 'reject_budget',
       rejectionReason: 'Budget exceeds limits',
     };

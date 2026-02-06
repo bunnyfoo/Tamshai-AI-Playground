@@ -22,7 +22,7 @@ describe('rejectExpenseReport', () => {
 
   it('should reject users without finance-write role', async () => {
     const result = await rejectExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
       readUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
@@ -31,50 +31,57 @@ describe('rejectExpenseReport', () => {
 
   it('should require rejection reason of at least 10 characters', async () => {
     const result = await rejectExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'short' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'short' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.code).toBe('INVALID_INPUT');
   });
 
-  it('should return error when expense not found', async () => {
+  it('should return error when expense report not found', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([]));
     const result = await rejectExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
     if (isErrorResponse(result)) expect(result.code).toBe('EXPENSE_REPORT_NOT_FOUND');
   });
 
-  it('should reject rejection of non-PENDING expenses', async () => {
+  it('should reject rejection of non-SUBMITTED/UNDER_REVIEW reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
       status: 'APPROVED',
-      category: 'TRAVEL',
-      description: 'Flight',
-      amount: 500,
+      submission_date: '2024-01-15',
+      item_count: 3,
     }]));
     const result = await rejectExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
       writeUserContext
     );
     expect(isErrorResponse(result)).toBe(true);
-    if (isErrorResponse(result)) expect(result.code).toBe('INVALID_EXPENSE_STATUS');
+    if (isErrorResponse(result)) expect(result.code).toBe('INVALID_EXPENSE_REPORT_STATUS');
   });
 
-  it('should return pending_confirmation for PENDING expenses', async () => {
+  it('should return pending_confirmation for SUBMITTED reports', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
-      status: 'PENDING',
-      category: 'TRAVEL',
-      description: 'Flight to NYC',
-      amount: 500,
-      expense_date: '2025-01-15',
+      report_number: 'EXP-2024-001',
+      employee_id: 'emp-123',
+      department_code: 'ENG',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
+      status: 'SUBMITTED',
+      submission_date: '2024-01-15',
+      item_count: 3,
     }]));
     const result = await rejectExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
       writeUserContext
     );
     expect(isPendingConfirmationResponse(result)).toBe(true);
@@ -90,15 +97,15 @@ describe('executeRejectExpenseReport', () => {
 
   beforeEach(() => { jest.clearAllMocks(); });
 
-  it('should reject expense and return success', async () => {
+  it('should reject expense report and return success', async () => {
     mockQueryWithRLS.mockResolvedValue(createMockDbResult([{
       id: '550e8400-e29b-41d4-a716-446655440000',
-      category: 'TRAVEL',
-      description: 'Flight to NYC',
-      amount: 500,
+      report_number: 'EXP-2024-001',
+      title: 'Q1 Travel Expenses',
+      total_amount: 500,
     }]));
     const result = await executeRejectExpenseReport(
-      { expenseId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt' },
+      { reportId: '550e8400-e29b-41d4-a716-446655440000', rejectionReason: 'Missing receipt documentation' },
       writeUserContext
     );
     expect(isSuccessResponse(result)).toBe(true);
@@ -106,7 +113,7 @@ describe('executeRejectExpenseReport', () => {
       const data = result.data as { success: boolean; newStatus: string; rejectionReason: string };
       expect(data.success).toBe(true);
       expect(data.newStatus).toBe('REJECTED');
-      expect(data.rejectionReason).toBe('Missing receipt');
+      expect(data.rejectionReason).toBe('Missing receipt documentation');
     }
   });
 });
