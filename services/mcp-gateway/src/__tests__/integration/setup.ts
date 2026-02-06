@@ -28,9 +28,10 @@ const KEYCLOAK_CONFIG = {
 // Database connection settings from environment or defaults
 // IMPORTANT: Use tamshai_app user (not tamshai) to enforce RLS policies
 // The tamshai user has BYPASSRLS for sync operations, but tests need RLS enforced
+// NOTE: Default port is 5443 to match infrastructure/docker/docker-compose.yml
 const DB_CONFIG_HR = {
   host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5433'),
+  port: parseInt(process.env.POSTGRES_PORT || '5443'),
   database: process.env.POSTGRES_DB || 'tamshai_hr',
   user: process.env.POSTGRES_USER || 'tamshai_app',
   password: process.env.POSTGRES_PASSWORD || 'changeme',
@@ -38,7 +39,7 @@ const DB_CONFIG_HR = {
 
 const DB_CONFIG_FINANCE = {
   host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5433'),
+  port: parseInt(process.env.POSTGRES_PORT || '5443'),
   database: 'tamshai_finance',
   user: process.env.POSTGRES_USER || 'tamshai_app',
   password: process.env.POSTGRES_PASSWORD || 'changeme',
@@ -102,6 +103,15 @@ const USER_EMAIL_MAP: Record<string, string> = {
 };
 
 /**
+ * Escape a string value for use in SET commands
+ * PostgreSQL SET doesn't support parameterized queries, so we escape manually
+ */
+function escapeSetValue(value: string): string {
+  // Escape single quotes by doubling them
+  return value.replace(/'/g, "''");
+}
+
+/**
  * Create a database client with specific user context
  * Simulates RLS by setting session variables
  * @param database - 'hr' or 'finance' to select database (defaults to 'hr')
@@ -121,13 +131,15 @@ export async function createUserClient(
   const userEmail = email || USER_EMAIL_MAP[userId] || '';
 
   // Set session variables that RLS policies will check
-  await client.query(`SET app.current_user_id = $1`, [userId]);
-  await client.query(`SET app.current_user_roles = $1`, [roles.join(',')]);
+  // NOTE: SET commands don't support parameterized queries in PostgreSQL,
+  // so we escape values manually. Values are internal test data (UUIDs, role names).
+  await client.query(`SET app.current_user_id = '${escapeSetValue(userId)}'`);
+  await client.query(`SET app.current_user_roles = '${escapeSetValue(roles.join(','))}'`);
   if (department) {
-    await client.query(`SET app.current_user_department = $1`, [department]);
+    await client.query(`SET app.current_user_department = '${escapeSetValue(department)}'`);
   }
   if (userEmail) {
-    await client.query(`SET app.current_user_email = $1`, [userEmail]);
+    await client.query(`SET app.current_user_email = '${escapeSetValue(userEmail)}'`);
   }
 
   return client;
