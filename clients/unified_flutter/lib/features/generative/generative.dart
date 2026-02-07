@@ -28,3 +28,5 @@ export 'models/employee.dart';
 export 'widgets/component_renderer.dart';
 export 'widgets/org_chart_component.dart';
 export 'widgets/approvals_queue.dart';
+export 'widgets/customer_detail_card.dart';
+export 'widgets/budget_summary_card.dart';
