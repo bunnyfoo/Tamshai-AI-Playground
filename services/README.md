@@ -275,16 +275,39 @@ The Gateway validates JWT tokens, routes queries to domain servers based on user
 
 ## Common Patterns
 
-### Authentication Headers
+### Authentication Flow
 
-All MCP servers receive these headers from the Gateway:
+The user's JWT token is **validated at the Gateway**, not forwarded to MCP servers. The Gateway:
+
+1. Validates the JWT signature against Keycloak JWKS
+2. Checks token expiration and audience claims
+3. Extracts user context (userId, username, email, roles)
+4. Passes extracted claims to MCP servers
+
+### Headers Passed to MCP Servers
+
+**POST requests** receive these headers:
 
 | Header | Description |
 |--------|-------------|
-| `x-user-id` | User UUID |
-| `x-user-username` | Username |
-| `x-user-email` | Email address |
-| `x-user-roles` | Comma-separated roles |
+| `X-User-ID` | User UUID |
+| `X-User-Roles` | Comma-separated roles |
+| `X-Request-ID` | Request correlation ID |
+| `Authorization` | GCP identity token (production only, service-to-service) |
+
+**GET requests** receive `userContext` in the request body:
+```json
+{
+  "userContext": {
+    "userId": "uuid",
+    "username": "alice.chen",
+    "email": "alice.chen@tamshai.com",
+    "roles": ["hr-read", "hr-write"]
+  }
+}
+```
+
+**Note**: The `Authorization` header in production contains a GCP Cloud Run identity token for service-to-service authentication, not the user's original JWT.
 
 ### Response Types
 
