@@ -50,3 +50,10 @@ export type {
 
 export { ConfirmDialog } from './components/ConfirmDialog';
 export type { ConfirmDialogProps } from './components/ConfirmDialog';
+
+// Generative UI Components (v1.5)
+export * from './components/generative';
+
+// Voice Hooks (v1.5)
+export { useVoiceInput } from './hooks/useVoiceInput';
+export { useVoiceOutput } from './hooks/useVoiceOutput';
