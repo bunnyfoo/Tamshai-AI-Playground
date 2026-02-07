@@ -24,9 +24,13 @@ library generative;
 export 'models/component_response.dart';
 export 'models/employee.dart';
 
+// Services
+export 'services/display_service.dart';
+
 // Widgets
 export 'widgets/component_renderer.dart';
 export 'widgets/org_chart_component.dart';
 export 'widgets/approvals_queue.dart';
 export 'widgets/customer_detail_card.dart';
 export 'widgets/budget_summary_card.dart';
+export 'widgets/leads_data_table.dart';
