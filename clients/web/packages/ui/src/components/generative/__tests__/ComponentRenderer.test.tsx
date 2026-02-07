@@ -1,5 +1,5 @@
 /**
- * ComponentRenderer TDD RED Phase Tests
+ * ComponentRenderer TDD GREEN Phase Tests
  *
  * These tests define the expected behavior of the ComponentRenderer component.
  * The ComponentRenderer is a dynamic component switcher that:
@@ -8,11 +8,9 @@
  * 3. Falls back to UnknownComponentFallback for unknown types
  * 4. Supports voiceEnabled prop that triggers speech synthesis
  * 5. Passes onAction callback to child components
- *
- * Tests are written first (RED phase) - implementation comes later.
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { ComponentAction } from '../types';
 
 // Define mock components before jest.mock calls
@@ -68,6 +66,42 @@ const MockUnknownComponentFallback = jest.fn(({ componentType }: { componentType
   </div>
 ));
 
+// Mock the child components
+jest.mock('../OrgChartComponent', () => ({
+  OrgChartComponent: (props: Record<string, unknown>) => MockOrgChartComponent(props),
+}));
+
+jest.mock('../ApprovalsQueue', () => ({
+  ApprovalsQueue: (props: Record<string, unknown>) => MockApprovalsQueue(props),
+}));
+
+jest.mock('../CustomerDetailCard', () => ({
+  CustomerDetailCard: (props: Record<string, unknown>) => MockCustomerDetailCard(props),
+}));
+
+jest.mock('../LeadsDataTable', () => ({
+  LeadsDataTable: (props: Record<string, unknown>) => MockLeadsDataTable(props),
+}));
+
+jest.mock('../ForecastChart', () => ({
+  ForecastChart: (props: Record<string, unknown>) => MockForecastChart(props),
+}));
+
+jest.mock('../BudgetSummaryCard', () => ({
+  BudgetSummaryCard: (props: Record<string, unknown>) => MockBudgetSummaryCard(props),
+}));
+
+jest.mock('../QuarterlyReportDashboard', () => ({
+  QuarterlyReportDashboard: (props: Record<string, unknown>) => MockQuarterlyReportDashboard(props),
+}));
+
+jest.mock('../UnknownComponentFallback', () => ({
+  UnknownComponentFallback: (props: { componentType: string }) => MockUnknownComponentFallback(props),
+}));
+
+// Import the actual ComponentRenderer after mocks are set up
+import { ComponentRenderer } from '../ComponentRenderer';
+
 // Mock speech synthesis for voice tests
 const mockSpeak = jest.fn();
 const mockCancel = jest.fn();
@@ -96,32 +130,6 @@ interface ComponentResponse {
   actions?: ComponentAction[];
   narration?: { text: string; ssml?: string };
 }
-
-interface ComponentRendererProps {
-  component: ComponentResponse;
-  onAction: (action: ComponentAction) => void;
-  voiceEnabled: boolean;
-}
-
-// Placeholder ComponentRenderer - will fail until implementation exists
-// This simulates the import that will be added when ComponentRenderer.tsx is created
-const ComponentRenderer = ({ component, onAction, voiceEnabled }: ComponentRendererProps): JSX.Element => {
-  // This placeholder will be replaced by the actual import:
-  // import { ComponentRenderer } from '../ComponentRenderer';
-
-  // The implementation should:
-  // 1. Map component.type to the correct child component
-  // 2. Pass component.props to the child
-  // 3. Pass onAction to the child
-  // 4. Trigger speech synthesis when voiceEnabled && component.narration exists
-  // 5. Render UnknownComponentFallback for unknown types
-
-  // For now, throw to indicate RED phase
-  throw new Error(
-    'ComponentRenderer not implemented. ' +
-    'Create clients/web/packages/ui/src/components/generative/ComponentRenderer.tsx'
-  );
-};
 
 // Test data
 const orgChartComponent: ComponentResponse = {
