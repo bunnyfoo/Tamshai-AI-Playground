@@ -98,7 +98,7 @@ services:
       # Pass through secrets for Vault initialization
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
-      KEYCLOAK_CLIENT_SECRET: ${MCP_GATEWAY_CLIENT_SECRET:-dev-client-secret}
+      MCP_GATEWAY_CLIENT_SECRET: ${MCP_GATEWAY_CLIENT_SECRET:-dev-client-secret}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       MONGODB_PASSWORD: ${MONGODB_PASSWORD:-}
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
@@ -220,7 +220,7 @@ services:
     container_name: tamshai-pg-mcp-gateway
     environment:
       NODE_ENV: development
-      PORT: 3110
+      PORT: ${PORT_MCP_GATEWAY:?PORT_MCP_GATEWAY is required}
       # v1.4: JWT validation
       # KEYCLOAK_URL: Used for container-to-container communication (includes /auth prefix)
       KEYCLOAK_URL: http://keycloak:8080/auth
@@ -236,20 +236,21 @@ services:
       # v1.4: Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # MCP server URLs
-      MCP_HR_URL: http://mcp-hr:3111
-      MCP_FINANCE_URL: http://mcp-finance:3112
-      MCP_SALES_URL: http://mcp-sales:3113
-      MCP_SUPPORT_URL: http://mcp-support:3114
-      MCP_PAYROLL_URL: http://mcp-payroll:3116
-      MCP_TAX_URL: http://mcp-tax:3117
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      # MCP server URLs (using GitHub variables for ports)
+      MCP_HR_URL: http://mcp-hr:${PORT_MCP_HR}
+      MCP_FINANCE_URL: http://mcp-finance:${PORT_MCP_FINANCE}
+      MCP_SALES_URL: http://mcp-sales:${PORT_MCP_SALES}
+      MCP_SUPPORT_URL: http://mcp-support:${PORT_MCP_SUPPORT}
+      MCP_PAYROLL_URL: http://mcp-payroll:${PORT_MCP_PAYROLL}
+      MCP_TAX_URL: http://mcp-tax:${PORT_MCP_TAX}
       LOG_LEVEL: info
       # v1.4: Admin API key for E2E snapshot/restore
       ADMIN_API_KEY: ${E2E_ADMIN_API_KEY:?E2E_ADMIN_API_KEY is required}
       # v1.5: Internal HMAC secret for MCP server authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_GATEWAY:?PORT_MCP_GATEWAY is required}:3110"
+      - "${PORT_MCP_GATEWAY}:${PORT_MCP_GATEWAY}"
     depends_on:
       redis:
         condition: service_healthy
@@ -263,14 +264,14 @@ services:
   # =============================================================================
   mcp-ui:
     build:
-      context: ../../services/mcp-ui
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-ui/Dockerfile
     image: mcp-ui:latest
     container_name: tamshai-pg-mcp-ui
     environment:
       NODE_ENV: development
-      PORT: 3118
-      MCP_GATEWAY_URL: http://mcp-gateway:3110
+      PORT: ${PORT_MCP_UI:?PORT_MCP_UI is required}
+      MCP_GATEWAY_URL: http://mcp-gateway:${PORT_MCP_GATEWAY}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Keycloak service account for calling MCP Gateway
       KEYCLOAK_URL: http://keycloak:8080/auth
@@ -280,14 +281,14 @@ services:
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_UI:?PORT_MCP_UI is required}:3118"
+      - "${PORT_MCP_UI}:${PORT_MCP_UI}"
     depends_on:
       mcp-gateway:
         condition: service_started
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3118/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_UI}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -296,12 +297,12 @@ services:
 
   mcp-hr:
     build:
-      context: ../../services/mcp-hr
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-hr/Dockerfile
     container_name: tamshai-pg-mcp-hr
     environment:
       NODE_ENV: development
-      PORT: 3111
+      PORT: ${PORT_MCP_HR:?PORT_MCP_HR is required}
       # v1.4: PostgreSQL connection
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -311,6 +312,7 @@ services:
       # v1.4: Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
@@ -326,14 +328,14 @@ services:
       STAGE_USER_PASSWORD: ${STAGE_USER_PASSWORD:-}
       PROD_USER_PASSWORD: ${PROD_USER_PASSWORD:-}
     ports:
-      - "${PORT_MCP_HR:?PORT_MCP_HR is required}:3111"
+      - "${PORT_MCP_HR}:${PORT_MCP_HR}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3111/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_HR}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -342,12 +344,12 @@ services:
 
   mcp-finance:
     build:
-      context: ../../services/mcp-finance
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-finance/Dockerfile
     container_name: tamshai-pg-mcp-finance
     environment:
       NODE_ENV: development
-      PORT: 3112
+      PORT: ${PORT_MCP_FINANCE:?PORT_MCP_FINANCE is required}
       # v1.4: PostgreSQL connection
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -357,18 +359,19 @@ services:
       # v1.4: Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_FINANCE:?PORT_MCP_FINANCE is required}:3112"
+      - "${PORT_MCP_FINANCE}:${PORT_MCP_FINANCE}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3112/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_FINANCE}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -377,30 +380,31 @@ services:
 
   mcp-sales:
     build:
-      context: ../../services/mcp-sales
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-sales/Dockerfile
     container_name: tamshai-pg-mcp-sales
     environment:
       NODE_ENV: development
-      PORT: 3113
+      PORT: ${PORT_MCP_SALES:?PORT_MCP_SALES is required}
       # v1.4: MongoDB connection
       MONGODB_URI: mongodb://tamshai:${MONGODB_PASSWORD:?MONGODB_PASSWORD is required}@mongodb:27017
       MONGODB_DB: tamshai_sales
       # v1.4: Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_SALES:?PORT_MCP_SALES is required}:3113"
+      - "${PORT_MCP_SALES}:${PORT_MCP_SALES}"
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3113/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_SALES}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -409,12 +413,12 @@ services:
 
   mcp-support:
     build:
-      context: ../../services/mcp-support
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-support/Dockerfile
     container_name: tamshai-pg-mcp-support
     environment:
       NODE_ENV: development
-      PORT: 3114
+      PORT: ${PORT_MCP_SUPPORT:?PORT_MCP_SUPPORT is required}
       # Backend selection: elasticsearch (dev/stage) or mongodb (prod)
       SUPPORT_DATA_BACKEND: elasticsearch
       # v1.4: Elasticsearch connection
@@ -425,11 +429,12 @@ services:
       # v1.4: Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_SUPPORT:?PORT_MCP_SUPPORT is required}:3114"
+      - "${PORT_MCP_SUPPORT}:${PORT_MCP_SUPPORT}"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -438,7 +443,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3114/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_SUPPORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -453,20 +458,21 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      PORT: 3115
+      PORT: ${PORT_MCP_JOURNEY:?PORT_MCP_JOURNEY is required}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_JOURNEY:?PORT_MCP_JOURNEY is required}:3115"
+      - "${PORT_MCP_JOURNEY}:${PORT_MCP_JOURNEY}"
     depends_on:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3115/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_JOURNEY}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -475,12 +481,12 @@ services:
 
   mcp-payroll:
     build:
-      context: ../../services/mcp-payroll
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-payroll/Dockerfile
     container_name: tamshai-pg-mcp-payroll
     environment:
       NODE_ENV: development
-      PORT: 3116
+      PORT: ${PORT_MCP_PAYROLL:?PORT_MCP_PAYROLL is required}
       # PostgreSQL connection
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -490,18 +496,19 @@ services:
       # Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_PAYROLL:?PORT_MCP_PAYROLL is required}:3116"
+      - "${PORT_MCP_PAYROLL}:${PORT_MCP_PAYROLL}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3116/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_PAYROLL}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -510,12 +517,12 @@ services:
 
   mcp-tax:
     build:
-      context: ../../services/mcp-tax
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-tax/Dockerfile
     container_name: tamshai-pg-mcp-tax
     environment:
       NODE_ENV: development
-      PORT: 3117
+      PORT: ${PORT_MCP_TAX:?PORT_MCP_TAX is required}
       # PostgreSQL connection
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -525,18 +532,19 @@ services:
       # Redis for confirmations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
       MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_TAX:?PORT_MCP_TAX is required}:3117"
+      - "${PORT_MCP_TAX}:${PORT_MCP_TAX}"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3117/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${PORT_MCP_TAX}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -925,6 +933,8 @@ services:
       KEYCLOAK_URL: http://keycloak:8080/auth
       # Environment identifier for password variable selection
       ENV: ${ENVIRONMENT:-dev}
+      # mcp-gateway client secret (required for sync-realm.sh to configure client)
+      MCP_GATEWAY_CLIENT_SECRET: ${MCP_GATEWAY_CLIENT_SECRET:?MCP_GATEWAY_CLIENT_SECRET is required}
       # mcp-hr-service client secret (required for identity-sync authentication)
       MCP_HR_SERVICE_CLIENT_SECRET: ${MCP_HR_SERVICE_CLIENT_SECRET:?MCP_HR_SERVICE_CLIENT_SECRET is required}
       # Test user passwords from GitHub secrets (environment-specific)
@@ -976,8 +986,8 @@ services:
   # Depends on keycloak-sync to ensure clients (mcp-hr-service) exist first.
   identity-sync:
     build:
-      context: ../../services/mcp-hr
-      dockerfile: Dockerfile.sync
+      context: ../..
+      dockerfile: services/mcp-hr/Dockerfile.sync
     container_name: tamshai-pg-identity-sync
     environment:
       # PostgreSQL connection (uses internal Docker network)

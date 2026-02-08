@@ -17,6 +17,10 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import { generateInternalToken, INTERNAL_TOKEN_HEADER } from '@tamshai/shared';
+
+// Get internal secret from environment (required for gateway auth)
+const MCP_INTERNAL_SECRET = process.env.MCP_INTERNAL_SECRET || '';
 
 // CI Environment Check
 // Skip all tests in CI - requires full Docker network setup
@@ -102,17 +106,30 @@ function createMcpUiClient(): AxiosInstance {
 }
 
 /**
- * Helper to make display requests
+ * Helper to make display requests with gateway authentication
  */
 async function postDisplay(
   client: AxiosInstance,
   directive: string,
   userContext: DisplayRequest['userContext']
 ): Promise<{ status: number; data: DisplayResponse }> {
-  const response = await client.post<DisplayResponse>('/api/display', {
-    directive,
-    userContext,
-  });
+  // Generate internal token for gateway authentication
+  const internalToken = MCP_INTERNAL_SECRET
+    ? generateInternalToken(MCP_INTERNAL_SECRET, userContext.userId, userContext.roles)
+    : '';
+
+  const response = await client.post<DisplayResponse>(
+    '/api/display',
+    {
+      directive,
+      userContext,
+    },
+    {
+      headers: {
+        [INTERNAL_TOKEN_HEADER]: internalToken,
+      },
+    }
+  );
   return { status: response.status, data: response.data };
 }
 
@@ -333,8 +350,15 @@ describeIntegration('MCP UI - Error Handling', () => {
   });
 
   test('Missing directive field returns proper error', async () => {
+    // Need to include auth header even for validation errors
+    const internalToken = MCP_INTERNAL_SECRET
+      ? generateInternalToken(MCP_INTERNAL_SECRET, TEST_USERS.executive.userId, TEST_USERS.executive.roles)
+      : '';
+
     const response = await client.post('/api/display', {
       userContext: TEST_USERS.executive,
+    }, {
+      headers: { [INTERNAL_TOKEN_HEADER]: internalToken },
     });
 
     expect(response.status).toBe(400);
@@ -344,8 +368,15 @@ describeIntegration('MCP UI - Error Handling', () => {
   });
 
   test('Missing userContext field returns proper error', async () => {
+    // Need to include auth header even for validation errors
+    const internalToken = MCP_INTERNAL_SECRET
+      ? generateInternalToken(MCP_INTERNAL_SECRET, TEST_USERS.executive.userId, TEST_USERS.executive.roles)
+      : '';
+
     const response = await client.post('/api/display', {
       directive: 'display:hr:org_chart:userId=me',
+    }, {
+      headers: { [INTERNAL_TOKEN_HEADER]: internalToken },
     });
 
     expect(response.status).toBe(400);
@@ -355,7 +386,14 @@ describeIntegration('MCP UI - Error Handling', () => {
   });
 
   test('Non-existent route returns 404', async () => {
-    const response = await client.get('/api/nonexistent');
+    // Need to include auth header even for 404 errors
+    const internalToken = MCP_INTERNAL_SECRET
+      ? generateInternalToken(MCP_INTERNAL_SECRET, TEST_USERS.executive.userId, TEST_USERS.executive.roles)
+      : '';
+
+    const response = await client.get('/api/nonexistent', {
+      headers: { [INTERNAL_TOKEN_HEADER]: internalToken },
+    });
 
     expect(response.status).toBe(404);
     expect(response.data.status).toBe('error');
@@ -527,13 +565,19 @@ describeIntegration('MCP UI - Narration Generation', () => {
 
 describeIntegration('MCP UI - Component List Endpoint', () => {
   let client: AxiosInstance;
+  let authHeaders: Record<string, string>;
 
   beforeAll(() => {
     client = createMcpUiClient();
+    // Generate auth token for GET requests
+    const internalToken = MCP_INTERNAL_SECRET
+      ? generateInternalToken(MCP_INTERNAL_SECRET, TEST_USERS.executive.userId, TEST_USERS.executive.roles)
+      : '';
+    authHeaders = { [INTERNAL_TOKEN_HEADER]: internalToken };
   });
 
   test('GET /api/display/components returns list of available components', async () => {
-    const response = await client.get('/api/display/components');
+    const response = await client.get('/api/display/components', { headers: authHeaders });
 
     expect(response.status).toBe(200);
     expect(response.data.components).toBeDefined();
@@ -548,7 +592,7 @@ describeIntegration('MCP UI - Component List Endpoint', () => {
   });
 
   test('Component list includes OrgChartComponent', async () => {
-    const response = await client.get('/api/display/components');
+    const response = await client.get('/api/display/components', { headers: authHeaders });
 
     const orgChart = response.data.components.find(
       (c: { type: string }) => c.type === 'OrgChartComponent'
@@ -558,7 +602,7 @@ describeIntegration('MCP UI - Component List Endpoint', () => {
   });
 
   test('Component list includes ApprovalsQueue', async () => {
-    const response = await client.get('/api/display/components');
+    const response = await client.get('/api/display/components', { headers: authHeaders });
 
     const approvals = response.data.components.find(
       (c: { type: string }) => c.type === 'ApprovalsQueue'

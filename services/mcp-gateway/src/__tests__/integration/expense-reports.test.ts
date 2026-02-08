@@ -33,11 +33,15 @@
 
 import { Client } from 'pg';
 import axios, { AxiosInstance } from 'axios';
+import { generateInternalToken, INTERNAL_TOKEN_HEADER } from '@tamshai/shared';
 import {
   createFinanceUserClient,
   getAdminPoolFinanceReset,
   TEST_USERS,
 } from './setup';
+
+// Get internal secret for gateway authentication
+const MCP_INTERNAL_SECRET = process.env.MCP_INTERNAL_SECRET || '';
 
 // MCP Tool Response type (matching v1.4 spec)
 interface MCPToolResponse<T = unknown> {
@@ -286,11 +290,23 @@ describe('Expense Reports Integration Tests - v1.5', () => {
     // Reset test fixtures to known initial states
     await resetExpenseReportFixtures();
 
-    // Create axios client for MCP Finance server
+    // Generate internal token for gateway authentication using finance-write user
+    const internalToken = MCP_INTERNAL_SECRET
+      ? generateInternalToken(
+          MCP_INTERNAL_SECRET,
+          TEST_USERS.financeWrite.userId,
+          TEST_USERS.financeWrite.roles
+        )
+      : '';
+
+    // Create axios client for MCP Finance server with gateway auth
     financeClient = axios.create({
       baseURL: process.env.MCP_FINANCE_URL || 'http://localhost:3112',
       timeout: 10000,
       validateStatus: () => true,
+      headers: {
+        [INTERNAL_TOKEN_HEADER]: internalToken,
+      },
     });
   });
 
