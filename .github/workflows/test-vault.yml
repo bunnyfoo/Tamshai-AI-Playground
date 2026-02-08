@@ -48,24 +48,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create minimal .env file
+      - name: Create .env file with all required variables
         working-directory: infrastructure/docker
         env:
           KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
+          E2E_ADMIN_API_KEY: ${{ secrets.E2E_ADMIN_API_KEY }}
+          MCP_UI_CLIENT_SECRET: ${{ secrets.MCP_UI_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ secrets.MCP_INTERNAL_SECRET }}
+          MCP_HR_SERVICE_CLIENT_SECRET: ${{ secrets.MCP_HR_SERVICE_CLIENT_SECRET }}
+          TAMSHAI_DB_PASSWORD: ${{ secrets.TAMSHAI_DB_PASSWORD }}
+          MONGODB_PASSWORD: ${{ secrets.MONGODB_DEV_PASSWORD }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         run: |
           cat > .env << EOF
           # CI Environment - Vault Integration Test
-          POSTGRES_PASSWORD=postgres_password
-          TAMSHAI_DB_PASSWORD=tamshai_password
-          KEYCLOAK_DB_PASSWORD=keycloak_password
-          MONGODB_ROOT_PASSWORD=tamshai_password
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          TAMSHAI_DB_PASSWORD=${TAMSHAI_DB_PASSWORD}
+          KEYCLOAK_DB_PASSWORD=${{ secrets.KEYCLOAK_DB_PASSWORD }}
+          MONGODB_PASSWORD=${MONGODB_PASSWORD}
           KEYCLOAK_ADMIN=admin
           KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_DEV_ADMIN_PASSWORD}
-          MINIO_ROOT_USER=minioadmin
-          MINIO_ROOT_PASSWORD=minioadmin
+          MINIO_ROOT_USER=minio
+          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
           REDIS_PASSWORD=redis_password
           CLAUDE_API_KEY=${{ env.CLAUDE_API_KEY }}
           VAULT_DEV_ROOT_TOKEN=${{ env.VAULT_TOKEN }}
+          E2E_ADMIN_API_KEY=${E2E_ADMIN_API_KEY}
+          MCP_UI_CLIENT_SECRET=${MCP_UI_CLIENT_SECRET}
+          MCP_INTERNAL_SECRET=${MCP_INTERNAL_SECRET}
+          MCP_HR_SERVICE_CLIENT_SECRET=${MCP_HR_SERVICE_CLIENT_SECRET}
           EOF
 
       - name: Start Vault and vault-init only

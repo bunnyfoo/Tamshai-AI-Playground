@@ -299,6 +299,9 @@ interface KeycloakUser {
  * Get admin token from Keycloak master realm
  */
 async function getKeycloakAdminToken(): Promise<string> {
+  if (!KEYCLOAK_CONFIG.adminPassword) {
+    throw new Error('KEYCLOAK_ADMIN_PASSWORD environment variable is required for integration tests');
+  }
   const response = await axios.post(
     `${KEYCLOAK_CONFIG.url}/auth/realms/master/protocol/openid-connect/token`,
     new URLSearchParams({
