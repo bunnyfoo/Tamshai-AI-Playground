@@ -56,6 +56,8 @@ WORKDIR /app
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
+# Copy shared package (referenced via file: link in node_modules)
+COPY --from=builder --chown=nodejs:nodejs /app/shared ./shared
 
 # Set environment
 ENV NODE_ENV=production

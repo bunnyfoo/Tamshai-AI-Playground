@@ -1,20 +1,34 @@
-# MCP Payroll Server Dockerfile
+# Tamshai Corp MCP Payroll Server
 # Multi-stage build for minimal production image
+#
+# Build context: Repository root (for access to services/shared)
+# Usage: docker build -f services/mcp-payroll/Dockerfile .
 
-# Stage 1: Build
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy shared package first (dependency)
+COPY services/shared ./shared
 
-# Install all dependencies (including dev)
-RUN npm ci
+# Copy mcp-payroll package files
+COPY services/mcp-payroll/package*.json ./
 
-# Copy source files
-COPY tsconfig.json ./
-COPY src ./src
+# Update shared dependency to use local path in container
+RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json
+
+# Build shared package first (required dependency)
+RUN cd shared && npm ci && npm run build
+
+# Install dependencies (regenerates lock file with correct shared path)
+RUN npm install --package-lock-only && npm ci
+
+# Copy source code
+COPY services/mcp-payroll/tsconfig.json ./
+COPY services/mcp-payroll/src ./src
 
 # Build TypeScript
 RUN npm run build
@@ -22,14 +36,17 @@ RUN npm run build
 # Prune dev dependencies
 RUN npm prune --production
 
-# Stage 2: Production
+# =============================================================================
+# PRODUCTION STAGE
+# =============================================================================
 FROM node:20-alpine AS production
 
-# Security updates
+# Security: Apply Alpine security patches
 RUN apk update && apk upgrade --no-cache
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+# Security: Run as non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
 WORKDIR /app
 
@@ -37,20 +54,18 @@ WORKDIR /app
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
+# Copy shared package (referenced via file: link in node_modules)
+COPY --from=builder --chown=nodejs:nodejs /app/shared ./shared
 
-# Set environment
+# Set environment (PORT set by docker-compose from GitHub variables)
 ENV NODE_ENV=production
-ENV PORT=3106
 
 # Switch to non-root user
 USER nodejs
 
-# Expose port
-EXPOSE 3106
-
-# Health check
+# Health check (PORT from environment)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3106/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
 # Start server
 CMD ["node", "dist/index.js"]

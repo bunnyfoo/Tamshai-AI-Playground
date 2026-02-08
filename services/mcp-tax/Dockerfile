@@ -1,48 +1,71 @@
-# MCP Tax Server Dockerfile
+# Tamshai Corp MCP Tax Server
+# Multi-stage build for minimal production image
+#
+# Build context: Repository root (for access to services/shared)
+# Usage: docker build -f services/mcp-tax/Dockerfile .
+
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy shared package first (dependency)
+COPY services/shared ./shared
 
-# Install dependencies
-RUN npm ci
+# Copy mcp-tax package files
+COPY services/mcp-tax/package*.json ./
+
+# Update shared dependency to use local path in container
+RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json
+
+# Build shared package first (required dependency)
+RUN cd shared && npm ci && npm run build
+
+# Install dependencies (regenerates lock file with correct shared path)
+RUN npm install --package-lock-only && npm ci
 
 # Copy source code
-COPY tsconfig.json ./
-COPY src ./src
+COPY services/mcp-tax/tsconfig.json ./
+COPY services/mcp-tax/src ./src
 
 # Build TypeScript
 RUN npm run build
 
-# Production stage
+# Prune dev dependencies
+RUN npm prune --production
+
+# =============================================================================
+# PRODUCTION STAGE
+# =============================================================================
 FROM node:20-alpine AS production
+
+# Security: Apply Alpine security patches
+RUN apk update && apk upgrade --no-cache
+
+# Security: Run as non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
 WORKDIR /app
 
-# Copy package files and install production dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+# Copy built files and production dependencies
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
+# Copy shared package (referenced via file: link in node_modules)
+COPY --from=builder --chown=nodejs:nodejs /app/shared ./shared
 
-# Copy built application
-COPY --from=builder /app/dist ./dist
+# Set environment (PORT set by docker-compose from GitHub variables)
+ENV NODE_ENV=production
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
-
+# Switch to non-root user
 USER nodejs
 
-# Environment variables
-ENV NODE_ENV=production
-ENV PORT=3107
-
-EXPOSE 3107
-
-# Health check
+# Health check (PORT from environment)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3107/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
+# Start server
 CMD ["node", "dist/index.js"]
