@@ -321,6 +321,9 @@ resource "local_file" "docker_env" {
     # Redis
     redis_password = data.external.github_secrets.result.redis_password
 
+    # Vault (dev token - not from secrets, generated locally for dev)
+    vault_dev_root_token = "dev-root-token"
+
     # MCP Gateway
     # Use fetched key from GitHub secrets (CLAUDE_API_KEY), fallback to variable
     # Note: coalesce fails on all-empty, so we provide "not-set" as final fallback
