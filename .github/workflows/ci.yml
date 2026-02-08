@@ -974,6 +974,8 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           KEYCLOAK_URL: http://localhost:8180
+          KEYCLOAK_REALM: tamshai-corp
+          KEYCLOAK_CLIENT_ID: mcp-gateway
           KEYCLOAK_ISSUER: http://localhost:8180/auth/realms/tamshai-corp
           JWKS_URI: http://localhost:8180/auth/realms/tamshai-corp/protocol/openid-connect/certs
           TOKEN_REVOCATION_FAIL_OPEN: 'true'
@@ -1069,6 +1071,8 @@ jobs:
           REDIS_PORT: 6379
           # Use localhost for Keycloak (running in Docker with port mapping)
           KEYCLOAK_URL: http://localhost:8180
+          KEYCLOAK_REALM: tamshai-corp
+          KEYCLOAK_CLIENT_ID: mcp-gateway
           KEYCLOAK_ISSUER: http://localhost:8180/auth/realms/tamshai-corp
           JWKS_URI: http://localhost:8180/auth/realms/tamshai-corp/protocol/openid-connect/certs
           LOG_LEVEL: warn
