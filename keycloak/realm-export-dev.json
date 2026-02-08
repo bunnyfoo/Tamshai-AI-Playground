@@ -447,7 +447,7 @@
         },
         {
           "type": "otp",
-          "secretData": "{\"value\":\"x6aQiJjmcl75ip0BdVHe\"}",
+          "secretData": "{\"value\":\"REPLACED_BY_SYNC_SCRIPT\"}",
           "credentialData": "{\"subType\":\"totp\",\"period\":30,\"digits\":6,\"algorithm\":\"HmacSHA1\"}"
         }
       ]

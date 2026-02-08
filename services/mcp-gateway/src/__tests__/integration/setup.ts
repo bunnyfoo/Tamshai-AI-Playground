@@ -22,7 +22,7 @@ process.env.NODE_ENV = 'test';
 const KEYCLOAK_CONFIG = {
   url: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190',
   realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
+  adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD,  // Required - no fallback
 };
 
 // Database connection settings from environment or defaults
@@ -30,16 +30,14 @@ const KEYCLOAK_CONFIG = {
 // The tamshai user has BYPASSRLS for sync operations, but tests need RLS enforced
 // NOTE: Default port is 5443 to match infrastructure/docker/docker-compose.yml
 //
-// Password precedence for tamshai_app user:
-// 1. TAMSHAI_APP_PASSWORD (explicit app user password)
-// 2. 'changeme' (matches CREATE ROLE in sample-data/*.sql)
+// Password for tamshai_app user - REQUIRED, no fallback
 // Note: POSTGRES_PASSWORD is the postgres superuser password, NOT tamshai_app
 const DB_CONFIG_HR = {
   host: process.env.POSTGRES_HOST || 'localhost',
   port: parseInt(process.env.POSTGRES_PORT || '5443'),
   database: process.env.POSTGRES_DB || 'tamshai_hr',
   user: process.env.POSTGRES_USER || 'tamshai_app',
-  password: process.env.TAMSHAI_APP_PASSWORD || 'changeme',
+  password: process.env.TAMSHAI_APP_PASSWORD,  // Required - no fallback
 };
 
 const DB_CONFIG_FINANCE = {
@@ -47,7 +45,7 @@ const DB_CONFIG_FINANCE = {
   port: parseInt(process.env.POSTGRES_PORT || '5443'),
   database: 'tamshai_finance',
   user: process.env.POSTGRES_USER || 'tamshai_app',
-  password: process.env.TAMSHAI_APP_PASSWORD || 'changeme',
+  password: process.env.TAMSHAI_APP_PASSWORD,  // Required - no fallback
 };
 
 // Admin config with tamshai superuser for fixture resets (bypasses RLS)
