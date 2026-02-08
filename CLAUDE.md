@@ -741,8 +741,8 @@ npm run test:report
 # Test user service account (exists in ALL environments: dev, stage, prod)
 # See docs/testing/TEST_USER_JOURNEY.md for details
 export TEST_USERNAME="test-user.journey"      # Default: test-user.journey
-export TEST_USER_PASSWORD="***REDACTED_PASSWORD***"        # Default: ***REDACTED_PASSWORD***
-export TEST_USER_TOTP_SECRET="***REDACTED_TOTP***"    # Default: ***REDACTED_TOTP***  # pragma: allowlist secret
+export TEST_USER_PASSWORD="<from-secrets>"    # GitHub Secret: TEST_USER_PASSWORD
+export TEST_USER_TOTP_SECRET="<from-secrets>" # GitHub Secret: TEST_USER_TOTP_SECRET
 
 # Optional: Override with custom credentials
 export TEST_USERNAME="<custom-username>"
@@ -755,7 +755,7 @@ export TEST_USER_TOTP_SECRET="<custom-totp-secret>"
 **Customer Portal Test Users**:
 ```bash
 # Customer user password (GitHub Secret: CUSTOMER_USER_PASSWORD)
-export CUSTOMER_USER_PASSWORD="***REDACTED_PASSWORD***"  # Default for local dev
+export CUSTOMER_USER_PASSWORD="<from-secrets>"  # GitHub Secret: CUSTOMER_USER_PASSWORD
 
 # Customer test users (all use the same password):
 # - jane.smith@acme.com (Lead - Acme Corporation)
@@ -768,7 +768,7 @@ export CUSTOMER_USER_PASSWORD="***REDACTED_PASSWORD***"  # Default for local dev
 **TOTP Code Generation**:
 ```bash
 # Generate TOTP code manually for testing (test-user.journey)
-oathtool --totp --base32 "***REDACTED_TOTP***"
+oathtool --totp --base32 "$TEST_USER_TOTP_SECRET"
 # Output: 6-digit code (e.g., 123456) valid for 30 seconds
 ```
 

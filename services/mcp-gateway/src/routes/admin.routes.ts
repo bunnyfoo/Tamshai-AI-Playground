@@ -33,8 +33,8 @@ const logger = winston.createLogger({
 // Snapshot storage directory
 const SNAPSHOT_DIR = process.env.SNAPSHOT_DIR || '/tmp/tamshai-snapshots';
 
-// Admin API key for test automation
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'e2e-test-admin-key';
+// Admin API key for test automation (fail-closed: routes disabled if not set)
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
 // Database configurations
 const DB_CONFIG = {
@@ -66,6 +66,7 @@ const snapshots: Map<string, Snapshot> = new Map();
 
 /**
  * Middleware to check if admin routes are enabled
+ * Fail-closed: Admin routes are disabled if ADMIN_API_KEY is not configured
  */
 function adminRoutesEnabled(req: Request, res: Response, next: () => void) {
   const env = process.env.NODE_ENV || 'development';
@@ -76,6 +77,16 @@ function adminRoutesEnabled(req: Request, res: Response, next: () => void) {
       status: 'error',
       code: 'ADMIN_DISABLED',
       message: 'Admin routes are disabled in production',
+    });
+  }
+
+  // Fail-closed: If ADMIN_API_KEY is not configured, disable admin routes
+  if (!ADMIN_API_KEY) {
+    logger.warn('Admin routes disabled: ADMIN_API_KEY not configured');
+    return res.status(503).json({
+      status: 'error',
+      code: 'ADMIN_NOT_CONFIGURED',
+      message: 'Admin routes are disabled. Set ADMIN_API_KEY environment variable to enable.',
     });
   }
 

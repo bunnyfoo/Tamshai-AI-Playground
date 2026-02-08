@@ -307,8 +307,8 @@ sync_web_portal_client() {
 sync_mcp_gateway_client() {
     log_info "Syncing mcp-gateway client..."
 
-    # Get client secret from environment or use default
-    local client_secret="${MCP_GATEWAY_CLIENT_SECRET:-mcp-gateway-secret}"
+    # Get client secret from environment (fail if not set)
+    local client_secret="${MCP_GATEWAY_CLIENT_SECRET:?MCP_GATEWAY_CLIENT_SECRET must be set}"
 
     local client_json=$(get_mcp_gateway_client_json)
    create_or_update_client "mcp-gateway" "$client_json"
@@ -327,8 +327,8 @@ sync_mcp_gateway_client() {
 sync_mcp_hr_service_client() {
     log_info "Syncing mcp-hr-service client (identity sync)..."
 
-    # Get client secret from environment or use default
-    local client_secret="${MCP_HR_SERVICE_CLIENT_SECRET:-hr-service-secret}"
+    # Get client secret from environment (fail if not set)
+    local client_secret="${MCP_HR_SERVICE_CLIENT_SECRET:?MCP_HR_SERVICE_CLIENT_SECRET must be set}"
 
     local client_json=$(get_mcp_hr_service_client_json)
    create_or_update_client "mcp-hr-service" "$client_json"

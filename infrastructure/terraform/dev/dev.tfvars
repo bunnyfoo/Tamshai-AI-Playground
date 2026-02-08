@@ -111,7 +111,8 @@ redis_password = "" # No password for dev
 # NOTE: No hardcoded values - passwords come from GitHub secrets
 
 # Keycloak defaults
-keycloak_admin_password = "admin"
+# NOTE: Remove default - must be set via TF_VAR_keycloak_admin_password
+# keycloak_admin_password = ""  # REQUIRED: Set via TF_VAR_keycloak_admin_password
 
 # User passwords - from GitHub Secrets via TF_VAR_* environment variables
 # DEV_USER_PASSWORD: Corporate users (eve.thompson, etc.)
@@ -119,8 +120,11 @@ keycloak_admin_password = "admin"
 # NOTE: Do NOT set values here - use TF_VAR_* environment variables
 #       Setting empty values here overrides env vars due to terraform precedence
 
-mcp_gateway_client_secret = "test-client-secret"
+# MCP Gateway client secret
+# NOTE: Remove default - must be set via TF_VAR_mcp_gateway_client_secret
+# mcp_gateway_client_secret = ""  # REQUIRED: Set via TF_VAR_mcp_gateway_client_secret
 
-# Storage defaults (match docker-compose.yml defaults)
-minio_root_user     = "minioadmin"
-minio_root_password = "minioadmin"
+# Storage credentials
+# NOTE: Remove defaults - must be set via TF_VAR_minio_root_user and TF_VAR_minio_root_password
+# minio_root_user     = ""  # REQUIRED: Set via TF_VAR_minio_root_user
+# minio_root_password = ""  # REQUIRED: Set via TF_VAR_minio_root_password

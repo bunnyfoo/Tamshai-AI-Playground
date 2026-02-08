@@ -204,14 +204,18 @@ test_login_with_credentials() {
     # Test that the token endpoint responds (we expect an error since direct grants are disabled)
     local login_url="$KEYCLOAK_URL/realms/tamshai-corp/protocol/openid-connect/token"
 
+    # Use environment variables for test credentials (dummy values that will fail - we only test endpoint responds)
+    local test_username="${TEST_USERNAME:-dummy-user}"
+    local test_password="${TEST_USER_PASSWORD:-dummy-password}"
+
     local response
     # Note: Don't use -f flag since we expect HTTP 400/401 errors
     response=$(curl $INSECURE -s --max-time 10 -X POST -o /dev/null -w "%{http_code}" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "client_id=tamshai-website" \
         -d "grant_type=password" \
-        -d "username=test" \
-        -d "password=test" \
+        -d "username=${test_username}" \
+        -d "password=${test_password}" \
         "$login_url" 2>/dev/null) || response="000"
 
     # We expect 400/401 (unauthorized_client since direct grants are disabled for public clients)

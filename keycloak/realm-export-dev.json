@@ -791,7 +791,7 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
       "protocol": "openid-connect",
-      "secret": "mcp-gateway-secret",
+      "secret": "REPLACED_BY_SYNC_SCRIPT",
       "redirectUris": [
         "http://localhost:3100/*",
         "http://127.0.0.1:3100/*",
@@ -832,7 +832,7 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "protocol": "openid-connect",
-      "secret": "mcp-ui-secret",
+      "secret": "REPLACED_BY_SYNC_SCRIPT",
       "redirectUris": [],
       "webOrigins": [],
       "fullScopeAllowed": false,

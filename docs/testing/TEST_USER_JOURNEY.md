@@ -710,7 +710,7 @@ Then use `urls.site` for employee-login.html and `urls.app` for portal pages.
 - Shell command lines via cross-env
 - kcadm.sh password setting
 
-**Resolution**: Changed `TEST_USER_PASSWORD` from `***REDACTED_PASSWORD***` to `***REDACTED_PASSWORD***` (replaced `!` with `@`).
+**Resolution**: Changed `TEST_USER_PASSWORD` to replace the `!` character with `@` (bash-safe character).
 
 **Safe special characters for passwords**: `@`, `#`, `%`, `^`, `_`, `-`, `+`, `=`
 
