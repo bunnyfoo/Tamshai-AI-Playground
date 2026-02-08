@@ -12,14 +12,14 @@
 import axios, { AxiosInstance } from 'axios';
 import { fail } from 'assert';
 
-// Test configuration - all values from environment variables
+// Test configuration - all values from environment variables (required for tests)
 const CONFIG = {
-  keycloakUrl: process.env.KEYCLOAK_URL,
-  keycloakRealm: process.env.KEYCLOAK_REALM,
-  mcpHrUrl: process.env.MCP_HR_URL,
-  mcpFinanceUrl: process.env.MCP_FINANCE_URL,
-  mcpSalesUrl: process.env.MCP_SALES_URL,
-  mcpSupportUrl: process.env.MCP_SUPPORT_URL,
+  keycloakUrl: process.env.KEYCLOAK_URL!,
+  keycloakRealm: process.env.KEYCLOAK_REALM!,
+  mcpHrUrl: process.env.MCP_HR_URL!,
+  mcpFinanceUrl: process.env.MCP_FINANCE_URL!,
+  mcpSalesUrl: process.env.MCP_SALES_URL!,
+  mcpSupportUrl: process.env.MCP_SUPPORT_URL!,
   redisUrl: process.env.REDIS_URL,
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
