@@ -53,9 +53,10 @@ describe('ClaudeClient', () => {
   });
 
   describe('isMockMode', () => {
-    it('should return true when NODE_ENV is test', () => {
-      // NODE_ENV is 'test' during Jest execution
-      expect(client.isMockMode()).toBe(true);
+    it('should return false for real API key (even in test NODE_ENV)', () => {
+      // Mock mode is now ONLY triggered by API key prefix, not NODE_ENV
+      // This allows unit tests to use mocked Anthropic SDK directly
+      expect(client.isMockMode()).toBe(false);
     });
 
     it('should return true when apiKey starts with sk-ant-test-', () => {
@@ -85,6 +86,18 @@ describe('ClaudeClient', () => {
   });
 
   describe('query - mock mode', () => {
+    // Create a client with test API key to trigger mock mode
+    let mockModeClient: ClaudeClient;
+    const mockModeConfig: ClaudeClientConfig = {
+      model: 'claude-sonnet-4-20250514',
+      maxTokens: 4096,
+      apiKey: 'sk-ant-test-mock-key-for-ci', // Test key triggers mock mode
+    };
+
+    beforeEach(() => {
+      mockModeClient = new ClaudeClient(mockAnthropic, mockModeConfig, mockLogger);
+    });
+
     const userContext = createMockUserContext({
       userId: 'user-123',
       username: 'alice.chen',
@@ -105,7 +118,7 @@ describe('ClaudeClient', () => {
     ];
 
     it('should return mock response in test mode', async () => {
-      const result = await client.query(query, mcpData, userContext);
+      const result = await mockModeClient.query(query, mcpData, userContext);
 
       expect(result).toContain('[Mock Response]');
       expect(result).toContain('alice.chen');
@@ -125,20 +138,20 @@ describe('ClaudeClient', () => {
         { server: 'sales', data: { deals: [] } },
       ];
 
-      const result = await client.query(query, multiSourceData, userContext);
+      const result = await mockModeClient.query(query, multiSourceData, userContext);
 
       expect(result).toContain('hr, finance, sales');
     });
 
     it('should show "none" when no data sources', async () => {
-      const result = await client.query(query, [], userContext);
+      const result = await mockModeClient.query(query, [], userContext);
 
       expect(result).toContain('Data sources consulted: none');
     });
 
     it('should truncate long queries in mock response', async () => {
       const longQuery = 'A'.repeat(100);
-      const result = await client.query(longQuery, mcpData, userContext);
+      const result = await mockModeClient.query(longQuery, mcpData, userContext);
 
       expect(result).toContain('A'.repeat(50));
       expect(result).toContain('...');
@@ -146,7 +159,7 @@ describe('ClaudeClient', () => {
     });
 
     it('should not call Anthropic API in mock mode', async () => {
-      await client.query(query, mcpData, userContext);
+      await mockModeClient.query(query, mcpData, userContext);
 
       expect(mockAnthropic.messages.create).not.toHaveBeenCalled();
     });
@@ -491,7 +504,14 @@ describe('ClaudeClient', () => {
     });
 
     it('should return mock response in test mode', async () => {
-      const result = await client.queryWithContext(
+      // Create client with test API key to trigger mock mode
+      const mockModeConfig: ClaudeClientConfig = {
+        model: 'claude-sonnet-4-20250514',
+        apiKey: 'sk-ant-test-mock-key-for-ci',
+      };
+      const mockModeClient = new ClaudeClient(mockAnthropic, mockModeConfig, mockLogger);
+
+      const result = await mockModeClient.queryWithContext(
         'Who are my team members?',
         '[Data from mcp-hr]:\n{"employees": []}',
         userContext

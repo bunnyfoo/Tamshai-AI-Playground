@@ -89,16 +89,15 @@ export interface StreamingRoutesConfig {
 }
 
 /**
- * Check if streaming should use mock mode (for testing/CI)
- * Mock mode is enabled when:
- * - NODE_ENV is 'test'
- * - API key starts with 'sk-ant-test-'
+ * Check if streaming should use mock mode (for CI integration tests)
+ * Mock mode is enabled when API key starts with 'sk-ant-test-'
+ *
+ * Note: We intentionally do NOT check NODE_ENV === 'test' because:
+ * - Unit tests mock the Anthropic SDK directly and expect those mocks to be called
+ * - Integration tests use CLAUDE_API_KEY=sk-ant-test-* to trigger mock mode
  */
 function isMockMode(apiKey?: string): boolean {
-  return (
-    process.env.NODE_ENV === 'test' ||
-    (apiKey?.startsWith('sk-ant-test-') ?? false)
-  );
+  return apiKey?.startsWith('sk-ant-test-') ?? false;
 }
 
 /**

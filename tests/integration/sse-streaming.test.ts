@@ -178,10 +178,12 @@ function streamSSEQuery(
   });
 }
 
-// Check if using mock Claude API (test key triggers mock mode in gateway)
+// Check if using mock Claude API (test key triggers mock mode in Gateway)
+// Mock mode is triggered when CLAUDE_API_KEY starts with 'sk-ant-test-'
+// CI sets: CLAUDE_API_KEY: sk-ant-test-dummy-key-for-ci
 const isUsingMockClaude = (): boolean => {
   const key = process.env.CLAUDE_API_KEY || '';
-  return key.startsWith('sk-ant-test-') || process.env.NODE_ENV === 'test';
+  return key.startsWith('sk-ant-test-');
 };
 
 describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
