@@ -51,6 +51,7 @@ import {
   executeApproveTimeOffRequest,
   ApproveTimeOffRequestInputSchema,
 } from './tools/approve-time-off-request';
+import { getPendingTimeOff, GetPendingTimeOffInputSchema } from './tools/get-pending-time-off';
 import { MCPToolResponse } from './types/response';
 
 dotenv.config();
@@ -503,6 +504,48 @@ app.post('/tools/list_team_time_off_requests', async (req: Request, res: Respons
       status: 'error',
       code: 'INTERNAL_ERROR',
       message: 'Failed to list team time-off requests',
+    });
+  }
+});
+
+/**
+ * Get Pending Time-Off Requests Tool (for ApprovalsQueue)
+ *
+ * Returns time-off requests with status = 'pending' awaiting approval.
+ * Used by managers and HR staff to view requests needing action.
+ */
+app.post('/tools/get_pending_time_off', async (req: Request, res: Response) => {
+  try {
+    const { userContext, typeCode, limit, cursor } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - must have HR access or be a manager
+    if (!hasHRAccess(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. This operation requires HR or manager access. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request appropriate permissions.',
+      });
+      return;
+    }
+
+    const result = await getPendingTimeOff({ typeCode, limit, cursor }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_pending_time_off error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get pending time-off requests',
     });
   }
 });

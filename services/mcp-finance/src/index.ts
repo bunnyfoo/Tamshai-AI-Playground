@@ -75,6 +75,8 @@ import {
   executeDeleteExpenseReport,
   DeleteExpenseReportInputSchema,
 } from './tools/delete-expense-report';
+import { getPendingExpenses, GetPendingExpensesInputSchema } from './tools/get-pending-expenses';
+import { getPendingBudgets, GetPendingBudgetsInputSchema } from './tools/get-pending-budgets';
 import { MCPToolResponse } from './types/response';
 import { getPendingConfirmation, deletePendingConfirmation } from './utils/redis';
 
@@ -492,6 +494,94 @@ app.post('/tools/list_expense_reports', async (req: Request, res: Response) => {
       status: 'error',
       code: 'INTERNAL_ERROR',
       message: 'Failed to list expense reports',
+    });
+  }
+});
+
+/**
+ * Get Pending Expenses Tool (for ApprovalsQueue)
+ *
+ * Returns expense reports with status IN ('SUBMITTED', 'UNDER_REVIEW')
+ * awaiting approval. Used by managers and finance staff.
+ *
+ * TIER 1: All employees can access (own reports via RLS)
+ */
+app.post('/tools/get_pending_expenses', async (req: Request, res: Response) => {
+  try {
+    const { userContext, departmentCode, limit, cursor } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - TIER 1: All employees can access (own reports via RLS)
+    if (!canAccessExpenses(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. Expense report access requires employee, manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request appropriate access permissions.',
+      });
+      return;
+    }
+
+    const result = await getPendingExpenses({ departmentCode, limit, cursor }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_pending_expenses error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get pending expense reports',
+    });
+  }
+});
+
+/**
+ * Get Pending Budgets Tool (for ApprovalsQueue)
+ *
+ * Returns budgets with status = 'PENDING_APPROVAL' awaiting approval.
+ * Used by finance staff and executives.
+ *
+ * TIER 2: Managers and above can access budgets
+ */
+app.post('/tools/get_pending_budgets', async (req: Request, res: Response) => {
+  try {
+    const { userContext, departmentCode, fiscalYear, limit, cursor } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - TIER 2: Managers and above can access budgets
+    if (!canAccessBudgets(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. Budget access requires manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await getPendingBudgets({ departmentCode, fiscalYear, limit, cursor }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_pending_budgets error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get pending budgets',
     });
   }
 });
