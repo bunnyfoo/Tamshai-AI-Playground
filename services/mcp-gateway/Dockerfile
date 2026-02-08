@@ -18,9 +18,14 @@ COPY services/shared ./shared
 COPY services/mcp-gateway/package*.json ./
 
 # Update shared dependency to use local path in container
-RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json
+# Must update both package.json AND package-lock.json for npm ci to work
+RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json && \
+    sed -i 's|"file:../shared"|"file:./shared"|g' package-lock.json
 
-# Install dependencies
+# Build shared package first (required dependency)
+RUN cd shared && npm ci && npm run build
+
+# Install dependencies (now package.json and package-lock.json are in sync)
 RUN npm ci
 
 # Copy source code

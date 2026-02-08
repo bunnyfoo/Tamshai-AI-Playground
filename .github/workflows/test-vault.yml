@@ -86,7 +86,7 @@ jobs:
           PORT_KEYCLOAK=8180
           PORT_KONG_PROXY=8100
           PORT_KONG_ADMIN=8101
-          PORT_VAULT=8200
+          PORT_VAULT=8210
           PORT_POSTGRES=5432
           PORT_MONGODB=27017
           PORT_REDIS=6379
@@ -121,7 +121,7 @@ jobs:
 
           echo "Waiting for Vault to be healthy..."
           for i in {1..30}; do
-            if curl -sf http://localhost:8200/v1/sys/health > /dev/null 2>&1; then
+            if curl -sf $VAULT_ADDR/v1/sys/health > /dev/null 2>&1; then
               echo "Vault is healthy!"
               break
             fi

@@ -148,6 +148,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/mcp-hr/package-lock.json
 
+      - name: Build shared package
+        working-directory: services/shared
+        run: |
+          npm ci
+          npm run build
+
       - name: Install dependencies
         run: npm ci
 
