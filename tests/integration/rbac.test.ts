@@ -244,18 +244,17 @@ describe('Authorization Tests - MCP Access', () => {
   });
 });
 
-// Check if we have a real Claude API key (not a dummy/test key)
-const hasRealClaudeApiKey = (): boolean => {
+// Check if using mock Claude API (test key triggers mock mode in ClaudeClient)
+const isUsingMockClaude = (): boolean => {
   const key = process.env.CLAUDE_API_KEY || '';
-  return key.startsWith('sk-ant-api') && !key.includes('dummy') && !key.includes('test');
+  return key.startsWith('sk-ant-test-') || process.env.NODE_ENV === 'test';
 };
 
 describe('Authorization Tests - AI Queries', () => {
-  // Skip AI query tests that require Claude to actually call MCP tools
-  // These tests need a real Claude API key to function
-  const testOrSkip = hasRealClaudeApiKey() ? test : test.skip;
+  // These tests now run in both real and mock modes
+  // ClaudeClient automatically returns mock responses when using sk-ant-test-* keys
 
-  testOrSkip('HR user AI query about employees succeeds', async () => {
+  test('HR user AI query about employees succeeds', async () => {
     const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
     const client = createAuthenticatedClient(token);
 
@@ -267,9 +266,15 @@ describe('Authorization Tests - AI Queries', () => {
     expect(response.data.response).toBeDefined();
     // Gateway returns server names without 'mcp-' prefix
     expect(response.data.metadata.dataSourcesQueried).toContain('hr');
+
+    // In mock mode, response contains "[Mock Response]" prefix
+    if (isUsingMockClaude()) {
+      expect(response.data.response).toContain('[Mock Response]');
+      expect(response.data.response).toContain('alice.chen');
+    }
   });
 
-  testOrSkip('Finance user AI query about budgets succeeds', async () => {
+  test('Finance user AI query about budgets succeeds', async () => {
     const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
     const client = createAuthenticatedClient(token);
 
@@ -281,9 +286,15 @@ describe('Authorization Tests - AI Queries', () => {
     expect(response.data.response).toBeDefined();
     // Gateway returns server names without 'mcp-' prefix
     expect(response.data.metadata.dataSourcesQueried).toContain('finance');
+
+    // In mock mode, response contains "[Mock Response]" prefix
+    if (isUsingMockClaude()) {
+      expect(response.data.response).toContain('[Mock Response]');
+      expect(response.data.response).toContain('bob.martinez');
+    }
   });
 
-  testOrSkip('Sales user has employee self-access to HR but RLS limits data', async () => {
+  test('Sales user has employee self-access to HR but RLS limits data', async () => {
     // Sales users have 'employee' role which grants access to HR MCP for self-data
     // But RLS should prevent access to other employees' salary data
     const token = await getAccessToken(TEST_USERS.salesUser.username, TEST_USERS.salesUser.password);
@@ -299,6 +310,12 @@ describe('Authorization Tests - AI Queries', () => {
     expect(response.data.metadata.dataSourcesQueried).toContain('hr');
     // The actual data access is limited by RLS - the AI won't have salary data for Alice
     // (detailed salary filtering is enforced at the PostgreSQL RLS layer)
+
+    // In mock mode, response contains "[Mock Response]" prefix
+    if (isUsingMockClaude()) {
+      expect(response.data.response).toContain('[Mock Response]');
+      expect(response.data.response).toContain('carol.johnson');
+    }
   });
 
   test('Unauthenticated request is rejected', async () => {

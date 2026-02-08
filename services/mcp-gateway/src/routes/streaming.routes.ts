@@ -84,6 +84,45 @@ export interface StreamingRoutesConfig {
   claudeModel: string;
   /** Heartbeat interval in milliseconds (default: 15000) */
   heartbeatIntervalMs?: number;
+  /** Claude API key (used to detect mock mode) */
+  claudeApiKey?: string;
+}
+
+/**
+ * Check if streaming should use mock mode (for testing/CI)
+ * Mock mode is enabled when:
+ * - NODE_ENV is 'test'
+ * - API key starts with 'sk-ant-test-'
+ */
+function isMockMode(apiKey?: string): boolean {
+  return (
+    process.env.NODE_ENV === 'test' ||
+    (apiKey?.startsWith('sk-ant-test-') ?? false)
+  );
+}
+
+/**
+ * Generate mock SSE stream for testing
+ * Simulates Claude's streaming response format
+ */
+function writeMockStream(
+  res: Response,
+  query: string,
+  userContext: UserContext,
+  mcpServers: string[]
+): void {
+  const mockResponse = `[Mock Response] Query processed successfully for user ${userContext.username} ` +
+    `with roles: ${userContext.roles.join(', ')}. ` +
+    `Data sources consulted: ${mcpServers.join(', ') || 'none'}. ` +
+    `Query: "${query.substring(0, 50)}${query.length > 50 ? '...' : ''}"`;
+
+  // Split into chunks to simulate streaming
+  const words = mockResponse.split(' ');
+  const chunkSize = 3;
+  for (let i = 0; i < words.length; i += chunkSize) {
+    const chunk = words.slice(i, i + chunkSize).join(' ') + (i + chunkSize < words.length ? ' ' : '');
+    res.write(`data: ${JSON.stringify({ type: 'text', text: chunk })}\n\n`);
+  }
 }
 
 /**
@@ -323,39 +362,52 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
         return;
       }
 
-      // Stream Claude response
-      const stream = await anthropic.messages.stream({
-        model: config.claudeModel,
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: query,
-          },
-        ],
-      });
-
-      // Track usage from stream events for cache metrics
+      // Track usage from stream events for cache metrics (declared here for both mock and real mode)
       let streamUsage: Record<string, unknown> = {};
 
-      // Stream each chunk to the client
-      for await (const chunk of stream) {
-        // Check if client disconnected mid-stream
-        if (streamClosed) {
-          logger.info('Client disconnected mid-stream, aborting', { requestId });
-          break;
-        }
+      // MOCK MODE: Return simulated streaming response for testing/CI
+      if (isMockMode(config.claudeApiKey)) {
+        logger.info('Mock mode: Returning simulated streaming response', {
+          requestId,
+          username: userContext.username,
+          roles: userContext.roles,
+          mcpServers: mcpResults.filter(r => r.status === 'success').map(r => r.server),
+        });
 
-        if (chunk.type === 'message_start') {
-          const startEvent = chunk as unknown as { message?: { usage?: Record<string, unknown> } };
-          if (startEvent.message?.usage) {
-            streamUsage = startEvent.message.usage;
+        const successfulServers = mcpResults.filter(r => r.status === 'success').map(r => r.server);
+        writeMockStream(res, query, userContext, successfulServers);
+      } else {
+        // Stream Claude response
+        const stream = await anthropic.messages.stream({
+          model: config.claudeModel,
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: query,
+            },
+          ],
+        });
+
+        // Stream each chunk to the client
+        for await (const chunk of stream) {
+          // Check if client disconnected mid-stream
+          if (streamClosed) {
+            logger.info('Client disconnected mid-stream, aborting', { requestId });
+            break;
           }
-        }
 
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-          res.write(`data: ${JSON.stringify({ type: 'text', text: chunk.delta.text })}\n\n`);
+          if (chunk.type === 'message_start') {
+            const startEvent = chunk as unknown as { message?: { usage?: Record<string, unknown> } };
+            if (startEvent.message?.usage) {
+              streamUsage = startEvent.message.usage;
+            }
+          }
+
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            res.write(`data: ${JSON.stringify({ type: 'text', text: chunk.delta.text })}\n\n`);
+          }
         }
       }
 

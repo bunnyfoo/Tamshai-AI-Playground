@@ -178,18 +178,18 @@ function streamSSEQuery(
   });
 }
 
-// Check if we have a real Claude API key (not a dummy/test key)
-const hasRealClaudeApiKey = (): boolean => {
+// Check if using mock Claude API (test key triggers mock mode in gateway)
+const isUsingMockClaude = (): boolean => {
   const key = process.env.CLAUDE_API_KEY || '';
-  return key.startsWith('sk-ant-api') && !key.includes('dummy') && !key.includes('test');
+  return key.startsWith('sk-ant-test-') || process.env.NODE_ENV === 'test';
 };
 
 describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
-  // Skip tests that require Claude to generate responses
-  const testOrSkip = hasRealClaudeApiKey() ? test : test.skip;
+  // Tests now run in both real and mock modes
+  // Gateway returns mock responses when using sk-ant-test-* keys
 
   describe('POST /api/query Endpoint', () => {
-    testOrSkip('Executive user can stream AI query about reports', async () => {
+    test('Executive user can stream AI query about reports', async () => {
       const token = await getAccessToken(
         TEST_USERS.executive.username,
         TEST_USERS.executive.password
@@ -207,9 +207,15 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
       // Verify we received text chunks
       const textEvents = result.events.filter((e) => e.type === 'text');
       expect(textEvents.length).toBeGreaterThan(0);
+
+      // In mock mode, content contains "[Mock Response]"
+      if (isUsingMockClaude()) {
+        expect(result.fullContent).toContain('[Mock Response]');
+        expect(result.fullContent).toContain('eve.thompson');
+      }
     }, 90000); // 90 second timeout for Claude response
 
-    testOrSkip('HR user can query employee data via SSE', async () => {
+    test('HR user can query employee data via SSE', async () => {
       const token = await getAccessToken(
         TEST_USERS.hrUser.username,
         TEST_USERS.hrUser.password
@@ -222,9 +228,15 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.fullContent.length).toBeGreaterThan(0);
+
+      // In mock mode, content contains "[Mock Response]"
+      if (isUsingMockClaude()) {
+        expect(result.fullContent).toContain('[Mock Response]');
+        expect(result.fullContent).toContain('alice.chen');
+      }
     }, 90000);
 
-    testOrSkip('Intern receives response but with limited data access', async () => {
+    test('Intern receives response but with limited data access', async () => {
       const token = await getAccessToken(
         TEST_USERS.intern.username,
         TEST_USERS.intern.password
@@ -238,6 +250,12 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
       expect(result.error).toBeUndefined();
       // Intern should still get a response, but with no data access
       expect(result.fullContent.length).toBeGreaterThan(0);
+
+      // In mock mode, content contains "[Mock Response]"
+      if (isUsingMockClaude()) {
+        expect(result.fullContent).toContain('[Mock Response]');
+        expect(result.fullContent).toContain('frank.davis');
+      }
     }, 90000);
 
     test('Invalid token returns 401 error', async () => {
@@ -267,7 +285,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
       }
     });
 
-    testOrSkip('Chunks are received progressively during streaming', async () => {
+    test('Chunks are received progressively during streaming', async () => {
       const token = await getAccessToken(
         TEST_USERS.executive.username,
         TEST_USERS.executive.password
@@ -279,12 +297,17 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
       );
 
       expect(result.error).toBeUndefined();
-      // Should receive multiple text chunks
+      // Should receive multiple text chunks (mock mode splits by words)
       expect(result.chunks.length).toBeGreaterThan(1);
 
       // Full content should be the concatenation of all chunks
       const reconstructed = result.chunks.join('');
       expect(reconstructed).toBe(result.fullContent);
+
+      // In mock mode, content contains "[Mock Response]"
+      if (isUsingMockClaude()) {
+        expect(result.fullContent).toContain('[Mock Response]');
+      }
     }, 90000);
   });
 
@@ -361,7 +384,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
   });
 
   describe('GET /api/query Endpoint (EventSource compatible)', () => {
-    testOrSkip('GET endpoint works with query parameter', async () => {
+    test('GET endpoint works with query parameter', async () => {
       const token = await getAccessToken(
         TEST_USERS.executive.username,
         TEST_USERS.executive.password
@@ -456,6 +479,11 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.fullContent.length).toBeGreaterThan(0);
+
+      // In mock mode, content contains "[Mock Response]"
+      if (isUsingMockClaude()) {
+        expect(result.fullContent).toContain('[Mock Response]');
+      }
     }, 90000);
   });
 });

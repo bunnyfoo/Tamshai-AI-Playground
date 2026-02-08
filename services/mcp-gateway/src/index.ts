@@ -520,6 +520,7 @@ const streamingRouter = createStreamingRoutes({
   config: {
     claudeModel: config.claude.model,
     heartbeatIntervalMs: 15000,
+    claudeApiKey: config.claude.apiKey, // Enables mock mode when using sk-ant-test-* keys
   },
   getAccessibleServers: getAccessibleMCPServersForUser,
   queryMCPServer: mcpClient.queryServer.bind(mcpClient),
