@@ -311,8 +311,11 @@ describe('Admin Routes', () => {
 
 // Test the actual admin routes module exports
 describe('Admin Routes Module', () => {
-  test('exports ADMIN_API_KEY constant', () => {
-    expect(ACTUAL_ADMIN_API_KEY).toBe('e2e-test-admin-key');
+  test('exports ADMIN_API_KEY from environment (fail-closed when not set)', () => {
+    // ADMIN_API_KEY should come from process.env, not a hardcoded default
+    // When not set, it should be undefined (fail-closed behavior)
+    const envValue = process.env.ADMIN_API_KEY;
+    expect(ACTUAL_ADMIN_API_KEY).toBe(envValue);
   });
 
   test('exports default router', () => {
