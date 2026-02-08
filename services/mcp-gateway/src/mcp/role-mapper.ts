@@ -7,7 +7,7 @@
 
 export interface MCPServerConfig {
   name: string;
-  url: string;
+  url: string | undefined;
   requiredRoles: string[];
   description: string;
 }
@@ -17,10 +17,10 @@ export interface MCPServerConfig {
  * These will be populated with URLs from the config at runtime
  */
 export function createDefaultMCPServers(mcpServerUrls: {
-  hr: string;
-  finance: string;
-  sales: string;
-  support: string;
+  hr: string | undefined;
+  finance: string | undefined;
+  sales: string | undefined;
+  support: string | undefined;
 }): MCPServerConfig[] {
   return [
     {

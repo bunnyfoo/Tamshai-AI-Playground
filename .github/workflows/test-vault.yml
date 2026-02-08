@@ -77,6 +77,38 @@ jobs:
           MCP_UI_CLIENT_SECRET=${MCP_UI_CLIENT_SECRET}
           MCP_INTERNAL_SECRET=${MCP_INTERNAL_SECRET}
           MCP_HR_SERVICE_CLIENT_SECRET=${MCP_HR_SERVICE_CLIENT_SECRET}
+
+          # Port Configuration (required by docker-compose.yml)
+          PORT_CADDY_HTTP=80
+          PORT_CADDY_HTTPS=443
+          PORT_KEYCLOAK=8180
+          PORT_KONG_PROXY=8100
+          PORT_KONG_ADMIN=8101
+          PORT_VAULT=8200
+          PORT_POSTGRES=5432
+          PORT_MONGODB=27017
+          PORT_REDIS=6379
+          PORT_ELASTICSEARCH=9200
+          PORT_MINIO_API=9000
+          PORT_MINIO_CONSOLE=9001
+          PORT_MCP_GATEWAY=3100
+          PORT_MCP_HR=3101
+          PORT_MCP_FINANCE=3102
+          PORT_MCP_SALES=3103
+          PORT_MCP_SUPPORT=3104
+          PORT_MCP_JOURNEY=3105
+          PORT_MCP_PAYROLL=3106
+          PORT_MCP_TAX=3107
+          PORT_MCP_UI=3108
+          PORT_WEB_PORTAL=4000
+          PORT_WEB_HR=4001
+          PORT_WEB_FINANCE=4002
+          PORT_WEB_SALES=4003
+          PORT_WEB_SUPPORT=4004
+          PORT_WEB_PAYROLL=4005
+          PORT_WEB_TAX=4006
+          PORT_WEB_CUSTOMER_SUPPORT=4007
+          PORT_WEBSITE=8080
           EOF
 
       - name: Start Vault and vault-init only

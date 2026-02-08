@@ -55,9 +55,14 @@ async function checkGCPEnvironment(): Promise<boolean> {
  * Get an identity token for calling another Cloud Run service.
  *
  * @param targetUrl - The URL of the target Cloud Run service (used as audience)
- * @returns The identity token, or null if not on GCP
+ * @returns The identity token, or null if not on GCP or URL is undefined
  */
-export async function getIdentityToken(targetUrl: string): Promise<string | null> {
+export async function getIdentityToken(targetUrl: string | undefined): Promise<string | null> {
+  // Return null if URL is not configured
+  if (!targetUrl) {
+    return null;
+  }
+
   // Only fetch tokens on GCP
   if (!(await checkGCPEnvironment())) {
     return null;
@@ -107,7 +112,7 @@ export async function getIdentityToken(targetUrl: string): Promise<string | null
  * @returns Headers object with Authorization if on GCP
  */
 export async function getCloudRunHeaders(
-  targetUrl: string,
+  targetUrl: string | undefined,
   additionalHeaders: Record<string, string> = {}
 ): Promise<Record<string, string>> {
   const token = await getIdentityToken(targetUrl);

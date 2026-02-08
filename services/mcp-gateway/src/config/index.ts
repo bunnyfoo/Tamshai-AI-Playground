@@ -31,9 +31,9 @@ export function safeParseInt(val: string | undefined, defaultVal: number): numbe
 export interface GatewayConfig {
   port: number;
   keycloak: {
-    url: string;
-    realm: string;
-    clientId: string;
+    url: string | undefined;
+    realm: string | undefined;
+    clientId: string | undefined;
     jwksUri?: string;
     issuer?: string;
   };
@@ -42,10 +42,12 @@ export interface GatewayConfig {
     model: string;
   };
   mcpServers: {
-    hr: string;
-    finance: string;
-    sales: string;
-    support: string;
+    hr: string | undefined;
+    finance: string | undefined;
+    sales: string | undefined;
+    support: string | undefined;
+    payroll?: string | undefined;
+    tax?: string | undefined;
   };
   timeouts: {
     mcpRead: number;
@@ -80,6 +82,8 @@ export function loadConfig(): GatewayConfig {
       finance: process.env.MCP_FINANCE_URL,
       sales: process.env.MCP_SALES_URL,
       support: process.env.MCP_SUPPORT_URL,
+      payroll: process.env.MCP_PAYROLL_URL,
+      tax: process.env.MCP_TAX_URL,
     },
     timeouts: {
       mcpRead: safeParseInt(process.env.MCP_READ_TIMEOUT_MS, 5000),
@@ -131,6 +135,8 @@ export async function loadConfigAsync(): Promise<GatewayConfig> {
       finance: process.env.MCP_FINANCE_URL,
       sales: process.env.MCP_SALES_URL,
       support: process.env.MCP_SUPPORT_URL,
+      payroll: process.env.MCP_PAYROLL_URL,
+      tax: process.env.MCP_TAX_URL,
     },
     timeouts: {
       mcpRead: safeParseInt(process.env.MCP_READ_TIMEOUT_MS, 5000),

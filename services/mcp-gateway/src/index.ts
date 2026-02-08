@@ -91,6 +91,26 @@ const config = {
 };
 
 // =============================================================================
+// STARTUP VALIDATION - Fail fast if required environment variables are missing
+// =============================================================================
+
+const requiredEnvVars = {
+  'KEYCLOAK_URL': config.keycloak.url,
+  'KEYCLOAK_REALM': config.keycloak.realm,
+  'KEYCLOAK_CLIENT_ID': config.keycloak.clientId,
+};
+
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([, value]) => !value)
+  .map(([name]) => name);
+
+if (missingVars.length > 0) {
+  console.error(`FATAL: Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error('The MCP Gateway cannot start without these configuration values.');
+  process.exit(1);
+}
+
+// =============================================================================
 // LOGGER SETUP
 // =============================================================================
 
@@ -116,9 +136,10 @@ const logger = winston.createLogger({
 
 const jwtValidator = new JWTValidator(
   {
-    jwksUri: config.keycloak.jwksUri || `${config.keycloak.url}/realms/${config.keycloak.realm}/protocol/openid-connect/certs`,
-    issuer: config.keycloak.issuer || `${config.keycloak.url}/realms/${config.keycloak.realm}`,
-    clientId: config.keycloak.clientId,
+    // Non-null assertions are safe here because startup validation ensures these values exist
+    jwksUri: config.keycloak.jwksUri || `${config.keycloak.url!}/realms/${config.keycloak.realm!}/protocol/openid-connect/certs`,
+    issuer: config.keycloak.issuer || `${config.keycloak.url!}/realms/${config.keycloak.realm!}`,
+    clientId: config.keycloak.clientId!,
   },
   logger
 );

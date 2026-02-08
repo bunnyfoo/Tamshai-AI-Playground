@@ -21,12 +21,12 @@ interface AuthenticatedRequest extends Request {
 }
 
 export interface MCPServerUrlConfig {
-  hr: string;
-  finance: string;
-  sales: string;
-  support: string;
-  payroll: string;
-  tax: string;
+  hr: string | undefined;
+  finance: string | undefined;
+  sales: string | undefined;
+  support: string | undefined;
+  payroll: string | undefined;
+  tax: string | undefined;
 }
 
 export interface ConfirmationRoutesDependencies {
