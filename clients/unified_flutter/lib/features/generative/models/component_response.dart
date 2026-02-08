@@ -114,6 +114,17 @@ sealed class Employee with _$Employee {
       _$EmployeeFromJson(json);
 }
 
+/// Extension for Employee utilities
+extension EmployeeExtension on Employee {
+  /// Get initials from name (e.g., "John Doe" -> "JD")
+  String get initials {
+    final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+}
+
 /// Time-off request for approvals queue
 @freezed
 sealed class TimeOffRequest with _$TimeOffRequest {
