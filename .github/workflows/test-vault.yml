@@ -71,6 +71,7 @@ jobs:
           MINIO_ROOT_USER=minio
           MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
           REDIS_PASSWORD=redis_password
+          ELASTIC_PASSWORD=elastic_password
           CLAUDE_API_KEY=${{ env.CLAUDE_API_KEY }}
           VAULT_DEV_ROOT_TOKEN=${{ env.VAULT_TOKEN }}
           E2E_ADMIN_API_KEY=${E2E_ADMIN_API_KEY}
