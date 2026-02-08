@@ -656,6 +656,13 @@ jobs:
           REDIS_PORT: 6379
           CLAUDE_API_KEY: sk-ant-test-dummy-key-for-ci
           NODE_ENV: test
+          # MCP server URLs for AI query routing
+          MCP_HR_URL: http://127.0.0.1:3111
+          MCP_FINANCE_URL: http://127.0.0.1:3112
+          MCP_SALES_URL: http://127.0.0.1:3113
+          MCP_SUPPORT_URL: http://127.0.0.1:3114
+          # Internal token secret for MCP server authentication
+          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
 
       - name: Wait for MCP Gateway
         run: |
