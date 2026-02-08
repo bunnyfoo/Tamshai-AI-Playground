@@ -11,6 +11,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.test.ts',
+    '!src/__tests__/integration/setup.ts', // Test fixtures and utilities
     '!src/index.ts',
     '!src/utils/logger.ts', // Configuration file
   ],
