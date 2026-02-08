@@ -739,6 +739,123 @@ EOF
 }
 
 # =============================================================================
+# KEYCLOAK CLIENT SECRET CONFIGURATION
+# =============================================================================
+#
+# Updates Keycloak client secrets from GitHub Secrets after realm import.
+# The realm-export-dev.json contains placeholder secrets that need to be
+# replaced with actual values from GitHub Secrets.
+#
+# =============================================================================
+
+resource "null_resource" "keycloak_set_client_secrets" {
+  count = var.auto_start_services ? 1 : 0
+
+  depends_on = [null_resource.keycloak_set_totp]
+
+  triggers = {
+    always_run = timestamp()
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      echo "Configuring Keycloak client secrets from GitHub Secrets..."
+
+      # Get admin token
+      echo "Getting admin token..."
+      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username=admin" \
+        -d "password=${local.keycloak_admin_password}" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli")
+
+      TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+
+      if [ -z "$TOKEN" ]; then
+        echo "ERROR: Failed to get admin token"
+        echo "Response: $TOKEN_RESPONSE"
+        exit 1
+      fi
+      echo "✓ Admin token obtained"
+
+      # Update mcp-ui client secret
+      if [ -n "$MCP_UI_CLIENT_SECRET" ]; then
+        echo "Updating mcp-ui client secret..."
+
+        # Get client ID (internal UUID, not clientId)
+        CLIENT_UUID=$(curl -s "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/clients?clientId=mcp-ui" \
+          -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id // empty')
+
+        if [ -n "$CLIENT_UUID" ]; then
+          # Update client secret via REST API
+          HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X POST \
+            "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/clients/$CLIENT_UUID/client-secret" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json")
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            # Now set the specific secret value
+            SECRET_JSON=$(jq -n --arg secret "$MCP_UI_CLIENT_SECRET" '{"secret": $secret}')
+            HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
+              "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/clients/$CLIENT_UUID" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$SECRET_JSON")
+
+            if [ "$HTTP_CODE" = "204" ]; then
+              echo "✓ mcp-ui client secret updated successfully"
+            else
+              echo "WARNING: Failed to update mcp-ui client secret (HTTP $HTTP_CODE)"
+            fi
+          else
+            echo "WARNING: Failed to regenerate mcp-ui client secret (HTTP $HTTP_CODE)"
+          fi
+        else
+          echo "WARNING: mcp-ui client not found in Keycloak"
+        fi
+      else
+        echo "WARNING: MCP_UI_CLIENT_SECRET not set - mcp-ui service auth will fail"
+      fi
+
+      # Update mcp-gateway client secret (if needed)
+      if [ -n "$MCP_GATEWAY_CLIENT_SECRET" ]; then
+        echo "Updating mcp-gateway client secret..."
+
+        CLIENT_UUID=$(curl -s "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/clients?clientId=mcp-gateway" \
+          -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id // empty')
+
+        if [ -n "$CLIENT_UUID" ]; then
+          SECRET_JSON=$(jq -n --arg secret "$MCP_GATEWAY_CLIENT_SECRET" '{"secret": $secret}')
+          HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
+            "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/clients/$CLIENT_UUID" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$SECRET_JSON")
+
+          if [ "$HTTP_CODE" = "204" ]; then
+            echo "✓ mcp-gateway client secret updated successfully"
+          else
+            echo "WARNING: Failed to update mcp-gateway client secret (HTTP $HTTP_CODE)"
+          fi
+        else
+          echo "WARNING: mcp-gateway client not found in Keycloak"
+        fi
+      fi
+
+      echo "Keycloak client secret configuration complete!"
+    EOT
+
+    environment = {
+      MCP_UI_CLIENT_SECRET      = data.external.github_secrets.result.mcp_ui_client_secret
+      MCP_GATEWAY_CLIENT_SECRET = data.external.github_secrets.result.mcp_gateway_client_secret
+      MSYS_NO_PATHCONV          = "1"
+    }
+  }
+}
+
+# =============================================================================
 # CLEANUP ON DESTROY
 # =============================================================================
 
