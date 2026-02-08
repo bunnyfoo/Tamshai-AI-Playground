@@ -726,6 +726,214 @@ describe('CustomerDetailCard', () => {
 
       expect(onAction).toHaveBeenCalledWith('call');
     });
+
+    it('email button responds to Enter key', () => {
+      const onAction = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onAction={onAction}
+        />
+      );
+
+      const emailButton = screen.getByRole('button', { name: /email/i });
+      emailButton.focus();
+      fireEvent.keyDown(emailButton, { key: 'Enter' });
+
+      expect(onAction).toHaveBeenCalledWith('email');
+    });
+
+    it('email button responds to Space key', () => {
+      const onAction = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onAction={onAction}
+        />
+      );
+
+      const emailButton = screen.getByRole('button', { name: /email/i });
+      emailButton.focus();
+      fireEvent.keyDown(emailButton, { key: ' ' });
+
+      expect(onAction).toHaveBeenCalledWith('email');
+    });
+
+    it('schedule meeting button responds to Enter key', () => {
+      const onAction = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onAction={onAction}
+        />
+      );
+
+      const scheduleButton = screen.getByRole('button', { name: /schedule meeting/i });
+      scheduleButton.focus();
+      fireEvent.keyDown(scheduleButton, { key: 'Enter' });
+
+      expect(onAction).toHaveBeenCalledWith('schedule_meeting');
+    });
+
+    it('schedule meeting button responds to Space key', () => {
+      const onAction = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onAction={onAction}
+        />
+      );
+
+      const scheduleButton = screen.getByRole('button', { name: /schedule meeting/i });
+      scheduleButton.focus();
+      fireEvent.keyDown(scheduleButton, { key: ' ' });
+
+      expect(onAction).toHaveBeenCalledWith('schedule_meeting');
+    });
+
+    it('contact card responds to Enter key', () => {
+      const onContactClick = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onContactClick={onContactClick}
+        />
+      );
+
+      const contactCard = screen.getByTestId('contact-contact-001');
+      fireEvent.keyDown(contactCard, { key: 'Enter' });
+
+      expect(onContactClick).toHaveBeenCalledWith('contact-001');
+    });
+
+    it('contact card responds to Space key', () => {
+      const onContactClick = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onContactClick={onContactClick}
+        />
+      );
+
+      const contactCard = screen.getByTestId('contact-contact-001');
+      fireEvent.keyDown(contactCard, { key: ' ' });
+
+      expect(onContactClick).toHaveBeenCalledWith('contact-001');
+    });
+
+    it('opportunity row responds to Enter key', () => {
+      const onOpportunityClick = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onOpportunityClick={onOpportunityClick}
+        />
+      );
+
+      const opportunityRow = screen.getByTestId('opportunity-opp-001');
+      fireEvent.keyDown(opportunityRow, { key: 'Enter' });
+
+      expect(onOpportunityClick).toHaveBeenCalledWith('opp-001');
+    });
+
+    it('opportunity row responds to Space key', () => {
+      const onOpportunityClick = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onOpportunityClick={onOpportunityClick}
+        />
+      );
+
+      const opportunityRow = screen.getByTestId('opportunity-opp-001');
+      fireEvent.keyDown(opportunityRow, { key: ' ' });
+
+      expect(onOpportunityClick).toHaveBeenCalledWith('opp-001');
+    });
+
+    it('contact card has button role when clickable', () => {
+      const onContactClick = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onContactClick={onContactClick}
+        />
+      );
+
+      const contactCard = screen.getByTestId('contact-contact-001');
+      expect(contactCard).toHaveAttribute('role', 'button');
+      expect(contactCard).toHaveAttribute('tabIndex', '0');
+    });
+
+    it('opportunity row has button role when clickable', () => {
+      const onOpportunityClick = jest.fn();
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          onOpportunityClick={onOpportunityClick}
+        />
+      );
+
+      const opportunityRow = screen.getByTestId('opportunity-opp-001');
+      expect(opportunityRow).toHaveAttribute('role', 'button');
+      expect(opportunityRow).toHaveAttribute('tabIndex', '0');
+    });
+
+    it('contact card does not have button role when not clickable', () => {
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      const contactCard = screen.getByTestId('contact-contact-001');
+      expect(contactCard).not.toHaveAttribute('role', 'button');
+    });
+
+    it('opportunity row does not have button role when not clickable', () => {
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      const opportunityRow = screen.getByTestId('opportunity-opp-001');
+      expect(opportunityRow).not.toHaveAttribute('role', 'button');
+    });
   });
 
   describe('Closed-Won Stage', () => {
@@ -775,6 +983,190 @@ describe('CustomerDetailCard', () => {
       const stageBadge = screen.getByTestId('stage-badge-opp-lost');
       expect(stageBadge).toHaveTextContent('Closed Lost');
       expect(stageBadge).toHaveClass('bg-red-100', 'text-red-800');
+    });
+  });
+
+  describe('Discovery Stage', () => {
+    it('renders discovery stage with cyan styling', () => {
+      const discoveryOpportunity: Opportunity = {
+        id: 'opp-discovery',
+        name: 'Discovery Deal',
+        amount: 75000,
+        stage: 'Discovery',
+        probability: 30,
+        closeDate: '2026-05-15',
+      };
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={[discoveryOpportunity]}
+        />
+      );
+
+      const stageBadge = screen.getByTestId('stage-badge-opp-discovery');
+      expect(stageBadge).toHaveTextContent('Discovery');
+      expect(stageBadge).toHaveClass('bg-cyan-100', 'text-cyan-800');
+    });
+  });
+
+  describe('Unknown Stage', () => {
+    it('renders unknown stage with default gray styling', () => {
+      const unknownStageOpportunity: Opportunity = {
+        id: 'opp-unknown',
+        name: 'Unknown Stage Deal',
+        amount: 50000,
+        stage: 'Custom Stage',
+        probability: 50,
+        closeDate: '2026-06-01',
+      };
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={[unknownStageOpportunity]}
+        />
+      );
+
+      const stageBadge = screen.getByTestId('stage-badge-opp-unknown');
+      expect(stageBadge).toHaveTextContent('Custom Stage');
+      expect(stageBadge).toHaveClass('bg-gray-100', 'text-gray-800');
+    });
+  });
+
+  describe('Customer Without Optional Fields', () => {
+    it('renders customer without website', () => {
+      const customerNoWebsite: Customer = {
+        id: 'cust-002',
+        name: 'No Website Corp',
+        industry: 'Finance',
+        status: 'active',
+      };
+
+      render(
+        <CustomerDetailCard
+          customer={customerNoWebsite}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      expect(screen.getByText('No Website Corp')).toBeInTheDocument();
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    it('renders customer without address', () => {
+      const customerNoAddress: Customer = {
+        id: 'cust-003',
+        name: 'No Address Corp',
+        industry: 'Healthcare',
+        status: 'prospect',
+      };
+
+      render(
+        <CustomerDetailCard
+          customer={customerNoAddress}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      expect(screen.getByText('No Address Corp')).toBeInTheDocument();
+      expect(screen.queryByText(/123 Main Street/)).not.toBeInTheDocument();
+    });
+
+    it('renders customer without annual revenue', () => {
+      const customerNoRevenue: Customer = {
+        id: 'cust-004',
+        name: 'Startup Inc',
+        industry: 'Technology',
+        status: 'prospect',
+      };
+
+      render(
+        <CustomerDetailCard
+          customer={customerNoRevenue}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      expect(screen.getByText('Startup Inc')).toBeInTheDocument();
+      expect(screen.queryByText(/Annual Revenue/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Contact Without Phone', () => {
+    it('renders contact without phone number', () => {
+      const contactsNoPhone: Contact[] = [
+        {
+          id: 'contact-no-phone',
+          name: 'Email Only Person',
+          email: 'emailonly@company.com',
+          role: 'Manager',
+          isPrimary: false,
+        },
+      ];
+
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={contactsNoPhone}
+          opportunities={testOpportunities}
+        />
+      );
+
+      expect(screen.getByText('Email Only Person')).toBeInTheDocument();
+      expect(screen.getByText('emailonly@company.com')).toBeInTheDocument();
+      // Phone should not be rendered
+      expect(screen.queryByText(/\+1 \(555\)/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Error State Without Retry', () => {
+    it('renders error state without retry button when onRetry not provided', () => {
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+          error="Network error occurred"
+        />
+      );
+
+      expect(screen.getByText('Network error occurred')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Non-Primary Contact Styling', () => {
+    it('renders non-primary contact without primary badge', () => {
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      const nonPrimaryContact = screen.getByTestId('contact-contact-002');
+      expect(nonPrimaryContact).toHaveClass('border-secondary-200', 'bg-white');
+      expect(within(nonPrimaryContact).queryByText(/primary/i)).not.toBeInTheDocument();
+    });
+
+    it('non-primary contact has correct aria-label without Primary suffix', () => {
+      render(
+        <CustomerDetailCard
+          customer={testCustomer}
+          contacts={testContacts}
+          opportunities={testOpportunities}
+        />
+      );
+
+      const nonPrimaryContact = screen.getByTestId('contact-contact-002');
+      expect(nonPrimaryContact).toHaveAttribute('aria-label', 'Contact: Bob Johnson');
     });
   });
 });
