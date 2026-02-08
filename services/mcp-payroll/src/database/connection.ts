@@ -18,12 +18,12 @@ export interface UserContext {
   managerId?: string;
 }
 
-// Create connection pool
+// Create connection pool - all values from environment variables (required)
 const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5435', 10),
-  database: process.env.POSTGRES_DB || 'tamshai_payroll',
-  user: process.env.POSTGRES_USER || 'tamshai',
+  host: process.env.POSTGRES_HOST,
+  port: parseInt(process.env.POSTGRES_PORT!, 10),
+  database: process.env.POSTGRES_DB,
+  user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   min: 2,                           // Keep 2 warm connections
   max: 10,                          // Optimized: Reduced from 20

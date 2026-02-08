@@ -7,8 +7,9 @@
 import Redis from 'ioredis';
 import { logger } from './logger';
 
-const redisHost = process.env.REDIS_HOST || 'localhost';
-const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+const redisHost = process.env.REDIS_HOST;
+const redisPort = parseInt(process.env.REDIS_PORT!, 10);
+const redisPassword = process.env.REDIS_PASSWORD;
 
 let redis: Redis | null = null;
 
@@ -20,6 +21,7 @@ export function getRedisClient(): Redis {
     redis = new Redis({
       host: redisHost,
       port: redisPort,
+      password: redisPassword,
       maxRetriesPerRequest: 3,
       retryStrategy: (times) => {
         if (times > 3) {

@@ -869,10 +869,10 @@ function createKcAdminClientAdapter(kcAdmin: KeycloakAdminClient): KcAdminClient
  * The reconciliation is idempotent - it skips users that already exist in Keycloak.
  */
 async function reconcileIdentitiesOnStartup(): Promise<void> {
-  const keycloakUrl = process.env.KEYCLOAK_URL || 'http://keycloak:8080';
+  const keycloakUrl = process.env.KEYCLOAK_URL;
   const keycloakRealm = process.env.KEYCLOAK_REALM || 'tamshai-corp';
   const clientId = process.env.KEYCLOAK_CLIENT_ID || 'mcp-hr-service';
-  const clientSecret = process.env.MCP_HR_SERVICE_CLIENT_SECRET || '';
+  const clientSecret = process.env.MCP_HR_SERVICE_CLIENT_SECRET;
 
   // Skip if no client secret configured (e.g., in unit tests)
   if (!clientSecret) {
@@ -888,8 +888,8 @@ async function reconcileIdentitiesOnStartup(): Promise<void> {
 
   try {
     // Create BullMQ queue for cleanup jobs (required by IdentityService)
-    const redisHost = process.env.REDIS_HOST || 'redis';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const redisHost = process.env.REDIS_HOST;
+    const redisPort = parseInt(process.env.REDIS_PORT!, 10);
 
     const cleanupQueue = new Queue('identity-cleanup', {
       connection: { host: redisHost, port: redisPort },

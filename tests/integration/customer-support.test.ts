@@ -20,12 +20,12 @@
 import axios, { AxiosInstance } from 'axios';
 import { fail } from 'assert';
 
-// Test configuration
+// Test configuration - all values from environment variables
 const CONFIG = {
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
-  keycloakCustomerRealm: process.env.KEYCLOAK_CUSTOMER_REALM || 'tamshai-customers',
-  keycloakInternalRealm: process.env.KEYCLOAK_REALM || 'tamshai',
-  mcpSupportUrl: process.env.MCP_SUPPORT_URL || 'http://127.0.0.1:3114',
+  keycloakUrl: process.env.KEYCLOAK_URL,
+  keycloakCustomerRealm: process.env.KEYCLOAK_CUSTOMER_REALM,
+  keycloakInternalRealm: process.env.KEYCLOAK_REALM,
+  mcpSupportUrl: process.env.MCP_SUPPORT_URL,
   clientId: 'customer-portal',
 };
 

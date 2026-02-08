@@ -60,8 +60,8 @@ interface JWTPayload {
   iat: number;
 }
 
-// Environment-based Keycloak URLs
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://localhost:8180';
+// Environment-based Keycloak URLs (required)
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 const INTERNAL_REALM = process.env.KEYCLOAK_INTERNAL_REALM || 'tamshai';
 const CUSTOMER_REALM = process.env.KEYCLOAK_CUSTOMER_REALM || 'tamshai-customers';
 

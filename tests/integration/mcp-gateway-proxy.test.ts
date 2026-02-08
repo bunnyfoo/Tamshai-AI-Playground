@@ -70,12 +70,11 @@ const MCP_ENDPOINTS = {
   },
 };
 
-// Test configuration
-// Ports match tamshai-pg docker-compose configuration
+// Test configuration - all values from environment variables
 const CONFIG = {
-  mcpGatewayUrl: process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3110',
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
-  keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
+  mcpGatewayUrl: process.env.MCP_GATEWAY_URL,
+  keycloakUrl: process.env.KEYCLOAK_URL,
+  keycloakRealm: process.env.KEYCLOAK_REALM,
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
 };

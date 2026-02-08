@@ -31,14 +31,13 @@
 
 import axios, { AxiosInstance } from 'axios';
 
-// Test configuration
-// Ports match tamshai-pg docker-compose configuration
+// Test configuration - all values from environment variables
 const CONFIG = {
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
-  keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3110',
-  mcpHrUrl: process.env.MCP_HR_URL || 'http://127.0.0.1:3111',
-  mcpFinanceUrl: process.env.MCP_FINANCE_URL || 'http://127.0.0.1:3112',
+  keycloakUrl: process.env.KEYCLOAK_URL,
+  keycloakRealm: process.env.KEYCLOAK_REALM,
+  gatewayUrl: process.env.GATEWAY_URL,
+  mcpHrUrl: process.env.MCP_HR_URL,
+  mcpFinanceUrl: process.env.MCP_FINANCE_URL,
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
 };

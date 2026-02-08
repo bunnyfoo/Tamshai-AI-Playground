@@ -108,8 +108,8 @@ export async function callMCPTool(
 ): Promise<MCPToolResponse> {
   const { authService = globalAuthService, retryOnAuthError = true } = options;
 
-  // Get gateway URL from environment or use default
-  const gatewayUrl = process.env.MCP_GATEWAY_URL || 'http://localhost:3110';
+  // Get gateway URL from environment (required)
+  const gatewayUrl = process.env.MCP_GATEWAY_URL;
 
   // Construct the full endpoint URL
   const url = `${gatewayUrl}/api/mcp/${call.server}/${call.tool}`;

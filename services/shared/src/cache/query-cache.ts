@@ -42,8 +42,8 @@ export class QueryCache {
 
   constructor(config: QueryCacheConfig = {}) {
     this.redis = new Redis({
-      host: config.host || process.env.REDIS_HOST || 'localhost',
-      port: config.port || parseInt(process.env.REDIS_PORT || '6379'),
+      host: config.host || process.env.REDIS_HOST,
+      port: config.port || parseInt(process.env.REDIS_PORT!, 10),
       password: config.password || process.env.REDIS_PASSWORD,
       db: config.db || parseInt(process.env.REDIS_CACHE_DB || '1'), // Use DB 1 for cache (DB 0 for confirmations)
       retryStrategy(times: number) {

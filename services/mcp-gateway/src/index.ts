@@ -61,9 +61,9 @@ dotenv.config();
 const config = {
   port: parseInt(process.env.PORT || '3000'),
   keycloak: {
-    url: process.env.KEYCLOAK_URL || 'http://localhost:8180',
-    realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-    clientId: process.env.KEYCLOAK_CLIENT_ID || 'mcp-gateway',
+    url: process.env.KEYCLOAK_URL,
+    realm: process.env.KEYCLOAK_REALM,
+    clientId: process.env.KEYCLOAK_CLIENT_ID,
     jwksUri: process.env.JWKS_URI || undefined,
     issuer: process.env.KEYCLOAK_ISSUER || undefined,
   },
@@ -73,12 +73,12 @@ const config = {
     maxTokens: parseInt(process.env.CLAUDE_MAX_TOKENS || '4096'),
   },
   mcpServers: {
-    hr: process.env.MCP_HR_URL || 'http://localhost:3001',
-    finance: process.env.MCP_FINANCE_URL || 'http://localhost:3002',
-    sales: process.env.MCP_SALES_URL || 'http://localhost:3003',
-    support: process.env.MCP_SUPPORT_URL || 'http://localhost:3004',
-    payroll: process.env.MCP_PAYROLL_URL || 'http://localhost:3006',
-    tax: process.env.MCP_TAX_URL || 'http://localhost:3007',
+    hr: process.env.MCP_HR_URL,
+    finance: process.env.MCP_FINANCE_URL,
+    sales: process.env.MCP_SALES_URL,
+    support: process.env.MCP_SUPPORT_URL,
+    payroll: process.env.MCP_PAYROLL_URL,
+    tax: process.env.MCP_TAX_URL,
   },
   // v1.5 Performance: Service timeout configuration
   timeouts: {

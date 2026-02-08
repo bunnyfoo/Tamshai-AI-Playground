@@ -19,11 +19,11 @@ const logger = winston.createLogger({
 });
 
 const pool = new Pool({
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5434'),
-  database: process.env.POSTGRES_DB || 'tamshai_finance',
-  user: process.env.POSTGRES_USER || 'tamshai',
-  password: process.env.POSTGRES_PASSWORD || '[REDACTED-DEV-PASSWORD]',
+  host: process.env.POSTGRES_HOST,
+  port: parseInt(process.env.POSTGRES_PORT!, 10),
+  database: process.env.POSTGRES_DB,
+  user: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
   min: 2,                           // Keep 2 warm connections
   max: 10,                          // Optimized: Reduced from 20
   idleTimeoutMillis: 30000,

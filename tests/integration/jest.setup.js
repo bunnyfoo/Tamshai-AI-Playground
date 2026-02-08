@@ -14,16 +14,14 @@
 const axios = require('axios');
 
 const CONFIG = {
-  // Use 127.0.0.1 instead of localhost for Windows compatibility
-  // (localhost can have DNS resolution issues on Windows with Docker)
-  // Ports match tamshai-pg docker-compose configuration
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
-  keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3110',
-  mcpHrUrl: process.env.MCP_HR_URL || 'http://127.0.0.1:3111',
-  mcpFinanceUrl: process.env.MCP_FINANCE_URL || 'http://127.0.0.1:3112',
-  mcpSalesUrl: process.env.MCP_SALES_URL || 'http://127.0.0.1:3113',
-  mcpSupportUrl: process.env.MCP_SUPPORT_URL || 'http://127.0.0.1:3114',
+  // All URLs from environment variables - set via GitHub Variables
+  keycloakUrl: process.env.KEYCLOAK_URL,
+  keycloakRealm: process.env.KEYCLOAK_REALM,
+  gatewayUrl: process.env.GATEWAY_URL,
+  mcpHrUrl: process.env.MCP_HR_URL,
+  mcpFinanceUrl: process.env.MCP_FINANCE_URL,
+  mcpSalesUrl: process.env.MCP_SALES_URL,
+  mcpSupportUrl: process.env.MCP_SUPPORT_URL,
 };
 
 // All test users - TOTP should be required for all of them
@@ -62,7 +60,7 @@ async function getAdminToken() {
     new URLSearchParams({
       client_id: 'admin-cli',
       username: 'admin',
-      password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
+      password: process.env.KEYCLOAK_ADMIN_PASSWORD,
       grant_type: 'password',
     }),
     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }

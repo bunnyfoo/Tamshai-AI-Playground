@@ -17,8 +17,8 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-// Support both MONGODB_URI and MONGODB_URL (CI uses MONGODB_URL)
-const MONGODB_URL = process.env.MONGODB_URL || process.env.MONGODB_URI || 'mongodb://localhost:27018';
+// Support both MONGODB_URI and MONGODB_URL (CI uses MONGODB_URL) - required
+const MONGODB_URL = process.env.MONGODB_URL || process.env.MONGODB_URI;
 
 // Extract database name from URL if present, otherwise use env var or default
 function extractDatabaseFromUrl(url: string): string | null {

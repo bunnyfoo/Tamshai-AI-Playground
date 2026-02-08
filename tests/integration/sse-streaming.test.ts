@@ -15,14 +15,11 @@ import axios from 'axios';
 import http from 'http';
 import { fail } from 'assert';
 
-// Test configuration
-// Uses mcp-gateway client which has directAccessGrantsEnabled=true
-// Use 127.0.0.1 instead of localhost for Windows compatibility
-// Ports match tamshai-pg docker-compose configuration
+// Test configuration - all values from environment variables
 const CONFIG = {
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
-  keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3110',
+  keycloakUrl: process.env.KEYCLOAK_URL,
+  keycloakRealm: process.env.KEYCLOAK_REALM,
+  gatewayUrl: process.env.GATEWAY_URL,
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
 };
