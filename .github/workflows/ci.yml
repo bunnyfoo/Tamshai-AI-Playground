@@ -56,6 +56,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/mcp-gateway/package-lock.json
 
+      - name: Install shared package
+        working-directory: services/shared
+        run: npm ci
+
       - name: Install dependencies
         run: npm ci
 
@@ -615,6 +619,10 @@ jobs:
           cache: 'npm'
           cache-dependency-path: services/mcp-gateway/package-lock.json
 
+      - name: Install Shared Package
+        working-directory: services/shared
+        run: npm ci
+
       - name: Install Gateway Dependencies
         working-directory: services/mcp-gateway
         run: npm ci
@@ -934,6 +942,10 @@ jobs:
       # =========================================================================
       # Build and Start MCP Gateway
       # =========================================================================
+      - name: Install Shared Package
+        working-directory: services/shared
+        run: npm ci
+
       - name: Build MCP Gateway
         working-directory: services/mcp-gateway
         run: |
@@ -1022,6 +1034,10 @@ jobs:
       # =========================================================================
       # MCP Gateway Setup
       # =========================================================================
+      - name: Install Shared Package
+        working-directory: services/shared
+        run: npm ci
+
       - name: Build MCP Gateway
         working-directory: services/mcp-gateway
         run: |
