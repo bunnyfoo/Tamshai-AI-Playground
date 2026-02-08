@@ -844,6 +844,46 @@ describe('ApprovalsQueue Component', () => {
       fireEvent.click(timeOffHeader);
       expect(timeOffHeader).toHaveAttribute('aria-expanded', 'false');
     });
+
+    it('toggles expense reports section visibility', () => {
+      render(
+        <ApprovalsQueue
+          timeOffRequests={mockTimeOffRequests}
+          expenseReports={mockExpenseReports}
+          budgetAmendments={mockBudgetAmendments}
+        />
+      );
+
+      const expenseHeader = screen.getByRole('button', { name: /expense reports/i });
+
+      // Collapse
+      fireEvent.click(expenseHeader);
+      expect(screen.getByTestId('expense-report-exp-001')).not.toBeVisible();
+
+      // Expand
+      fireEvent.click(expenseHeader);
+      expect(screen.getByTestId('expense-report-exp-001')).toBeVisible();
+    });
+
+    it('toggles budget amendments section visibility', () => {
+      render(
+        <ApprovalsQueue
+          timeOffRequests={mockTimeOffRequests}
+          expenseReports={mockExpenseReports}
+          budgetAmendments={mockBudgetAmendments}
+        />
+      );
+
+      const budgetHeader = screen.getByRole('button', { name: /budget amendments/i });
+
+      // Collapse
+      fireEvent.click(budgetHeader);
+      expect(screen.getByTestId('budget-amendment-ba-001')).not.toBeVisible();
+
+      // Expand
+      fireEvent.click(budgetHeader);
+      expect(screen.getByTestId('budget-amendment-ba-001')).toBeVisible();
+    });
   });
 
   describe('Batch Actions', () => {
@@ -902,6 +942,116 @@ describe('ApprovalsQueue Component', () => {
         { type: 'time-off', id: 'tor-001' },
         { type: 'time-off', id: 'tor-002' },
       ]);
+    });
+
+    it('allows deselecting items', () => {
+      render(
+        <ApprovalsQueue
+          timeOffRequests={mockTimeOffRequests}
+          expenseReports={[]}
+          budgetAmendments={[]}
+          selectable={true}
+        />
+      );
+
+      const checkboxes = screen.getAllByRole('checkbox');
+
+      // Select first two items
+      fireEvent.click(checkboxes[0]);
+      fireEvent.click(checkboxes[1]);
+      expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+      // Deselect the first item
+      fireEvent.click(checkboxes[0]);
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('allows selecting expense report items', () => {
+      render(
+        <ApprovalsQueue
+          timeOffRequests={[]}
+          expenseReports={mockExpenseReports}
+          budgetAmendments={[]}
+          selectable={true}
+        />
+      );
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      fireEvent.click(checkboxes[0]);
+
+      expect(screen.getByTestId('batch-action-toolbar')).toBeInTheDocument();
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('allows selecting budget amendment items', () => {
+      render(
+        <ApprovalsQueue
+          timeOffRequests={[]}
+          expenseReports={[]}
+          budgetAmendments={mockBudgetAmendments}
+          selectable={true}
+        />
+      );
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      fireEvent.click(checkboxes[0]);
+
+      expect(screen.getByTestId('batch-action-toolbar')).toBeInTheDocument();
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('allows selecting and deselecting items across all types', () => {
+      const onBatchApprove = jest.fn();
+      render(
+        <ApprovalsQueue
+          timeOffRequests={mockTimeOffRequests}
+          expenseReports={mockExpenseReports}
+          budgetAmendments={mockBudgetAmendments}
+          selectable={true}
+          onBatchApprove={onBatchApprove}
+        />
+      );
+
+      const checkboxes = screen.getAllByRole('checkbox');
+
+      // Select from each type
+      fireEvent.click(checkboxes[0]); // time-off
+      fireEvent.click(checkboxes[3]); // expense (after 3 time-off)
+      fireEvent.click(checkboxes[5]); // budget (after 2 expense)
+
+      expect(screen.getByText('3 selected')).toBeInTheDocument();
+
+      // Deselect expense item
+      fireEvent.click(checkboxes[3]);
+      expect(screen.getByText('2 selected')).toBeInTheDocument();
+    });
+  });
+
+  describe('Rejection Dialog', () => {
+    it('allows canceling the rejection dialog', () => {
+      const onReject = jest.fn();
+      render(
+        <ApprovalsQueue
+          timeOffRequests={mockTimeOffRequests}
+          expenseReports={[]}
+          budgetAmendments={[]}
+          onReject={onReject}
+        />
+      );
+
+      const aliceRequest = screen.getByTestId('time-off-request-tor-001');
+      const rejectButton = within(aliceRequest).getByRole('button', { name: /reject/i });
+      fireEvent.click(rejectButton);
+
+      // Dialog should be open
+      expect(screen.getByPlaceholderText(/reason for rejection/i)).toBeInTheDocument();
+
+      // Cancel the dialog
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
+      // Dialog should be closed
+      expect(screen.queryByPlaceholderText(/reason for rejection/i)).not.toBeInTheDocument();
     });
   });
 });
