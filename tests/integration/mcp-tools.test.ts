@@ -25,7 +25,7 @@ const CONFIG = {
   mcpSupportUrl: process.env.MCP_SUPPORT_URL || 'http://127.0.0.1:3114',
   redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6390',
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'mcp-gateway-secret',
+  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
 };
 
 // Test user password from environment variable

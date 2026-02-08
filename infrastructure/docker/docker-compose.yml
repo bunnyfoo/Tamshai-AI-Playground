@@ -44,13 +44,15 @@ services:
   redis:
     image: redis:7-alpine
     container_name: tamshai-pg-redis
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
-      - "${PORT_REDIS:-6390}:6379"
+      - "${PORT_REDIS:?PORT_REDIS is required}:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +72,7 @@ services:
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
       VAULT_ADDR: http://127.0.0.1:8200
     ports:
-      - "${PORT_VAULT:-8210}:8200"
+      - "${PORT_VAULT:?PORT_VAULT is required}:8200"
     volumes:
       - vault_data:/vault/data
       - ./vault/config:/vault/config:ro
@@ -111,8 +113,8 @@ services:
     image: caddy:2-alpine
     container_name: tamshai-pg-caddy
     ports:
-      - "${PORT_CADDY_HTTPS:-8443}:443"
-      - "${PORT_CADDY_HTTP:-8090}:80"
+      - "${PORT_CADDY_HTTPS:?PORT_CADDY_HTTPS is required}:443"
+      - "${PORT_CADDY_HTTP:?PORT_CADDY_HTTP is required}:80"
     volumes:
       - ${CADDYFILE:-./Caddyfile.dev}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -164,7 +166,7 @@ services:
       KC_METRICS_ENABLED: "true"
     # No volume mounts for realm - it's baked into the image via Dockerfile.dev
     ports:
-      - "${PORT_KEYCLOAK:-8190}:8080"
+      - "${PORT_KEYCLOAK:?PORT_KEYCLOAK is required}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -190,13 +192,13 @@ services:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_LISTEN: 127.0.0.1:8001
       KONG_PROXY_LISTEN: 0.0.0.0:8000
     volumes:
       - ./kong/kong.yml:/etc/kong/kong.yml:ro
     ports:
-      - "${PORT_KONG_PROXY:-8110}:8000"   # Proxy (mapped to 8110 on host)
-      - "${PORT_KONG_ADMIN:-8111}:8001"   # Admin API (mapped to 8111 on host)
+      - "${PORT_KONG_PROXY:?PORT_KONG_PROXY is required}:8000"   # Proxy (mapped to 8110 on host)
+      - "${PORT_KONG_ADMIN:?PORT_KONG_ADMIN is required}:8001"   # Admin API (mapped to 8111 on host)
     depends_on:
       keycloak:
         condition: service_healthy
@@ -241,9 +243,9 @@ services:
       # v1.4: Admin API key for E2E snapshot/restore
       ADMIN_API_KEY: ${E2E_ADMIN_API_KEY:?E2E_ADMIN_API_KEY is required}
       # v1.5: Internal HMAC secret for MCP server authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_GATEWAY:-3110}:3110"
+      - "${PORT_MCP_GATEWAY:?PORT_MCP_GATEWAY is required}:3110"
     depends_on:
       redis:
         condition: service_healthy
@@ -271,8 +273,10 @@ services:
       KEYCLOAK_REALM: tamshai-corp
       MCP_UI_CLIENT_ID: mcp-ui
       MCP_UI_CLIENT_SECRET: ${MCP_UI_CLIENT_SECRET:?MCP_UI_CLIENT_SECRET is required}
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_UI:-3118}:3118"
+      - "${PORT_MCP_UI:?PORT_MCP_UI is required}:3118"
     depends_on:
       mcp-gateway:
         condition: service_started
@@ -305,7 +309,7 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
       # Phoenix self-healing identity reconciliation
       # Keycloak is configured with /auth prefix (KC_HTTP_RELATIVE_PATH=/auth)
       ENVIRONMENT: ${ENVIRONMENT:-dev}
@@ -318,7 +322,7 @@ services:
       STAGE_USER_PASSWORD: ${STAGE_USER_PASSWORD:-}
       PROD_USER_PASSWORD: ${PROD_USER_PASSWORD:-}
     ports:
-      - "${PORT_MCP_HR:-3111}:3111"
+      - "${PORT_MCP_HR:?PORT_MCP_HR is required}:3111"
     depends_on:
       postgres:
         condition: service_healthy
@@ -351,9 +355,9 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_FINANCE:-3112}:3112"
+      - "${PORT_MCP_FINANCE:?PORT_MCP_FINANCE is required}:3112"
     depends_on:
       postgres:
         condition: service_healthy
@@ -383,9 +387,9 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_SALES:-3113}:3113"
+      - "${PORT_MCP_SALES:?PORT_MCP_SALES is required}:3113"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -410,7 +414,7 @@ services:
       # Backend selection: elasticsearch (dev/stage) or mongodb (prod)
       SUPPORT_DATA_BACKEND: elasticsearch
       # v1.4: Elasticsearch connection
-      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_URL: http://elastic:${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}@elasticsearch:9200
       # v1.4: MongoDB connection (for SLA tools - tickets stored in MongoDB)
       MONGODB_URI: mongodb://tamshai:${MONGODB_PASSWORD:?MONGODB_PASSWORD is required}@mongodb:27017
       MONGODB_DB: tamshai_support
@@ -419,9 +423,9 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_SUPPORT:-3114}:3114"
+      - "${PORT_MCP_SUPPORT:?PORT_MCP_SUPPORT is required}:3114"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -450,8 +454,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_JOURNEY:-3115}:3115"
+      - "${PORT_MCP_JOURNEY:?PORT_MCP_JOURNEY is required}:3115"
     depends_on:
       redis:
         condition: service_healthy
@@ -482,9 +488,9 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_PAYROLL:-3116}:3116"
+      - "${PORT_MCP_PAYROLL:?PORT_MCP_PAYROLL is required}:3116"
     depends_on:
       postgres:
         condition: service_healthy
@@ -517,9 +523,9 @@ services:
       REDIS_PORT: 6379
       LOG_LEVEL: info
       # v1.5: Internal HMAC secret for gateway authentication
-      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:?MCP_INTERNAL_SECRET is required}
     ports:
-      - "${PORT_MCP_TAX:-3117}:3117"
+      - "${PORT_MCP_TAX:?PORT_MCP_TAX is required}:3117"
     depends_on:
       postgres:
         condition: service_healthy
@@ -547,7 +553,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_PORTAL:-4010}:80"
+      - "${PORT_WEB_PORTAL:?PORT_WEB_PORTAL is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -572,7 +578,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_HR:-4011}:80"
+      - "${PORT_WEB_HR:?PORT_WEB_HR is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -597,7 +603,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_FINANCE:-4012}:80"
+      - "${PORT_WEB_FINANCE:?PORT_WEB_FINANCE is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -622,7 +628,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_SALES:-4013}:80"
+      - "${PORT_WEB_SALES:?PORT_WEB_SALES is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -647,7 +653,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_SUPPORT:-4014}:80"
+      - "${PORT_WEB_SUPPORT:?PORT_WEB_SUPPORT is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -672,7 +678,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_PAYROLL:-4015}:80"
+      - "${PORT_WEB_PAYROLL:?PORT_WEB_PAYROLL is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -700,7 +706,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_CUSTOMER_SUPPORT:-4017}:80"
+      - "${PORT_WEB_CUSTOMER_SUPPORT:?PORT_WEB_CUSTOMER_SUPPORT is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -723,7 +729,7 @@ services:
       dockerfile: Dockerfile
     container_name: tamshai-pg-website
     ports:
-      - "${PORT_WEBSITE:-8085}:80"
+      - "${PORT_WEBSITE:?PORT_WEBSITE is required}:80"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
@@ -743,7 +749,7 @@ services:
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
-      - "${PORT_WEB_TAX:-4016}:80"
+      - "${PORT_WEB_TAX:?PORT_WEB_TAX is required}:80"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -779,7 +785,7 @@ services:
       - ../../infrastructure/database/hr/time-off-schema.sql:/docker-entrypoint-initdb.d/08-hr-time-off-schema.sql:ro
       - ../../infrastructure/database/hr/time-off-sample-data.sql:/docker-entrypoint-initdb.d/09-hr-time-off-data.sql:ro
     ports:
-      - "${PORT_POSTGRES:-5443}:5432"
+      - "${PORT_POSTGRES:?PORT_POSTGRES is required}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -801,7 +807,7 @@ services:
       - ../../sample-data/support-data.js:/docker-entrypoint-initdb.d/02-support-data.js:ro
       - ../../sample-data/support-customers.js:/docker-entrypoint-initdb.d/03-support-customers.js:ro
     ports:
-      - "${PORT_MONGODB:-27028}:27017"
+      - "${PORT_MONGODB:?PORT_MONGODB is required}:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -815,12 +821,14 @@ services:
     container_name: tamshai-pg-elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     ports:
-      - "${PORT_ELASTICSEARCH:-9211}:9200"
+      - "${PORT_ELASTICSEARCH:?PORT_ELASTICSEARCH is required}:9200"
     healthcheck:
       test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/9200' && echo 'ES is up'"]
       interval: 10s
@@ -837,12 +845,14 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
     volumes:
       - ../../sample-data/support-data.ndjson:/data/support-data.ndjson:ro
     command: >
       sh -c '
         echo "Loading support data into Elasticsearch..."
-        curl -sf -X POST "http://elasticsearch:9200/_bulk" \
+        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X POST "http://elasticsearch:9200/_bulk" \
           -H "Content-Type: application/x-ndjson" \
           --data-binary "@/data/support-data.ndjson" && \
         echo "Support data loaded successfully" || \
@@ -863,8 +873,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "${PORT_MINIO_API:-9110}:9000"
-      - "${PORT_MINIO_CONSOLE:-9112}:9001"
+      - "${PORT_MINIO_API:?PORT_MINIO_API is required}:9000"
+      - "${PORT_MINIO_CONSOLE:?PORT_MINIO_CONSOLE is required}:9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -912,7 +922,7 @@ services:
       # Environment identifier for password variable selection
       ENV: ${ENVIRONMENT:-dev}
       # mcp-hr-service client secret (required for identity-sync authentication)
-      MCP_HR_SERVICE_CLIENT_SECRET: ${MCP_HR_SERVICE_CLIENT_SECRET:-hr-service-secret}
+      MCP_HR_SERVICE_CLIENT_SECRET: ${MCP_HR_SERVICE_CLIENT_SECRET:?MCP_HR_SERVICE_CLIENT_SECRET is required}
       # Test user passwords from GitHub secrets (environment-specific)
       DEV_USER_PASSWORD: ${DEV_USER_PASSWORD:-}
       STAGE_USER_PASSWORD: ${STAGE_USER_PASSWORD:-}
@@ -977,7 +987,7 @@ services:
       KEYCLOAK_URL: http://keycloak:8080/auth
       KEYCLOAK_REALM: tamshai-corp
       KEYCLOAK_CLIENT_ID: mcp-hr-service
-      KEYCLOAK_CLIENT_SECRET: ${MCP_HR_SERVICE_CLIENT_SECRET:-hr-service-secret}
+      KEYCLOAK_CLIENT_SECRET: ${MCP_HR_SERVICE_CLIENT_SECRET:?MCP_HR_SERVICE_CLIENT_SECRET is required}
       # Redis for BullMQ cleanup queue
       REDIS_HOST: redis
       REDIS_PORT: 6379

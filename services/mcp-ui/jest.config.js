@@ -8,6 +8,9 @@ module.exports = {
   maxWorkers: '50%', // v1.5: Parallel test execution
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts'],
+  moduleNameMapper: {
+    '^@tamshai/shared$': '<rootDir>/src/__mocks__/@tamshai/shared.ts',
+  },
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.test.ts',

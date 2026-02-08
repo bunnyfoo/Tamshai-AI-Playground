@@ -19,6 +19,7 @@ const mockCallMCPTool = jest.fn().mockResolvedValue({
 
 jest.mock('../../mcp/mcp-client', () => ({
   callMCPTool: mockCallMCPTool,
+  setAuthService: jest.fn(),
 }));
 
 // Import app after mock is set up

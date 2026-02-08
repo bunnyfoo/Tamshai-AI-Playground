@@ -4,6 +4,7 @@
  * Provides the Generative UI service for rendering AI-driven components.
  */
 import express, { Request, Response, NextFunction } from 'express';
+import { requireGatewayAuth } from '@tamshai/shared';
 import { displayRouter } from './routes/display';
 import { createAuthServiceFromEnv } from './auth';
 import { setAuthService } from './mcp/mcp-client';
@@ -18,6 +19,10 @@ logger.info('MCP-UI initialized with Keycloak service authentication');
 
 // JSON body parser middleware
 app.use(express.json());
+
+// Gateway authentication middleware (prevents direct access bypass)
+// Health endpoints are automatically exempt
+app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
 
 // Health endpoint
 app.get('/health', (_req: Request, res: Response) => {

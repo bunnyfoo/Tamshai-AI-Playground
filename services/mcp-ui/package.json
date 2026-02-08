@@ -16,6 +16,7 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
+    "@tamshai/shared": "file:../shared",
     "axios": "^1.6.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

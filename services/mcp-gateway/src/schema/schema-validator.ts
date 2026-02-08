@@ -758,7 +758,7 @@ export class SchemaValidator {
       port: this.config.postgres.port,
       database,
       user: this.config.postgres.user || 'tamshai',
-      password: this.config.postgres.password || 'tamshai_password',
+      password: this.config.postgres.password,
       connectionTimeoutMillis: 10000, // 10 second timeout
     });
 

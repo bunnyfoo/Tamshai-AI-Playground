@@ -36,20 +36,21 @@ const SNAPSHOT_DIR = process.env.SNAPSHOT_DIR || '/tmp/tamshai-snapshots';
 // Admin API key for test automation (fail-closed: routes disabled if not set)
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
-// Database configurations
+// Database configurations - all values from environment variables
+// Ports are set via GitHub Variables and injected by Terraform
 const DB_CONFIG = {
   postgres: {
-    host: process.env.POSTGRES_HOST || 'postgres',
-    port: process.env.POSTGRES_PORT || '5432',
-    user: process.env.POSTGRES_USER || 'tamshai',
-    password: process.env.POSTGRES_PASSWORD || process.env.TAMSHAI_DB_PASSWORD || 'tamshai_password',
+    host: process.env.POSTGRES_HOST,
+    port: process.env.POSTGRES_PORT,
+    user: process.env.POSTGRES_USER,
+    password: process.env.POSTGRES_PASSWORD || process.env.TAMSHAI_DB_PASSWORD,
     databases: ['tamshai_hr', 'tamshai_finance', 'tamshai_payroll', 'tamshai_tax'],
   },
   mongodb: {
-    host: process.env.MONGODB_HOST || 'mongodb',
-    port: process.env.MONGODB_PORT || '27017',
-    user: process.env.MONGODB_USER || 'tamshai',
-    password: process.env.MONGODB_PASSWORD || process.env.MONGODB_ROOT_PASSWORD || 'tamshai_password',
+    host: process.env.MONGODB_HOST,
+    port: process.env.MONGODB_PORT,
+    user: process.env.MONGODB_USER,
+    password: process.env.MONGODB_PASSWORD || process.env.MONGODB_ROOT_PASSWORD,
     databases: ['tamshai_sales'],
   },
 };

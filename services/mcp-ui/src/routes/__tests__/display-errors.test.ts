@@ -11,6 +11,7 @@ const mockCallMCPTool = jest.fn();
 
 jest.mock('../../mcp/mcp-client', () => ({
   callMCPTool: mockCallMCPTool,
+  setAuthService: jest.fn(),
 }));
 
 // Mock logger to prevent console noise during tests

@@ -27,6 +27,7 @@
   "author": "Tamshai Corp",
   "license": "MIT",
   "dependencies": {
+    "@tamshai/shared": "file:../shared",
     "@google/generative-ai": "^0.21.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "ajv": "^8.12.0",

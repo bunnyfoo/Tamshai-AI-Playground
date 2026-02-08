@@ -31,7 +31,7 @@ const CONFIG = {
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
   gatewayUrl: process.env.GATEWAY_URL || 'http://127.0.0.1:3110',
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'mcp-gateway-secret',
+  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
 };
 
 // Test user password from environment variable

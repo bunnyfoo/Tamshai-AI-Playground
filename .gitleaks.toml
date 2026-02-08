@@ -59,6 +59,6 @@ keywords = ["client_secret", "client-secret"]
 # Exclude development/test patterns
 [rules.allowlist]
 regexes = [
-  '''mcp-gateway-secret''',  # Known dev secret (documented)
-  # password123 removed - now using environment variables for passwords
+  # All hardcoded secrets have been removed - using environment variables only
+  # This allowlist intentionally kept minimal for security
 ]
