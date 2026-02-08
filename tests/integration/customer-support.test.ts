@@ -18,6 +18,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import crypto from 'crypto';
 import { fail } from 'assert';
 
 // Test configuration - all values from environment variables
@@ -27,6 +28,7 @@ const CONFIG = {
   keycloakInternalRealm: process.env.KEYCLOAK_REALM,
   mcpSupportUrl: process.env.MCP_SUPPORT_URL,
   clientId: 'customer-portal',
+  mcpInternalSecret: process.env.MCP_INTERNAL_SECRET!,
 };
 
 // Flag to track if customer realm is available
@@ -165,6 +167,24 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 /**
+ * Generate internal token for MCP Gateway → MCP Server authentication
+ * Mirrors the implementation in @tamshai/shared
+ */
+function generateInternalToken(userId: string, roles: string[]): string {
+  const secret = CONFIG.mcpInternalSecret;
+  const timestamp = Math.floor(Date.now() / 1000);
+  const rolesString = roles.join(',');
+  const payload = `${timestamp}:${userId}:${rolesString}`;
+
+  const hmac = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  return `${payload}.${hmac}`;
+}
+
+/**
  * Extract user context from JWT for MCP endpoints
  * MCP pattern: Gateway validates JWT and passes user context to downstream services
  */
@@ -191,6 +211,10 @@ async function mcpRequest(
   data: Record<string, unknown> = {}
 ) {
   const userContext = extractUserContextFromToken(token);
+  const internalToken = generateInternalToken(
+    userContext.userId as string,
+    userContext.roles as string[]
+  );
   const response = await axios.post(`${CONFIG.mcpSupportUrl}${endpoint}`, {
     ...data,
     userContext,
@@ -198,6 +222,7 @@ async function mcpRequest(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      'X-MCP-Internal-Token': internalToken,
     },
     timeout: 30000,
   });
@@ -210,6 +235,10 @@ async function mcpRequest(
  */
 function createMcpClient(token: string) {
   const userContext = extractUserContextFromToken(token);
+  const internalToken = generateInternalToken(
+    userContext.userId as string,
+    userContext.roles as string[]
+  );
   return {
     post: async (endpoint: string, data: Record<string, unknown> = {}) => {
       return axios.post(`${CONFIG.mcpSupportUrl}${endpoint}`, {
@@ -219,6 +248,7 @@ function createMcpClient(token: string) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'X-MCP-Internal-Token': internalToken,
         },
         timeout: 30000,
       });

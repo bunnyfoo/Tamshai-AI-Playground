@@ -30,6 +30,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import crypto from 'crypto';
 
 // Test configuration - all values from environment variables
 const CONFIG = {
@@ -40,6 +41,7 @@ const CONFIG = {
   mcpFinanceUrl: process.env.MCP_FINANCE_URL,
   clientId: 'mcp-gateway',
   clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
+  mcpInternalSecret: process.env.MCP_INTERNAL_SECRET!,
 };
 
 // Test user password from environment variable
@@ -54,6 +56,7 @@ const TEST_USERS = {
     username: 'eve.thompson',
     password: TEST_PASSWORD,
     email: 'eve@tamshai-playground.local',
+    userId: 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
     roles: ['executive', 'manager', 'hr-read', 'support-read', 'sales-read', 'finance-read'],
     // Eve is CEO with direct reports: CFO, CTO, COO, VP of Sales
     expectedDirectReports: ['Michael Roberts', 'Sarah Kim', 'James Wilson', 'Carol Johnson'],
@@ -62,6 +65,7 @@ const TEST_USERS = {
     username: 'alice.chen',
     password: TEST_PASSWORD,
     email: 'alice@tamshai-playground.local',
+    userId: 'f104eddc-21ab-457c-a254-78051ad7ad67',
     roles: ['hr-read', 'hr-write', 'manager'],
     // Alice is VP of HR with direct report: Jennifer Lee
     expectedDirectReports: ['Jennifer Lee'],
@@ -70,6 +74,7 @@ const TEST_USERS = {
     username: 'nina.patel',
     password: TEST_PASSWORD,
     email: 'nina.p@tamshai-playground.local',
+    userId: 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d',
     roles: ['manager'],
     // Nina is Engineering Manager with reports: Marcus Johnson, Sophia Wang, Tyler Scott
     expectedDirectReports: ['Marcus Johnson', 'Sophia Wang', 'Tyler Scott'],
@@ -78,6 +83,7 @@ const TEST_USERS = {
     username: 'frank.davis',
     password: TEST_PASSWORD,
     email: 'frank@tamshai-playground.local',
+    userId: 'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e',
     roles: [],
     // Frank is an intern with no direct reports
     expectedDirectReports: [],
@@ -86,6 +92,7 @@ const TEST_USERS = {
     username: 'bob.martinez',
     password: TEST_PASSWORD,
     email: 'bob@tamshai-playground.local',
+    userId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1',
     roles: ['finance-read', 'finance-write'],
   },
 };
@@ -134,28 +141,48 @@ async function getAccessToken(username: string, password: string): Promise<strin
 }
 
 /**
- * Create authenticated MCP HR client
+ * Generate internal token for MCP Gateway → MCP Server authentication
+ * Mirrors the implementation in @tamshai/shared
  */
-function createMcpHrClient(token: string): AxiosInstance {
+function generateInternalToken(userId: string, roles: string[]): string {
+  const secret = CONFIG.mcpInternalSecret;
+  const timestamp = Math.floor(Date.now() / 1000);
+  const rolesString = roles.join(',');
+  const payload = `${timestamp}:${userId}:${rolesString}`;
+
+  const hmac = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  return `${payload}.${hmac}`;
+}
+
+/**
+ * Create authenticated MCP HR client with gateway auth token
+ */
+function createMcpHrClient(token: string, userId: string, roles: string[]): AxiosInstance {
   return axios.create({
     baseURL: CONFIG.mcpHrUrl,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': generateInternalToken(userId, roles),
     },
     timeout: 30000,
   });
 }
 
 /**
- * Create authenticated MCP Finance client
+ * Create authenticated MCP Finance client with gateway auth token
  */
-function createMcpFinanceClient(token: string): AxiosInstance {
+function createMcpFinanceClient(token: string, userId: string, roles: string[]): AxiosInstance {
   return axios.create({
     baseURL: CONFIG.mcpFinanceUrl,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-MCP-Internal-Token': generateInternalToken(userId, roles),
     },
     timeout: 30000,
   });
@@ -186,7 +213,7 @@ describe('My Team Members Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
-      hrClient = createMcpHrClient(token);
+      hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
     test('Detects "who are my team members" as team query', async () => {
@@ -263,7 +290,7 @@ describe('My Team Members Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.hrManager.username, TEST_USERS.hrManager.password);
-      hrClient = createMcpHrClient(token);
+      hrClient = createMcpHrClient(token, TEST_USERS.hrManager.userId, TEST_USERS.hrManager.roles);
     });
 
     test('Returns HR Manager direct report (Jennifer Lee)', async () => {
@@ -293,7 +320,7 @@ describe('My Team Members Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.engineeringManager.username, TEST_USERS.engineeringManager.password);
-      hrClient = createMcpHrClient(token);
+      hrClient = createMcpHrClient(token, TEST_USERS.engineeringManager.userId, TEST_USERS.engineeringManager.roles);
     });
 
     test('Returns Engineering team members', async () => {
@@ -321,7 +348,7 @@ describe('My Team Members Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.intern.username, TEST_USERS.intern.password);
-      hrClient = createMcpHrClient(token);
+      hrClient = createMcpHrClient(token, TEST_USERS.intern.userId, TEST_USERS.intern.roles);
     });
 
     test('Returns empty list for non-manager', async () => {
@@ -355,7 +382,7 @@ describe('List All Employees Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
-      hrClient = createMcpHrClient(token);
+      hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
     test('Returns all 59 employees via cursor-based pagination', async () => {
@@ -494,7 +521,7 @@ describe('Query Routing', () => {
 
   beforeAll(async () => {
     token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
-    hrClient = createMcpHrClient(token);
+    hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
   });
 
   test('Routes UUID queries to get_employee', async () => {
@@ -563,7 +590,7 @@ describe('Budget Status Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
-      financeClient = createMcpFinanceClient(token);
+      financeClient = createMcpFinanceClient(token, TEST_USERS.financeUser.userId, TEST_USERS.financeUser.roles);
     });
 
     test('Returns budget summary with status breakdown', async () => {
@@ -695,7 +722,7 @@ describe('Budget Status Query', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
-      financeClient = createMcpFinanceClient(token);
+      financeClient = createMcpFinanceClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
     test('Executive can view all department budgets', async () => {
@@ -734,7 +761,7 @@ describe('Query Error Handling', () => {
 
     beforeAll(async () => {
       token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
-      hrClient = createMcpHrClient(token);
+      hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
     test('Returns helpful error when user email not in HR database', async () => {
