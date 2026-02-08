@@ -1,17 +1,20 @@
 /**
- * MCP Client Tests - RED Phase
+ * MCP Client Tests
  *
  * These tests define the expected behavior for the MCP client that calls
  * MCP servers through the MCP Gateway.
  *
- * TDD Phase: RED - Tests written first, implementation pending
+ * TDD Phase: GREEN - Full test coverage with auth support
  */
 
 import axios from 'axios';
-import { callMCPTool, MCPCall, UserContext } from '../mcp-client';
+import { callMCPTool, MCPCall, UserContext, setAuthService, getAuthService } from '../mcp-client';
+import { KeycloakAuthService } from '../../auth/keycloak-auth';
 
 jest.mock('axios');
+jest.mock('../../auth/keycloak-auth');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+const MockedKeycloakAuthService = KeycloakAuthService as jest.MockedClass<typeof KeycloakAuthService>;
 
 describe('MCPClient', () => {
   const mockUserContext: UserContext = {
@@ -278,6 +281,125 @@ describe('MCPClient', () => {
       const call: MCPCall = { server: 'hr', tool: 'get', paramMap: {} };
 
       await expect(callMCPTool(call, {}, mockUserContext)).rejects.toThrow();
+    });
+  });
+
+  describe('Authentication', () => {
+    let mockAuthService: jest.Mocked<KeycloakAuthService>;
+
+    beforeEach(() => {
+      mockAuthService = new MockedKeycloakAuthService({
+        keycloakUrl: 'http://keycloak:8080',
+        realm: 'test',
+        clientId: 'test',
+        clientSecret: 'secret',
+      }) as jest.Mocked<KeycloakAuthService>;
+
+      mockAuthService.getAccessToken = jest.fn().mockResolvedValue('test-jwt-token');
+      mockAuthService.invalidateToken = jest.fn();
+    });
+
+    it('includes Authorization header when auth service is provided', async () => {
+      const call: MCPCall = { server: 'hr', tool: 'list', paramMap: {} };
+
+      await callMCPTool(call, {}, mockUserContext, { authService: mockAuthService });
+
+      expect(mockAuthService.getAccessToken).toHaveBeenCalled();
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-jwt-token',
+          }),
+        })
+      );
+    });
+
+    it('uses global auth service when set', async () => {
+      setAuthService(mockAuthService);
+
+      const call: MCPCall = { server: 'hr', tool: 'list', paramMap: {} };
+      await callMCPTool(call, {}, mockUserContext);
+
+      expect(mockAuthService.getAccessToken).toHaveBeenCalled();
+      expect(getAuthService()).toBe(mockAuthService);
+
+      // Clean up global state
+      setAuthService(null as any);
+    });
+
+    it('proceeds without auth when token fetch fails', async () => {
+      mockAuthService.getAccessToken.mockRejectedValue(new Error('Auth failed'));
+
+      const call: MCPCall = { server: 'hr', tool: 'list', paramMap: {} };
+      await callMCPTool(call, {}, mockUserContext, { authService: mockAuthService });
+
+      // Should still make the request without Authorization header
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({
+            Authorization: expect.any(String),
+          }),
+        })
+      );
+    });
+
+    it('retries with fresh token on 401 response', async () => {
+      const error = new Error('Unauthorized');
+      (error as any).response = { status: 401 };
+
+      // First call fails with 401, second succeeds
+      mockedAxios.get
+        .mockRejectedValueOnce(error)
+        .mockResolvedValueOnce({ data: { status: 'success', data: {} } });
+
+      mockAuthService.getAccessToken
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValueOnce('fresh-token');
+
+      const call: MCPCall = { server: 'hr', tool: 'list', paramMap: {} };
+      const result = await callMCPTool(call, {}, mockUserContext, { authService: mockAuthService });
+
+      expect(mockAuthService.invalidateToken).toHaveBeenCalled();
+      expect(mockAuthService.getAccessToken).toHaveBeenCalledTimes(2);
+      expect(result.status).toBe('success');
+    });
+
+    it('does not retry infinitely on persistent 401', async () => {
+      const error = new Error('Unauthorized');
+      (error as any).response = { status: 401 };
+
+      // Always fails with 401
+      mockedAxios.get.mockRejectedValue(error);
+
+      const call: MCPCall = { server: 'hr', tool: 'list', paramMap: {} };
+
+      await expect(
+        callMCPTool(call, {}, mockUserContext, { authService: mockAuthService })
+      ).rejects.toThrow();
+
+      // Should only retry once
+      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('can disable retry on auth error', async () => {
+      const error = new Error('Unauthorized');
+      (error as any).response = { status: 401 };
+
+      mockedAxios.get.mockRejectedValue(error);
+
+      const call: MCPCall = { server: 'hr', tool: 'list', paramMap: {} };
+
+      await expect(
+        callMCPTool(call, {}, mockUserContext, {
+          authService: mockAuthService,
+          retryOnAuthError: false,
+        })
+      ).rejects.toThrow();
+
+      // Should not retry
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
     });
   });
 });

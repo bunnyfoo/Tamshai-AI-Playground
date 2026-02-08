@@ -5,8 +5,16 @@
  */
 import express, { Request, Response, NextFunction } from 'express';
 import { displayRouter } from './routes/display';
+import { createAuthServiceFromEnv } from './auth';
+import { setAuthService } from './mcp/mcp-client';
+import { logger } from './utils/logger';
 
 const app = express();
+
+// Initialize Keycloak auth service for service-to-service communication
+const authService = createAuthServiceFromEnv();
+setAuthService(authService);
+logger.info('MCP-UI initialized with Keycloak service authentication');
 
 // JSON body parser middleware
 app.use(express.json());

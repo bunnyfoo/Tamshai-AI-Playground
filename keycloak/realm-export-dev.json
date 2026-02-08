@@ -821,6 +821,54 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "mcp-ui",
+      "name": "MCP UI Service",
+      "description": "Backend service for Generative UI - confidential client for service-to-service auth",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "secret": "mcp-ui-secret",
+      "redirectUris": [],
+      "webOrigins": [],
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "mcp-gateway",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "hardcoded-realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "realm_access",
+            "claim.value": "{\"roles\":[\"executive\",\"hr-read\",\"finance-read\",\"sales-read\",\"support-read\",\"payroll-read\"]}",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "jsonType.label": "JSON"
+          }
+        }
+      ]
     }
   ],
   "clientScopes": [

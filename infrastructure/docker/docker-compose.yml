@@ -262,11 +262,18 @@ services:
       PORT: 3118
       MCP_GATEWAY_URL: http://mcp-gateway:3110
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Keycloak service account for calling MCP Gateway
+      KEYCLOAK_URL: http://keycloak:8080/auth
+      KEYCLOAK_REALM: tamshai-corp
+      MCP_UI_CLIENT_ID: mcp-ui
+      MCP_UI_CLIENT_SECRET: mcp-ui-secret
     ports:
       - "${PORT_MCP_UI:-3118}:3118"
     depends_on:
       mcp-gateway:
         condition: service_started
+      keycloak:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3118/health"]
       interval: 30s
