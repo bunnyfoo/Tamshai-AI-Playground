@@ -310,19 +310,31 @@ resource "local_file" "docker_env" {
     keycloak_db_password = data.external.github_secrets.result.keycloak_db_password
     mongodb_password     = data.external.github_secrets.result.mongodb_password
 
-    # Keycloak
+    # Keycloak (from GitHub secrets, fallback to variable)
     keycloak_admin          = "admin"
-    keycloak_admin_password = var.keycloak_admin_password
+    keycloak_admin_password = coalesce(
+      try(data.external.github_secrets.result.keycloak_admin_password, ""),
+      var.keycloak_admin_password
+    )
 
-    # MinIO
-    minio_root_user     = var.minio_root_user
-    minio_root_password = var.minio_root_password
+    # MinIO (from GitHub secrets, fallback to variable)
+    minio_root_user = coalesce(
+      try(data.external.github_secrets.result.minio_root_user, ""),
+      var.minio_root_user
+    )
+    minio_root_password = coalesce(
+      try(data.external.github_secrets.result.minio_root_password, ""),
+      var.minio_root_password
+    )
 
     # Redis
     redis_password = data.external.github_secrets.result.redis_password
 
-    # Vault (dev token - not from secrets, generated locally for dev)
-    vault_dev_root_token = "dev-root-token"
+    # Vault (from GitHub secrets, fallback to dev token)
+    vault_dev_root_token = coalesce(
+      try(data.external.github_secrets.result.vault_root_token, ""),
+      "dev-root-token"
+    )
 
     # MCP Gateway
     # Use fetched key from GitHub secrets (CLAUDE_API_KEY), fallback to variable
@@ -335,7 +347,7 @@ resource "local_file" "docker_env" {
 
     # MCP Gateway additional secrets (use try to handle empty values)
     mcp_internal_secret          = try(data.external.github_secrets.result.mcp_internal_secret, "")
-    keycloak_client_secret       = try(data.external.github_secrets.result.keycloak_client_secret, "")
+    mcp_gateway_client_secret    = try(data.external.github_secrets.result.mcp_gateway_client_secret, "")
     e2e_admin_api_key            = try(data.external.github_secrets.result.e2e_admin_api_key, "")
     elastic_password             = try(data.external.github_secrets.result.elastic_password, "")
     mcp_ui_client_secret         = try(data.external.github_secrets.result.mcp_ui_client_secret, "")
@@ -513,7 +525,7 @@ resource "null_resource" "keycloak_set_passwords" {
       TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
-        -d "password=admin" \
+        -d "password=${local.template_vars.keycloak_admin_password}" \
         -d "grant_type=password" \
         -d "client_id=admin-cli")
 
@@ -639,7 +651,7 @@ resource "null_resource" "keycloak_set_totp" {
       TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
-        -d "password=admin" \
+        -d "password=${local.template_vars.keycloak_admin_password}" \
         -d "grant_type=password" \
         -d "client_id=admin-cli")
 
