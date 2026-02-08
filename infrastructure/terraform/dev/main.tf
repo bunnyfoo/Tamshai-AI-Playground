@@ -330,6 +330,14 @@ resource "local_file" "docker_env" {
       "not-set"
     )
 
+    # MCP Gateway additional secrets (use try to handle empty values)
+    mcp_internal_secret          = try(data.external.github_secrets.result.mcp_internal_secret, "")
+    keycloak_client_secret       = try(data.external.github_secrets.result.keycloak_client_secret, "")
+    e2e_admin_api_key            = try(data.external.github_secrets.result.e2e_admin_api_key, "")
+    elastic_password             = try(data.external.github_secrets.result.elastic_password, "")
+    mcp_ui_client_secret         = try(data.external.github_secrets.result.mcp_ui_client_secret, "")
+    mcp_hr_service_client_secret = try(data.external.github_secrets.result.mcp_hr_service_client_secret, "")
+
     # MCP Journey (Project History Agent)
     # Use fetched key from GitHub secrets, fallback to variable
     # Empty string is valid (disables Gemini features)

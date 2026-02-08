@@ -40,6 +40,13 @@ $output = @{
     "tamshai_db_password" = ""
     "keycloak_db_password" = ""
     "redis_password" = ""
+    # MCP Gateway secrets
+    "mcp_internal_secret" = ""
+    "keycloak_client_secret" = ""
+    "e2e_admin_api_key" = ""
+    "elastic_password" = ""
+    "mcp_ui_client_secret" = ""
+    "mcp_hr_service_client_secret" = ""
 }
 
 try {
@@ -137,6 +144,37 @@ try {
     $redisPwdFile = Join-Path $tempDir "REDIS_${environment}_PASSWORD"
     if (Test-Path $redisPwdFile) {
         $output["redis_password"] = (Get-Content $redisPwdFile -Raw).Trim()
+    }
+
+    # MCP Gateway secrets (not environment-specific)
+    $mcpInternalSecretFile = Join-Path $tempDir "MCP_INTERNAL_SECRET"
+    if (Test-Path $mcpInternalSecretFile) {
+        $output["mcp_internal_secret"] = (Get-Content $mcpInternalSecretFile -Raw).Trim()
+    }
+
+    $keycloakClientSecretFile = Join-Path $tempDir "MCP_GATEWAY_CLIENT_SECRET"
+    if (Test-Path $keycloakClientSecretFile) {
+        $output["keycloak_client_secret"] = (Get-Content $keycloakClientSecretFile -Raw).Trim()
+    }
+
+    $e2eAdminApiKeyFile = Join-Path $tempDir "E2E_ADMIN_API_KEY"
+    if (Test-Path $e2eAdminApiKeyFile) {
+        $output["e2e_admin_api_key"] = (Get-Content $e2eAdminApiKeyFile -Raw).Trim()
+    }
+
+    $elasticPasswordFile = Join-Path $tempDir "ELASTIC_PASSWORD"
+    if (Test-Path $elasticPasswordFile) {
+        $output["elastic_password"] = (Get-Content $elasticPasswordFile -Raw).Trim()
+    }
+
+    $mcpUiClientSecretFile = Join-Path $tempDir "MCP_UI_CLIENT_SECRET"
+    if (Test-Path $mcpUiClientSecretFile) {
+        $output["mcp_ui_client_secret"] = (Get-Content $mcpUiClientSecretFile -Raw).Trim()
+    }
+
+    $mcpHrServiceClientSecretFile = Join-Path $tempDir "MCP_HR_SERVICE_CLIENT_SECRET"
+    if (Test-Path $mcpHrServiceClientSecretFile) {
+        $output["mcp_hr_service_client_secret"] = (Get-Content $mcpHrServiceClientSecretFile -Raw).Trim()
     }
 
     # Cleanup temp directory
