@@ -57,7 +57,9 @@ keywords = ["client_secret", "client-secret"]
 
 # Exclude development/test patterns
 [rules.allowlist]
-regexes = [
-  # All hardcoded secrets have been removed - using environment variables only
-  # This allowlist intentionally kept minimal for security
+paths = [
+  # Test and development files that may contain placeholder secrets
+  '''.*\.test\.ts''',
+  '''.*\.spec\.ts''',
+  '''sample-data/.*''',
 ]

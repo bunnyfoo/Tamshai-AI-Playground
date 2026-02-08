@@ -1190,7 +1190,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t tamshai/${{ matrix.image.name }}:${{ github.sha }} \
-            ${{ matrix.image.path }}
+            -f ${{ matrix.image.path }}/Dockerfile .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.24.0

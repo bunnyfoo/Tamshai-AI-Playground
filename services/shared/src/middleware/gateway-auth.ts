@@ -51,10 +51,11 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Logger interface for middleware
+ * Compatible with Winston, Pino, and console loggers
  */
 export interface GatewayAuthLogger {
-  warn: (message: string, meta?: Record<string, unknown>) => void;
-  debug?: (message: string, meta?: Record<string, unknown>) => void;
+  warn: (message: string, meta?: Record<string, unknown>) => unknown;
+  debug?: (message: string, meta?: Record<string, unknown>) => unknown;
 }
 
 /**
@@ -83,7 +84,7 @@ export function requireGatewayAuth(
     replayWindowSeconds?: number;
     exemptPaths?: string[];
   }
-) {
+): (req: Request, res: Response, next: NextFunction) => void {
   const logger = options?.logger || defaultLogger;
   const replayWindow = options?.replayWindowSeconds || 30;
   const exemptPaths = options?.exemptPaths || EXEMPT_PATHS;
