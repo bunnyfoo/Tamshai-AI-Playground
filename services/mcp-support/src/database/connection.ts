@@ -15,15 +15,14 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-// Support both MONGODB_URI and MONGODB_URL (CI uses MONGODB_URL) - required
+// Support both MONGODB_URI and MONGODB_URL (CI uses MONGODB_URL)
+// NOTE: MongoDB is optional for MCP Support when using Elasticsearch backend.
+// The connection will fail gracefully when MongoDB tools are called without config.
 const MONGODB_URL = process.env.MONGODB_URL || process.env.MONGODB_URI;
 
-if (!MONGODB_URL) {
-  throw new Error('MONGODB_URL or MONGODB_URI environment variable is required');
-}
-
 // Extract database name from URL if present, otherwise use env var or default
-function extractDatabaseFromUrl(url: string): string | null {
+function extractDatabaseFromUrl(url: string | undefined): string | null {
+  if (!url) return null;
   try {
     const match = url.match(/\/([^/?]+)(\?|$)/);
     return match ? match[1] : null;
@@ -32,25 +31,36 @@ function extractDatabaseFromUrl(url: string): string | null {
   }
 }
 
-const DATABASE_NAME = process.env.MONGODB_DB || extractDatabaseFromUrl(MONGODB_URL) || 'tamshai_support';
-const MONGODB_URI = MONGODB_URL;
-
 let client: MongoClient | null = null;
 let db: Db | null = null;
 
 /**
  * Connect to MongoDB
+ *
+ * NOTE: This function is called lazily. MongoDB is optional for MCP Support
+ * when using Elasticsearch backend. It will throw if called without MONGODB_URL.
  */
 async function connect(): Promise<Db> {
   if (db) {
     return db;
   }
 
+  // Validate MongoDB URL at connection time (lazy validation)
+  if (!MONGODB_URL) {
+    throw new Error(
+      'MongoDB connection requested but MONGODB_URL/MONGODB_URI is not configured. ' +
+      'This typically means MongoDB-dependent tools (SLA, agent metrics) are not available ' +
+      'when using Elasticsearch-only mode.'
+    );
+  }
+
+  const databaseName = process.env.MONGODB_DB || extractDatabaseFromUrl(MONGODB_URL) || 'tamshai_support';
+
   try {
-    client = new MongoClient(MONGODB_URI);
+    client = new MongoClient(MONGODB_URL);
     await client.connect();
-    db = client.db(DATABASE_NAME);
-    logger.info('Connected to MongoDB', { database: DATABASE_NAME });
+    db = client.db(databaseName);
+    logger.info('Connected to MongoDB', { database: databaseName });
     return db;
   } catch (error) {
     logger.error('Failed to connect to MongoDB', error);
