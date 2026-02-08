@@ -44,18 +44,15 @@ export function parseDirective(directive: string): ParsedDirective | null {
   return { domain, component, params };
 }
 
-// Keys that must never be set from user input (prototype pollution vectors)
-const BLOCKED_PARAM_KEYS = new Set([
-  '__proto__', 'constructor', 'prototype',
-  'toString', 'valueOf', 'hasOwnProperty',
-  'isPrototypeOf', 'propertyIsEnumerable',
-  'toLocaleString',
-]);
+// Safe key pattern: only word characters (letters, digits, underscores)
+// This prevents prototype pollution (__proto__, constructor, etc.)
+// and any injection via special characters in keys.
+const SAFE_KEY_PATTERN = /^\w+$/;
 
 /**
  * Parses a parameter string into a key-value object.
- * Uses Object.create(null) to prevent prototype pollution and blocks
- * dangerous key names.
+ * Uses Object.create(null) to prevent prototype pollution.
+ * Keys must match /^\w+$/ (alphanumeric + underscore only).
  *
  * @param paramString - Comma-separated key=value pairs
  * @returns Object with parsed parameters
@@ -74,7 +71,7 @@ function parseParams(paramString: string): Record<string, string> {
     const key = pair.slice(0, eqIndex).trim();
     const value = pair.slice(eqIndex + 1).trim();
 
-    if (key && !BLOCKED_PARAM_KEYS.has(key)) {
+    if (key && SAFE_KEY_PATTERN.test(key)) {
       params[key] = value;
     }
   }

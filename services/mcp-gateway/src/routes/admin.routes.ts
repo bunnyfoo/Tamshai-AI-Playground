@@ -12,13 +12,14 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import winston from 'winston';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Logger setup
 const logger = winston.createLogger({
@@ -148,10 +149,9 @@ async function createPostgresSnapshot(snapshotId: string, database: string): Pro
   const snapshotFile = path.join(SNAPSHOT_DIR, `${safeSnapshotId}_${safeDb}.sql`);
 
   const env = { ...process.env, PGPASSWORD: DB_CONFIG.postgres.password };
-  const cmd = `pg_dump -h ${safeHost} -p ${safePort} -U ${safeUser} -d ${safeDb} -F c -f ${snapshotFile}`;
 
   try {
-    await execAsync(cmd, { env });
+    await execFileAsync('pg_dump', ['-h', safeHost, '-p', safePort, '-U', safeUser, '-d', safeDb, '-F', 'c', '-f', snapshotFile], { env });
     logger.info('Created PostgreSQL snapshot', { database: safeDb, snapshotFile });
     return snapshotFile;
   } catch (error) {
@@ -205,12 +205,10 @@ async function createMongoSnapshot(snapshotId: string, database: string): Promis
   const safeSnapshotId = validateShellArg(snapshotId, 'snapshotId');
   const snapshotDir = path.join(SNAPSHOT_DIR, `${safeSnapshotId}_${safeDb}`);
 
-  // Pass password via environment variable to avoid shell exposure
-  const env = { ...process.env, MONGO_PWD: DB_CONFIG.mongodb.password };
-  const cmd = `mongodump --host ${safeHost} --port ${safePort} -u ${safeUser} -p "$MONGO_PWD" --authenticationDatabase admin --db ${safeDb} --out ${snapshotDir}`;
+  const password = DB_CONFIG.mongodb.password || '';
 
   try {
-    await execAsync(cmd, { env });
+    await execFileAsync('mongodump', ['--host', safeHost, '--port', safePort, '-u', safeUser, '-p', password, '--authenticationDatabase', 'admin', '--db', safeDb, '--out', snapshotDir]);
     logger.info('Created MongoDB snapshot', { database: safeDb, snapshotDir });
     return snapshotDir;
   } catch (error) {
