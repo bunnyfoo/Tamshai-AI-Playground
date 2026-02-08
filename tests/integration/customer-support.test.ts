@@ -640,7 +640,7 @@ describe('Error Handling', () => {
     } catch (error: any) {
       if (error.response) {
         expect(error.response.status).toBe(401);
-        expect(error.response.data.code).toBe('GATEWAY_AUTH_INVALID');
+        expect(error.response.data.code).toBe('MISSING_GATEWAY_TOKEN');
       } else {
         throw error;
       }
