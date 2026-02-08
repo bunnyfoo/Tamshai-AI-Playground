@@ -1,5 +1,8 @@
 # Tamshai Corp MCP Gateway
 # Multi-stage build for minimal production image
+#
+# Build context: Repository root (for access to services/shared)
+# Usage: docker build -f services/mcp-gateway/Dockerfile .
 
 # =============================================================================
 # BUILD STAGE
@@ -8,15 +11,21 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy shared package first (dependency)
+COPY services/shared ./shared
+
+# Copy mcp-gateway package files
+COPY services/mcp-gateway/package*.json ./
+
+# Update shared dependency to use local path in container
+RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json
 
 # Install dependencies
 RUN npm ci
 
 # Copy source code
-COPY tsconfig.json ./
-COPY src ./src
+COPY services/mcp-gateway/tsconfig.json ./
+COPY services/mcp-gateway/src ./src
 
 # Build TypeScript
 RUN npm run build

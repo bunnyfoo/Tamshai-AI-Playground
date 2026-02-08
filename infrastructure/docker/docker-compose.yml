@@ -210,8 +210,8 @@ services:
   # =============================================================================
   mcp-gateway:
     build:
-      context: ../../services/mcp-gateway
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: services/mcp-gateway/Dockerfile
     image: mcp-gateway:latest
     container_name: tamshai-pg-mcp-gateway
     environment:
