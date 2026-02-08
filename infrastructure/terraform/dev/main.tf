@@ -71,6 +71,12 @@ locals {
     website             = tonumber(data.external.github_variables.result.port_website)
   }
 
+  # Keycloak admin password (from GitHub secrets, fallback to variable)
+  keycloak_admin_password = coalesce(
+    try(data.external.github_secrets.result.keycloak_admin_password, ""),
+    var.keycloak_admin_password
+  )
+
   # Service URLs for outputs (dynamically built from ports)
   services = {
     keycloak = {
@@ -525,7 +531,7 @@ resource "null_resource" "keycloak_set_passwords" {
       TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
-        -d "password=${local.template_vars.keycloak_admin_password}" \
+        -d "password=${local.keycloak_admin_password}" \
         -d "grant_type=password" \
         -d "client_id=admin-cli")
 
@@ -651,7 +657,7 @@ resource "null_resource" "keycloak_set_totp" {
       TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
-        -d "password=${local.template_vars.keycloak_admin_password}" \
+        -d "password=${local.keycloak_admin_password}" \
         -d "grant_type=password" \
         -d "client_id=admin-cli")
 
