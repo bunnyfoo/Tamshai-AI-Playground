@@ -240,6 +240,8 @@ services:
       LOG_LEVEL: info
       # v1.4: Admin API key for E2E snapshot/restore
       ADMIN_API_KEY: ${E2E_ADMIN_API_KEY:-e2e-test-admin-key}
+      # v1.5: Internal HMAC secret for MCP server authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
     ports:
       - "${PORT_MCP_GATEWAY:-3110}:3110"
     depends_on:
@@ -302,6 +304,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
       # Phoenix self-healing identity reconciliation
       # Keycloak is configured with /auth prefix (KC_HTTP_RELATIVE_PATH=/auth)
       ENVIRONMENT: ${ENVIRONMENT:-dev}
@@ -346,6 +350,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
     ports:
       - "${PORT_MCP_FINANCE:-3112}:3112"
     depends_on:
@@ -376,6 +382,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
     ports:
       - "${PORT_MCP_SALES:-3113}:3113"
     depends_on:
@@ -410,6 +418,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
     ports:
       - "${PORT_MCP_SUPPORT:-3114}:3114"
     depends_on:
@@ -471,6 +481,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
     ports:
       - "${PORT_MCP_PAYROLL:-3116}:3116"
     depends_on:
@@ -504,6 +516,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LOG_LEVEL: info
+      # v1.5: Internal HMAC secret for gateway authentication
+      MCP_INTERNAL_SECRET: ${MCP_INTERNAL_SECRET:-}
     ports:
       - "${PORT_MCP_TAX:-3117}:3117"
     depends_on:

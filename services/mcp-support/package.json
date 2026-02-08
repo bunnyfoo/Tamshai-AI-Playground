@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tamshai/shared": "file:../shared",
     "express": "^4.21.2",
     "@elastic/elasticsearch": "^8.16.1",
     "mongodb": "^6.3.0",

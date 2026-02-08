@@ -224,6 +224,7 @@ const mcpClient = new MCPClient(
     readTimeout: config.timeouts.mcpRead,
     writeTimeout: config.timeouts.mcpWrite,
     maxPages: 10,
+    internalSecret: process.env.MCP_INTERNAL_SECRET,
   },
   logger
 );
@@ -527,6 +528,7 @@ const mcpProxyRouter = createMCPProxyRoutes({
   logger,
   mcpServers: mcpServerConfigs,
   getAccessibleServers: getAccessibleMCPServersForUser,
+  internalSecret: process.env.MCP_INTERNAL_SECRET,
 });
 
 // Mount MCP proxy routes at /api with auth

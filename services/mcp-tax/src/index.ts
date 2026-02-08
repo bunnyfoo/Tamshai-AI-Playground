@@ -6,6 +6,7 @@
  */
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
+import { requireGatewayAuth } from '@tamshai/shared';
 import { UserContext, checkConnection } from './database/connection';
 import { checkRedisConnection } from './utils/redis';
 import { logger } from './utils/logger';
@@ -30,6 +31,9 @@ const PORT = parseInt(process.env.PORT || '3107', 10);
 
 // Middleware
 app.use(express.json({ limit: '1mb' }));
+
+// Gateway authentication middleware (prevents direct access bypass)
+app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
 
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {

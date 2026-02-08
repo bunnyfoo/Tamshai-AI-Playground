@@ -16,6 +16,7 @@ import winston from 'winston';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
+import { requireGatewayAuth } from '@tamshai/shared';
 import { UserContext, checkConnection, closeConnection, getCollection, buildRoleFilter } from './database/connection';
 import { MCPToolResponse, createSuccessResponse, createPendingConfirmationResponse, createErrorResponse, PaginationMetadata } from './types/response';
 import { handleOpportunityNotFound, handleCustomerNotFound, handleInsufficientPermissions, handleCannotDeleteWonOpportunity, handleDatabaseError, withErrorHandling } from './utils/error-handler';
@@ -33,6 +34,10 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3103');
 
 app.use(express.json());
+
+// Gateway authentication middleware (prevents direct access bypass)
+app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info('Incoming request', { method: req.method, path: req.path, userId: req.headers['x-user-id'] });
   next();

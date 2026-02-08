@@ -21,6 +21,7 @@ import {
 import { UserContext } from '../test-utils/mock-user-context';
 import { getIdentityToken } from '../utils/gcp-auth';
 import { buildSafeQueryParams, sanitizeForLogging } from '../utils/sanitize';
+import { generateInternalToken, INTERNAL_TOKEN_HEADER } from '@tamshai/shared';
 
 // Extended Request type with userContext property
 interface AuthenticatedRequest extends Request {
@@ -32,6 +33,7 @@ export interface MCPProxyRoutesDependencies {
   mcpServers: MCPServerConfig[];
   getAccessibleServers: (roles: string[]) => MCPServerConfig[];
   timeout?: number;
+  internalSecret?: string; // Shared secret for MCP server authentication (MCP_INTERNAL_SECRET)
 }
 
 /**
@@ -39,7 +41,12 @@ export interface MCPProxyRoutesDependencies {
  */
 export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
   const router = Router();
-  const { logger, mcpServers, getAccessibleServers, timeout = 30000 } = deps;
+  const { logger, mcpServers, getAccessibleServers, timeout = 30000, internalSecret } = deps;
+
+  // Warn if internal secret is not configured (security risk)
+  if (!internalSecret) {
+    logger.warn('MCP_INTERNAL_SECRET not configured - MCP servers may be vulnerable to direct access');
+  }
 
   /**
    * GET /mcp/:serverName/:toolName
@@ -123,6 +130,11 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
       // Returns null in dev/stage (non-GCP environments)
       const identityToken = await getIdentityToken(server.url);
 
+      // Generate internal authentication token for MCP server
+      const mcpInternalToken = internalSecret
+        ? generateInternalToken(internalSecret, userContext.userId, userContext.roles)
+        : undefined;
+
       const mcpResponse = await axios.post(
         targetUrl,
         {
@@ -139,6 +151,8 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
           headers: {
             'Content-Type': 'application/json',
             'X-Request-ID': requestId,
+            // Add internal token for MCP server authentication (prevents direct access bypass)
+            ...(mcpInternalToken && { [INTERNAL_TOKEN_HEADER]: mcpInternalToken }),
             // Include GCP identity token if available (Cloud Run service-to-service)
             ...(identityToken && { Authorization: `Bearer ${identityToken}` }),
           },
@@ -236,6 +250,11 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
       // Returns null in dev/stage (non-GCP environments)
       const identityToken = await getIdentityToken(server.url);
 
+      // Generate internal authentication token for MCP server
+      const mcpInternalToken = internalSecret
+        ? generateInternalToken(internalSecret, userContext.userId, userContext.roles)
+        : undefined;
+
       const mcpResponse = await axios.post(
         targetUrl,
         body,
@@ -246,6 +265,8 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
             'X-User-ID': userContext.userId,
             'X-User-Roles': userContext.roles.join(','),
             'X-Request-ID': requestId,
+            // Add internal token for MCP server authentication (prevents direct access bypass)
+            ...(mcpInternalToken && { [INTERNAL_TOKEN_HEADER]: mcpInternalToken }),
             // Include GCP identity token if available (Cloud Run service-to-service)
             ...(identityToken && { Authorization: `Bearer ${identityToken}` }),
           },

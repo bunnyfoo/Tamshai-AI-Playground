@@ -15,6 +15,7 @@ import dotenv from 'dotenv';
 import winston from 'winston';
 import { Queue } from 'bullmq';
 import KeycloakAdminClient from '@keycloak/keycloak-admin-client';
+import { requireGatewayAuth } from '@tamshai/shared';
 import pool, { UserContext, checkConnection, closePool, queryWithRLS } from './database/connection';
 import {
   IdentityService,
@@ -81,6 +82,10 @@ function hasHRAccess(roles: string[]): boolean {
 
 // Middleware
 app.use(express.json());
+
+// Gateway authentication middleware (prevents direct access bypass)
+// Health endpoints are automatically exempt
+app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {

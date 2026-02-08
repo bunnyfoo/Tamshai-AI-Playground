@@ -15,6 +15,7 @@ import dotenv from 'dotenv';
 import winston from 'winston';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import { requireGatewayAuth } from '@tamshai/shared';
 import { MCPToolResponse, createSuccessResponse, createPendingConfirmationResponse, createErrorResponse, PaginationMetadata } from './types/response';
 import { storePendingConfirmation } from './utils/redis';
 import { ISupportBackend, UserContext } from './database/types';
@@ -63,6 +64,10 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3104');
 
 app.use(express.json());
+
+// Gateway authentication middleware (prevents direct access bypass)
+app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info('Incoming request', { method: req.method, path: req.path, userId: req.headers['x-user-id'] });
   next();

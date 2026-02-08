@@ -13,6 +13,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import winston from 'winston';
+import { requireGatewayAuth } from '@tamshai/shared';
 import { UserContext, checkConnection, closePool } from './database/connection';
 import { getBudget, GetBudgetInputSchema } from './tools/get-budget';
 import { listBudgets, ListBudgetsInputSchema } from './tools/list-budgets';
@@ -162,6 +163,10 @@ function hasFinanceAccess(roles: string[]): boolean {
 
 // Middleware
 app.use(express.json());
+
+// Gateway authentication middleware (prevents direct access bypass)
+// Health endpoints are automatically exempt
+app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
 
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
