@@ -709,6 +709,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
+          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
 
       - name: Install MCP Finance dependencies
         working-directory: services/mcp-finance
@@ -733,6 +734,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
+          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
 
       - name: Install MCP Sales dependencies
         working-directory: services/mcp-sales
@@ -753,6 +755,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
+          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
 
       - name: Install MCP Support dependencies
         working-directory: services/mcp-support
@@ -773,6 +776,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
+          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
 
       - name: Wait for MCP Servers
         run: |
@@ -878,6 +882,8 @@ jobs:
           MCP_SUPPORT_URL: http://127.0.0.1:3114
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          # Shared secret for MCP server authentication
+          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
 
       - name: Run MCP HR integration tests
         working-directory: services/mcp-hr
