@@ -631,16 +631,16 @@ describe('Lead-Only Operations', () => {
 });
 
 describe('Error Handling', () => {
-  test('Request without userContext returns 400', async () => {
-    // MCP pattern: userContext is required in request body
-    // Without it, the service returns 400 (bad request) not 401
+  test('Request without authentication returns 401', async () => {
+    // Gateway-auth middleware validates internal token before checking userContext
+    // Requests without X-MCP-Internal-Token header are rejected with 401
     try {
       await axios.post(`${CONFIG.mcpSupportUrl}/tools/customer_list_tickets`, {});
       fail('Should have thrown an error');
     } catch (error: any) {
       if (error.response) {
-        expect(error.response.status).toBe(400);
-        expect(error.response.data.code).toBe('MISSING_USER_CONTEXT');
+        expect(error.response.status).toBe(401);
+        expect(error.response.data.code).toBe('GATEWAY_AUTH_INVALID');
       } else {
         throw error;
       }
