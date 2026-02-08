@@ -98,6 +98,10 @@ services:
       # Pass through secrets for Vault initialization
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
+      KEYCLOAK_CLIENT_SECRET: ${MCP_GATEWAY_CLIENT_SECRET:-dev-client-secret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD:-}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-}
     volumes:
       - ./vault/init-dev.sh:/vault/init-dev.sh:ro
     entrypoint: /bin/sh

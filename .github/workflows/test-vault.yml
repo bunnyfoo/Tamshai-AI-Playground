@@ -78,6 +78,7 @@ jobs:
           MCP_UI_CLIENT_SECRET=${MCP_UI_CLIENT_SECRET}
           MCP_INTERNAL_SECRET=${MCP_INTERNAL_SECRET}
           MCP_HR_SERVICE_CLIENT_SECRET=${MCP_HR_SERVICE_CLIENT_SECRET}
+          MCP_GATEWAY_CLIENT_SECRET=vault-test-client-secret
 
           # Port Configuration (required by docker-compose.yml)
           PORT_CADDY_HTTP=80
