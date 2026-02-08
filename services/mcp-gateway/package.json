@@ -16,9 +16,9 @@
     "type-coverage:report": "type-coverage --detail --json-output > type-coverage.json"
   },
   "dependencies": {
-    "@tamshai/shared": "file:../shared",
     "@anthropic-ai/sdk": "^0.71.2",
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@tamshai/shared": "file:../shared",
     "axios": "^1.6.2",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -71,7 +71,9 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "maxWorkers": "50%",
-    "setupFiles": ["./jest.setup.js"],
+    "setupFiles": [
+      "./jest.setup.js"
+    ],
     "testMatch": [
       "**/*.test.ts",
       "**/*.spec.ts"

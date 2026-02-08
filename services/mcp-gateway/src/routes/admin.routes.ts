@@ -36,6 +36,28 @@ const SNAPSHOT_DIR = process.env.SNAPSHOT_DIR || '/tmp/tamshai-snapshots';
 // Admin API key for test automation (fail-closed: routes disabled if not set)
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
+/**
+ * Validate a shell argument to prevent command injection.
+ * Only allows alphanumeric characters, hyphens, underscores, dots, and forward slashes.
+ */
+function validateShellArg(value: string | undefined, name: string): string {
+  if (!value) {
+    throw new Error(`Required configuration ${name} is not set`);
+  }
+  if (!/^[a-zA-Z0-9._\-/]+$/.test(value)) {
+    throw new Error(`Invalid characters in ${name}: only alphanumeric, dots, hyphens, underscores, and slashes are allowed`);
+  }
+  return value;
+}
+
+/**
+ * Sanitize a string for safe inclusion in log messages.
+ * Removes newlines and control characters to prevent log injection.
+ */
+function sanitizeForLog(value: string): string {
+  return value.replace(/[\r\n\x00-\x1f\x7f-\x9f]/g, '');
+}
+
 // Database configurations - all values from environment variables
 // Ports are set via GitHub Variables and injected by Terraform
 const DB_CONFIG = {
@@ -118,18 +140,22 @@ async function ensureSnapshotDir(): Promise<void> {
  * Create PostgreSQL database snapshot using pg_dump
  */
 async function createPostgresSnapshot(snapshotId: string, database: string): Promise<string> {
-  const { host, port, user, password } = DB_CONFIG.postgres;
-  const snapshotFile = path.join(SNAPSHOT_DIR, `${snapshotId}_${database}.sql`);
+  const safeHost = validateShellArg(DB_CONFIG.postgres.host, 'POSTGRES_HOST');
+  const safePort = validateShellArg(DB_CONFIG.postgres.port, 'POSTGRES_PORT');
+  const safeUser = validateShellArg(DB_CONFIG.postgres.user, 'POSTGRES_USER');
+  const safeDb = validateShellArg(database, 'database');
+  const safeSnapshotId = validateShellArg(snapshotId, 'snapshotId');
+  const snapshotFile = path.join(SNAPSHOT_DIR, `${safeSnapshotId}_${safeDb}.sql`);
 
-  const env = { ...process.env, PGPASSWORD: password };
-  const cmd = `pg_dump -h ${host} -p ${port} -U ${user} -d ${database} -F c -f ${snapshotFile}`;
+  const env = { ...process.env, PGPASSWORD: DB_CONFIG.postgres.password };
+  const cmd = `pg_dump -h ${safeHost} -p ${safePort} -U ${safeUser} -d ${safeDb} -F c -f ${snapshotFile}`;
 
   try {
     await execAsync(cmd, { env });
-    logger.info(`Created PostgreSQL snapshot: ${database} -> ${snapshotFile}`);
+    logger.info('Created PostgreSQL snapshot', { database: safeDb, snapshotFile });
     return snapshotFile;
   } catch (error) {
-    logger.error(`Failed to create PostgreSQL snapshot for ${database}:`, error);
+    logger.error('Failed to create PostgreSQL snapshot', { database: safeDb, error: error instanceof Error ? error.message : 'Unknown error' });
     throw error;
   }
 }
@@ -138,28 +164,33 @@ async function createPostgresSnapshot(snapshotId: string, database: string): Pro
  * Restore PostgreSQL database from snapshot using pg_restore
  */
 async function restorePostgresSnapshot(snapshotFile: string, database: string): Promise<void> {
-  const { host, port, user, password } = DB_CONFIG.postgres;
+  const safeHost = validateShellArg(DB_CONFIG.postgres.host, 'POSTGRES_HOST');
+  const safePort = validateShellArg(DB_CONFIG.postgres.port, 'POSTGRES_PORT');
+  const safeUser = validateShellArg(DB_CONFIG.postgres.user, 'POSTGRES_USER');
+  const safeDb = validateShellArg(database, 'database');
 
-  const env = { ...process.env, PGPASSWORD: password };
+  const env = { ...process.env, PGPASSWORD: DB_CONFIG.postgres.password };
 
-  // Drop and recreate database
-  const dropCmd = `psql -h ${host} -p ${port} -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${database}' AND pid <> pg_backend_pid();" && psql -h ${host} -p ${port} -U postgres -c "DROP DATABASE IF EXISTS ${database};" && psql -h ${host} -p ${port} -U postgres -c "CREATE DATABASE ${database} OWNER ${user};"`;
+  // Drop and recreate database - use parameterized psql with -v for the database name
+  const terminateCmd = `psql -h ${safeHost} -p ${safePort} -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${safeDb}' AND pid <> pg_backend_pid();"`;
+  const dropCmd = `psql -h ${safeHost} -p ${safePort} -U postgres -c "DROP DATABASE IF EXISTS ${safeDb};"`;
+  const createCmd = `psql -h ${safeHost} -p ${safePort} -U postgres -c "CREATE DATABASE ${safeDb} OWNER ${safeUser};"`;
 
   try {
-    await execAsync(dropCmd, { env });
+    await execAsync(`${terminateCmd} && ${dropCmd} && ${createCmd}`, { env });
   } catch (error) {
-    logger.warn(`Database drop/create warning for ${database}:`, error);
+    logger.warn('Database drop/create warning', { database: safeDb, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 
   // Restore from snapshot
-  const restoreCmd = `pg_restore -h ${host} -p ${port} -U ${user} -d ${database} --clean --if-exists ${snapshotFile}`;
+  const restoreCmd = `pg_restore -h ${safeHost} -p ${safePort} -U ${safeUser} -d ${safeDb} --clean --if-exists ${snapshotFile}`;
 
   try {
     await execAsync(restoreCmd, { env });
-    logger.info(`Restored PostgreSQL snapshot: ${snapshotFile} -> ${database}`);
+    logger.info('Restored PostgreSQL snapshot', { snapshotFile, database: safeDb });
   } catch (error) {
     // pg_restore may return non-zero for warnings - check if data was restored
-    logger.warn(`PostgreSQL restore warning for ${database}:`, error);
+    logger.warn('PostgreSQL restore warning', { database: safeDb, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 }
 
@@ -167,17 +198,23 @@ async function restorePostgresSnapshot(snapshotFile: string, database: string): 
  * Create MongoDB snapshot using mongodump
  */
 async function createMongoSnapshot(snapshotId: string, database: string): Promise<string> {
-  const { host, port, user, password } = DB_CONFIG.mongodb;
-  const snapshotDir = path.join(SNAPSHOT_DIR, `${snapshotId}_${database}`);
+  const safeHost = validateShellArg(DB_CONFIG.mongodb.host, 'MONGODB_HOST');
+  const safePort = validateShellArg(DB_CONFIG.mongodb.port, 'MONGODB_PORT');
+  const safeUser = validateShellArg(DB_CONFIG.mongodb.user, 'MONGODB_USER');
+  const safeDb = validateShellArg(database, 'database');
+  const safeSnapshotId = validateShellArg(snapshotId, 'snapshotId');
+  const snapshotDir = path.join(SNAPSHOT_DIR, `${safeSnapshotId}_${safeDb}`);
 
-  const cmd = `mongodump --host ${host} --port ${port} -u ${user} -p ${password} --authenticationDatabase admin --db ${database} --out ${snapshotDir}`;
+  // Pass password via environment variable to avoid shell exposure
+  const env = { ...process.env, MONGO_PWD: DB_CONFIG.mongodb.password };
+  const cmd = `mongodump --host ${safeHost} --port ${safePort} -u ${safeUser} -p "$MONGO_PWD" --authenticationDatabase admin --db ${safeDb} --out ${snapshotDir}`;
 
   try {
-    await execAsync(cmd);
-    logger.info(`Created MongoDB snapshot: ${database} -> ${snapshotDir}`);
+    await execAsync(cmd, { env });
+    logger.info('Created MongoDB snapshot', { database: safeDb, snapshotDir });
     return snapshotDir;
   } catch (error) {
-    logger.error(`Failed to create MongoDB snapshot for ${database}:`, error);
+    logger.error('Failed to create MongoDB snapshot', { database: safeDb, error: error instanceof Error ? error.message : 'Unknown error' });
     throw error;
   }
 }
@@ -186,25 +223,31 @@ async function createMongoSnapshot(snapshotId: string, database: string): Promis
  * Restore MongoDB from snapshot using mongorestore
  */
 async function restoreMongoSnapshot(snapshotDir: string, database: string): Promise<void> {
-  const { host, port, user, password } = DB_CONFIG.mongodb;
+  const safeHost = validateShellArg(DB_CONFIG.mongodb.host, 'MONGODB_HOST');
+  const safePort = validateShellArg(DB_CONFIG.mongodb.port, 'MONGODB_PORT');
+  const safeUser = validateShellArg(DB_CONFIG.mongodb.user, 'MONGODB_USER');
+  const safeDb = validateShellArg(database, 'database');
+
+  // Pass password via environment variable to avoid shell exposure
+  const env = { ...process.env, MONGO_PWD: DB_CONFIG.mongodb.password };
 
   // Drop existing database
-  const dropCmd = `mongosh --host ${host} --port ${port} -u ${user} -p ${password} --authenticationDatabase admin --eval "db.getSiblingDB('${database}').dropDatabase()"`;
+  const dropCmd = `mongosh --host ${safeHost} --port ${safePort} -u ${safeUser} -p "$MONGO_PWD" --authenticationDatabase admin --eval "db.getSiblingDB('${safeDb}').dropDatabase()"`;
 
   try {
-    await execAsync(dropCmd);
+    await execAsync(dropCmd, { env });
   } catch (error) {
-    logger.warn(`MongoDB drop warning for ${database}:`, error);
+    logger.warn('MongoDB drop warning', { database: safeDb, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 
   // Restore from snapshot
-  const restoreCmd = `mongorestore --host ${host} --port ${port} -u ${user} -p ${password} --authenticationDatabase admin --db ${database} ${snapshotDir}/${database}`;
+  const restoreCmd = `mongorestore --host ${safeHost} --port ${safePort} -u ${safeUser} -p "$MONGO_PWD" --authenticationDatabase admin --db ${safeDb} ${snapshotDir}/${safeDb}`;
 
   try {
-    await execAsync(restoreCmd);
-    logger.info(`Restored MongoDB snapshot: ${snapshotDir} -> ${database}`);
+    await execAsync(restoreCmd, { env });
+    logger.info('Restored MongoDB snapshot', { snapshotDir, database: safeDb });
   } catch (error) {
-    logger.warn(`MongoDB restore warning for ${database}:`, error);
+    logger.warn('MongoDB restore warning', { database: safeDb, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 }
 
@@ -323,7 +366,7 @@ router.post('/snapshots', async (req: Request, res: Response) => {
 router.post('/snapshots/:snapshotId/rollback', async (req: Request, res: Response) => {
   const { snapshotId } = req.params;
 
-  logger.info(`Rolling back to snapshot: ${snapshotId}`);
+  logger.info('Rolling back to snapshot', { snapshotId: sanitizeForLog(snapshotId) });
 
   const snapshot = snapshots.get(snapshotId);
   if (!snapshot) {
@@ -355,7 +398,7 @@ router.post('/snapshots/:snapshotId/rollback', async (req: Request, res: Respons
       }
     }
 
-    logger.info(`Rollback complete: ${snapshotId} restored ${restoredDatabases.length} databases`);
+    logger.info('Rollback complete', { snapshotId: sanitizeForLog(snapshotId), restoredCount: restoredDatabases.length });
 
     res.json({
       status: 'success',
@@ -438,7 +481,7 @@ router.delete('/snapshots/:snapshotId', async (req: Request, res: Response) => {
 router.post('/seed/:scenario', async (req: Request, res: Response) => {
   const { scenario } = req.params;
 
-  logger.info(`Seeding data for scenario: ${scenario}`);
+  logger.info('Seeding data for scenario', { scenario: sanitizeForLog(scenario) });
 
   // TODO: Implement scenario-specific seeding
   // For now, return a stub response
@@ -457,7 +500,7 @@ router.post('/seed/:scenario', async (req: Request, res: Response) => {
 router.post('/clear/:domain', async (req: Request, res: Response) => {
   const { domain } = req.params;
 
-  logger.info(`Clearing data for domain: ${domain}`);
+  logger.info('Clearing data for domain', { domain: sanitizeForLog(domain) });
 
   // TODO: Implement domain-specific clearing
   // For now, return a stub response

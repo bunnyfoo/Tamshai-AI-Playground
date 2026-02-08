@@ -68,7 +68,7 @@ function generateTotpCode(secret: string): string {
 
   if (isOathtoolAvailable()) {
     try {
-      return execSync(`oathtool "${secret}"`, { encoding: 'utf-8' }).trim();
+      return execSync('oathtool "$TOTP_SECRET"', { encoding: 'utf-8', env: { ...process.env, TOTP_SECRET: secret }, shell: '/bin/bash' }).trim();
     } catch {
       // Fall through
     }

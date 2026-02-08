@@ -130,8 +130,10 @@ function generateTotpCode(secret: string): string {
       // Use oathtool to generate TOTP code
       // oathtool takes the base32 secret as a positional argument
       // No flags needed - it defaults to TOTP with SHA1 algorithm
-      const totpCode = execSync(`oathtool "${secret}"`, {
+      const totpCode = execSync('oathtool "$TOTP_SECRET"', {
         encoding: 'utf-8',
+        env: { ...process.env, TOTP_SECRET: secret },
+        shell: '/bin/bash',
         stdio: ['pipe', 'pipe', 'pipe'],
       }).trim();
 

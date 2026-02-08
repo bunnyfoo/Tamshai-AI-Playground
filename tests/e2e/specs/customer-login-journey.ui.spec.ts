@@ -175,7 +175,7 @@ test.describe('Customer Login Journey', () => {
     const pageContent = await page.textContent('body');
     expect(pageContent?.length).toBeGreaterThan(100);
 
-    console.log(`Customer login journey completed successfully for ${TEST_LEAD_CUSTOMER.username}`);
+    console.log('Customer login journey completed successfully for lead customer');
   });
 
   test('should complete full login journey for basic customer', async ({ page }) => {

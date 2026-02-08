@@ -422,6 +422,14 @@ const CustomerSearchKBInputSchema = z.object({
   limit: z.number().int().min(1).max(20).default(10),
 });
 
+/**
+ * Escape special regex characters to prevent ReDoS attacks
+ * when building MongoDB $regex queries from user input.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export async function customerSearchKB(
   input: unknown,
   _userContext: CustomerContext
@@ -441,13 +449,14 @@ export async function customerSearchKB(
       filter.category = category;
     }
 
-    // Text search on title and content
+    // Text search on title and content (escape regex to prevent ReDoS)
+    const safeQuery = escapeRegex(query);
     const searchFilter = {
       ...filter,
       $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { content: { $regex: query, $options: 'i' } },
-        { tags: { $in: [new RegExp(query, 'i')] } },
+        { title: { $regex: safeQuery, $options: 'i' } },
+        { content: { $regex: safeQuery, $options: 'i' } },
+        { tags: { $in: [new RegExp(safeQuery, 'i')] } },
       ],
     };
 
@@ -632,7 +641,7 @@ This will send an invitation email to set up their account.`;
 // =============================================================================
 
 const CustomerTransferLeadInputSchema = z.object({
-  newLeadUserId: z.string(),
+  newLeadUserId: z.string().uuid('newLeadUserId must be a valid UUID'),
 });
 
 export async function customerTransferLead(

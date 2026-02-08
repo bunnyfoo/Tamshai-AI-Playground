@@ -130,9 +130,12 @@ function generateTotpCodeInternal(secret: string): string {
 
   if (isOathtoolAvailable()) {
     try {
-      return execSync(`oathtool "${secret}"`, {
+      // Pass secret via environment variable to prevent command injection
+      return execSync('oathtool "$TOTP_SECRET"', {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, TOTP_SECRET: secret },
+        shell: '/bin/bash',
       }).trim();
     } catch {
       // Fall through to otplib

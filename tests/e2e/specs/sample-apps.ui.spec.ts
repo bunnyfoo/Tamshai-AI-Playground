@@ -133,8 +133,10 @@ function generateTotpCodeInternal(secret: string): string {
 
   if (isOathtoolAvailable()) {
     try {
-      return execSync(`oathtool "${secret}"`, {
+      return execSync('oathtool "$TOTP_SECRET"', {
         encoding: 'utf-8',
+        env: { ...process.env, TOTP_SECRET: secret },
+        shell: '/bin/bash',
         stdio: ['pipe', 'pipe', 'pipe'],
       }).trim();
     } catch {

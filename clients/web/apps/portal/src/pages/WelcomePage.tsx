@@ -11,12 +11,19 @@ import { useAuth } from '@tamshai/auth';
 /**
  * Get customer portal URL based on environment
  */
+// Allowlist of valid hostnames for customer portal URL generation
+const CUSTOMER_PORTAL_HOSTS: Record<string, string> = {
+  'www.tamshai-playground.local': 'https://customers.tamshai-playground.local',
+  'tamshai-playground.local': 'https://customers.tamshai-playground.local',
+  'www.tamshai.com': 'https://customers.tamshai.com',
+  'tamshai.com': 'https://customers.tamshai.com',
+};
+
 function getCustomerPortalUrl(): string {
   const hostname = window.location.hostname;
-
-  // Deployed environments
-  if (hostname.includes('tamshai-playground.local') || hostname.includes('tamshai.com')) {
-    return `https://customers.${hostname.replace('www.', '')}`;
+  const mapped = CUSTOMER_PORTAL_HOSTS[hostname];
+  if (mapped) {
+    return mapped;
   }
 
   // Local development
