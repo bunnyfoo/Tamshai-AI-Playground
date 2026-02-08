@@ -30,107 +30,148 @@ locals {
   compose_path = "${var.project_root}/${var.docker_compose_dir}"
   env_file     = "${local.compose_path}/.env"
 
-  # Service URLs for outputs (tamshai-playground ports - offset from tamshai-dev)
+  # Port configuration from GitHub Variables (with defaults)
+  ports = {
+    # Infrastructure
+    caddy_http          = tonumber(data.external.github_variables.result.port_caddy_http)
+    caddy_https         = tonumber(data.external.github_variables.result.port_caddy_https)
+    keycloak            = tonumber(data.external.github_variables.result.port_keycloak)
+    kong_proxy          = tonumber(data.external.github_variables.result.port_kong_proxy)
+    kong_admin          = tonumber(data.external.github_variables.result.port_kong_admin)
+    vault               = tonumber(data.external.github_variables.result.port_vault)
+
+    # Databases
+    postgres            = tonumber(data.external.github_variables.result.port_postgres)
+    mongodb             = tonumber(data.external.github_variables.result.port_mongodb)
+    redis               = tonumber(data.external.github_variables.result.port_redis)
+    elasticsearch       = tonumber(data.external.github_variables.result.port_elasticsearch)
+    minio_api           = tonumber(data.external.github_variables.result.port_minio_api)
+    minio_console       = tonumber(data.external.github_variables.result.port_minio_console)
+
+    # MCP Services
+    mcp_gateway         = tonumber(data.external.github_variables.result.port_mcp_gateway)
+    mcp_hr              = tonumber(data.external.github_variables.result.port_mcp_hr)
+    mcp_finance         = tonumber(data.external.github_variables.result.port_mcp_finance)
+    mcp_sales           = tonumber(data.external.github_variables.result.port_mcp_sales)
+    mcp_support         = tonumber(data.external.github_variables.result.port_mcp_support)
+    mcp_journey         = tonumber(data.external.github_variables.result.port_mcp_journey)
+    mcp_payroll         = tonumber(data.external.github_variables.result.port_mcp_payroll)
+    mcp_tax             = tonumber(data.external.github_variables.result.port_mcp_tax)
+    mcp_ui              = tonumber(data.external.github_variables.result.port_mcp_ui)
+
+    # Web Apps
+    web_portal          = tonumber(data.external.github_variables.result.port_web_portal)
+    web_hr              = tonumber(data.external.github_variables.result.port_web_hr)
+    web_finance         = tonumber(data.external.github_variables.result.port_web_finance)
+    web_sales           = tonumber(data.external.github_variables.result.port_web_sales)
+    web_support         = tonumber(data.external.github_variables.result.port_web_support)
+    web_payroll         = tonumber(data.external.github_variables.result.port_web_payroll)
+    web_tax             = tonumber(data.external.github_variables.result.port_web_tax)
+    web_customer_support= tonumber(data.external.github_variables.result.port_web_customer_support)
+    website             = tonumber(data.external.github_variables.result.port_website)
+  }
+
+  # Service URLs for outputs (dynamically built from ports)
   services = {
     keycloak = {
-      url  = "http://localhost:8190/auth"
-      port = 8190
+      url  = "http://localhost:${local.ports.keycloak}/auth"
+      port = local.ports.keycloak
     }
     kong_proxy = {
-      url  = "http://localhost:8110"
-      port = 8110
+      url  = "http://localhost:${local.ports.kong_proxy}"
+      port = local.ports.kong_proxy
     }
     kong_admin = {
-      url  = "http://localhost:8111"
-      port = 8111
+      url  = "http://localhost:${local.ports.kong_admin}"
+      port = local.ports.kong_admin
     }
     mcp_gateway = {
-      url  = "http://localhost:3110"
-      port = 3110
+      url  = "http://localhost:${local.ports.mcp_gateway}"
+      port = local.ports.mcp_gateway
     }
     mcp_hr = {
-      url  = "http://localhost:3111"
-      port = 3111
+      url  = "http://localhost:${local.ports.mcp_hr}"
+      port = local.ports.mcp_hr
     }
     mcp_finance = {
-      url  = "http://localhost:3112"
-      port = 3112
+      url  = "http://localhost:${local.ports.mcp_finance}"
+      port = local.ports.mcp_finance
     }
     mcp_sales = {
-      url  = "http://localhost:3113"
-      port = 3113
+      url  = "http://localhost:${local.ports.mcp_sales}"
+      port = local.ports.mcp_sales
     }
     mcp_support = {
-      url  = "http://localhost:3114"
-      port = 3114
+      url  = "http://localhost:${local.ports.mcp_support}"
+      port = local.ports.mcp_support
     }
     mcp_journey = {
-      url  = "http://localhost:3115"
-      port = 3115
+      url  = "http://localhost:${local.ports.mcp_journey}"
+      port = local.ports.mcp_journey
     }
     mcp_payroll = {
-      url  = "http://localhost:3116"
-      port = 3116
+      url  = "http://localhost:${local.ports.mcp_payroll}"
+      port = local.ports.mcp_payroll
     }
     mcp_tax = {
-      url  = "http://localhost:3117"
-      port = 3117
+      url  = "http://localhost:${local.ports.mcp_tax}"
+      port = local.ports.mcp_tax
     }
     web_portal = {
-      url  = "http://localhost:4010"
-      port = 4010
+      url  = "http://localhost:${local.ports.web_portal}"
+      port = local.ports.web_portal
     }
     web_hr = {
-      url  = "http://localhost:4011"
-      port = 4011
+      url  = "http://localhost:${local.ports.web_hr}"
+      port = local.ports.web_hr
     }
     web_finance = {
-      url  = "http://localhost:4012"
-      port = 4012
+      url  = "http://localhost:${local.ports.web_finance}"
+      port = local.ports.web_finance
     }
     web_sales = {
-      url  = "http://localhost:4013"
-      port = 4013
+      url  = "http://localhost:${local.ports.web_sales}"
+      port = local.ports.web_sales
     }
     web_support = {
-      url  = "http://localhost:4014"
-      port = 4014
+      url  = "http://localhost:${local.ports.web_support}"
+      port = local.ports.web_support
     }
     web_payroll = {
-      url  = "http://localhost:4015"
-      port = 4015
+      url  = "http://localhost:${local.ports.web_payroll}"
+      port = local.ports.web_payroll
     }
     web_tax = {
-      url  = "http://localhost:4016"
-      port = 4016
+      url  = "http://localhost:${local.ports.web_tax}"
+      port = local.ports.web_tax
     }
     website = {
-      url  = "http://localhost:8085"
-      port = 8085
+      url  = "http://localhost:${local.ports.website}"
+      port = local.ports.website
     }
     postgres = {
-      url  = "postgresql://localhost:5443"
-      port = 5443
+      url  = "postgresql://localhost:${local.ports.postgres}"
+      port = local.ports.postgres
     }
     mongodb = {
-      url  = "mongodb://localhost:27028"
-      port = 27028
+      url  = "mongodb://localhost:${local.ports.mongodb}"
+      port = local.ports.mongodb
     }
     redis = {
-      url  = "redis://localhost:6390"
-      port = 6390
+      url  = "redis://localhost:${local.ports.redis}"
+      port = local.ports.redis
     }
     elasticsearch = {
-      url  = "http://localhost:9211"
-      port = 9211
+      url  = "http://localhost:${local.ports.elasticsearch}"
+      port = local.ports.elasticsearch
     }
     minio = {
-      url  = "http://localhost:9110"
-      port = 9110
+      url  = "http://localhost:${local.ports.minio_api}"
+      port = local.ports.minio_api
     }
     caddy = {
-      url  = "https://localhost:8443"
-      port = 8443
+      url  = "https://localhost:${local.ports.caddy_https}"
+      port = local.ports.caddy_https
     }
   }
 }
@@ -179,6 +220,25 @@ resource "null_resource" "hosts_file_check" {
 
 data "external" "github_secrets" {
   program = ["powershell", "-ExecutionPolicy", "Bypass", "-File", "${path.module}/scripts/fetch-github-secrets.ps1"]
+
+  query = {
+    environment = var.environment
+  }
+}
+
+# =============================================================================
+# GITHUB VARIABLES FETCH (Port Configuration)
+# =============================================================================
+#
+# Fetches port configuration from GitHub Variables:
+#   - DEV_PG_KEYCLOAK, DEV_PG_MCP_GATEWAY, etc.
+#
+# These are non-sensitive configuration values that can be changed without
+# modifying Terraform code.
+# =============================================================================
+
+data "external" "github_variables" {
+  program = ["powershell", "-ExecutionPolicy", "Bypass", "-File", "${path.module}/scripts/fetch-github-variables.ps1"]
 
   query = {
     environment = var.environment
@@ -284,6 +344,9 @@ resource "local_file" "docker_env" {
     # User passwords (from GitHub Secrets - environment-specific)
     dev_user_password  = data.external.github_secrets.result.user_password
     test_user_password = data.external.github_secrets.result.test_user_password
+
+    # Port configuration (from GitHub Variables)
+    ports = local.ports
   })
 
   file_permission = "0600"
@@ -339,9 +402,9 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for Keycloak (port 8190 for playground)
+      # Wait for Keycloak (port ${local.ports.keycloak} for playground)
       for i in {1..60}; do
-        if curl -sf http://localhost:8190/health/ready > /dev/null 2>&1; then
+        if curl -sf http://localhost:${local.ports.keycloak}/health/ready > /dev/null 2>&1; then
           echo "Keycloak ready!"
           break
         fi
@@ -349,9 +412,9 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for Kong (port 8110 for playground)
+      # Wait for Kong (port ${local.ports.kong_proxy} for playground)
       for i in {1..30}; do
-        if curl -sf http://localhost:8110 > /dev/null 2>&1; then
+        if curl -sf http://localhost:${local.ports.kong_proxy} > /dev/null 2>&1; then
           echo "Kong ready!"
           break
         fi
@@ -359,9 +422,9 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for MCP Gateway (port 3110 for playground)
+      # Wait for MCP Gateway (port ${local.ports.mcp_gateway} for playground)
       for i in {1..30}; do
-        if curl -sf http://localhost:3110/health > /dev/null 2>&1; then
+        if curl -sf http://localhost:${local.ports.mcp_gateway}/health > /dev/null 2>&1; then
           echo "MCP Gateway ready!"
           break
         fi
@@ -369,9 +432,9 @@ resource "null_resource" "wait_for_services" {
         sleep 2
       done
 
-      # Wait for Caddy (HTTPS proxy on port 8443 for playground)
+      # Wait for Caddy (HTTPS proxy on port ${local.ports.caddy_https} for playground)
       for i in {1..30}; do
-        if curl -sf -k https://localhost:8443 > /dev/null 2>&1; then
+        if curl -sf -k https://localhost:${local.ports.caddy_https} > /dev/null 2>&1; then
           echo "Caddy HTTPS ready!"
           break
         fi
@@ -381,7 +444,7 @@ resource "null_resource" "wait_for_services" {
 
       echo "All critical services are healthy!"
       echo ""
-      echo "Access your dev environment at: https://www.tamshai-playground.local:8443"
+      echo "Access your dev environment at: https://www.tamshai-playground.local:${local.ports.caddy_https}"
       echo "(Accept the self-signed certificate warning in your browser)"
     EOT
   }
@@ -436,7 +499,7 @@ resource "null_resource" "keycloak_set_passwords" {
 
       # Get admin token
       echo "Authenticating with Keycloak Admin API..."
-      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8190/auth/realms/master/protocol/openid-connect/token" \
+      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
         -d "password=admin" \
@@ -457,14 +520,14 @@ resource "null_resource" "keycloak_set_passwords" {
         echo "Setting test-user.journey password..."
 
         # Get user ID via REST API
-        USER_ID=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
+        USER_ID=$(curl -s "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
           -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id // empty')
 
         if [ -n "$USER_ID" ]; then
           # Set password via REST API with jq for proper JSON encoding (handles special chars like @)
           PASSWORD_JSON=$(jq -n --arg pass "$TEST_USER_PASSWORD" '{"type":"password","value":$pass,"temporary":false}')
           HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
-            "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/reset-password" \
+            "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users/$USER_ID/reset-password" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -d "$PASSWORD_JSON")
@@ -487,7 +550,7 @@ resource "null_resource" "keycloak_set_passwords" {
         echo "Setting corporate user passwords..."
 
         # Get all users via REST API
-        ALL_USERS=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users?max=500" \
+        ALL_USERS=$(curl -s "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users?max=500" \
           -H "Authorization: Bearer $TOKEN")
 
         # Build password JSON once (same for all corporate users)
@@ -501,7 +564,7 @@ resource "null_resource" "keycloak_set_passwords" {
           # Skip test-user.journey (uses TEST_USER_PASSWORD)
           if [ "$USERNAME" != "test-user.journey" ] && [ -n "$USERID" ]; then
             HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X PUT \
-              "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USERID/reset-password" \
+              "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users/$USERID/reset-password" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
               -d "$CORP_PASSWORD_JSON")
@@ -562,7 +625,7 @@ resource "null_resource" "keycloak_set_totp" {
 
       # Get admin token
       echo "Getting admin token..."
-      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:8190/auth/realms/master/protocol/openid-connect/token" \
+      TOKEN_RESPONSE=$(curl -s -X POST "http://localhost:${local.ports.keycloak}/auth/realms/master/protocol/openid-connect/token" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=admin" \
         -d "password=admin" \
@@ -579,7 +642,7 @@ resource "null_resource" "keycloak_set_totp" {
 
       # Get test-user.journey user ID
       echo "Finding test-user.journey..."
-      USER_RESPONSE=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
+      USER_RESPONSE=$(curl -s "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users?username=test-user.journey&exact=true" \
         -H "Authorization: Bearer $TOKEN")
 
       USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
@@ -593,12 +656,12 @@ resource "null_resource" "keycloak_set_totp" {
 
       # Delete existing OTP credentials
       echo "Checking existing OTP credentials..."
-      EXISTING_CREDS=$(curl -s "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
+      EXISTING_CREDS=$(curl -s "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
         -H "Authorization: Bearer $TOKEN")
 
       for CRED_ID in $(echo "$EXISTING_CREDS" | grep -o '"id":"[^"]*"[^}]*"type":"otp"' | grep -o '"id":"[^"]*' | cut -d'"' -f4); do
         echo "Deleting existing OTP credential: $CRED_ID"
-        curl -s -X DELETE "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials/$CRED_ID" \
+        curl -s -X DELETE "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials/$CRED_ID" \
           -H "Authorization: Bearer $TOKEN"
       done
 
@@ -616,7 +679,7 @@ EOF
 )
 
       HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X POST \
-        "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
+        "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users/$USER_ID/credentials" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d "$CREDENTIAL_JSON")
@@ -631,7 +694,7 @@ EOF
       # Clear required actions to prevent TOTP setup prompt
       echo "Clearing required actions..."
       curl -s -X PUT \
-        "http://localhost:8190/auth/admin/realms/tamshai-corp/users/$USER_ID" \
+        "http://localhost:${local.ports.keycloak}/auth/admin/realms/tamshai-corp/users/$USER_ID" \
         -H "Authorization: Bearer $TOKEN" \
         -H "Content-Type: application/json" \
         -d '{"requiredActions":[]}' > /dev/null
