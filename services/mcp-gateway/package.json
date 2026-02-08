@@ -18,7 +18,7 @@
   "dependencies": {
     "@tamshai/shared": "file:../shared",
     "@anthropic-ai/sdk": "^0.71.2",
-    "@modelcontextprotocol/sdk": "^1.25.2",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "axios": "^1.6.2",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
