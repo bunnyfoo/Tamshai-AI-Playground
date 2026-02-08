@@ -778,6 +778,54 @@ describe('BudgetSummaryCard Component', () => {
       expect(onViewDetails).toHaveBeenCalledTimes(1);
     });
 
+    it('View Details button responds to Space key', () => {
+      const onViewDetails = jest.fn();
+      render(
+        <BudgetSummaryCard
+          budget={healthyBudget}
+          onViewDetails={onViewDetails}
+        />
+      );
+
+      const button = screen.getByRole('button', { name: /view details/i });
+      button.focus();
+      fireEvent.keyDown(button, { key: ' ' });
+
+      expect(onViewDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it('Request Amendment button responds to Enter key', () => {
+      const onRequestAmendment = jest.fn();
+      render(
+        <BudgetSummaryCard
+          budget={criticalBudget}
+          onRequestAmendment={onRequestAmendment}
+        />
+      );
+
+      const button = screen.getByRole('button', { name: /request amendment/i });
+      button.focus();
+      fireEvent.keyDown(button, { key: 'Enter' });
+
+      expect(onRequestAmendment).toHaveBeenCalledWith(criticalBudget);
+    });
+
+    it('Request Amendment button responds to Space key', () => {
+      const onRequestAmendment = jest.fn();
+      render(
+        <BudgetSummaryCard
+          budget={criticalBudget}
+          onRequestAmendment={onRequestAmendment}
+        />
+      );
+
+      const button = screen.getByRole('button', { name: /request amendment/i });
+      button.focus();
+      fireEvent.keyDown(button, { key: ' ' });
+
+      expect(onRequestAmendment).toHaveBeenCalledWith(criticalBudget);
+    });
+
     it('category rows can be focused for screen readers', () => {
       render(<BudgetSummaryCard budget={healthyBudget} />);
 

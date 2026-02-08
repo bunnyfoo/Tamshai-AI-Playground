@@ -344,6 +344,23 @@ describe('ForecastChart Component', () => {
       const quarterlyButton = screen.getByRole('button', { name: /quarterly/i });
       expect(() => fireEvent.click(quarterlyButton)).not.toThrow();
     });
+
+    it('can click Monthly button to switch back from quarterly', () => {
+      const handlePeriodChange = jest.fn();
+      render(
+        <ForecastChart forecast={mockForecastData} onPeriodChange={handlePeriodChange} />
+      );
+
+      // First switch to quarterly
+      const quarterlyButton = screen.getByRole('button', { name: /quarterly/i });
+      fireEvent.click(quarterlyButton);
+      expect(handlePeriodChange).toHaveBeenCalledWith('quarterly');
+
+      // Then click back to monthly
+      const monthlyButton = screen.getByRole('button', { name: /monthly/i });
+      fireEvent.click(monthlyButton);
+      expect(handlePeriodChange).toHaveBeenCalledWith('monthly');
+    });
   });
 
   describe('Bar Click Interactions (Drill Down)', () => {
@@ -612,6 +629,24 @@ describe('ForecastChart Component', () => {
       expect(handlePeriodChange).toHaveBeenCalledWith('quarterly');
     });
 
+    it('Monthly button responds to Enter key', () => {
+      const handlePeriodChange = jest.fn();
+      render(
+        <ForecastChart forecast={mockForecastData} onPeriodChange={handlePeriodChange} />
+      );
+
+      // First switch to quarterly
+      const quarterlyButton = screen.getByRole('button', { name: /quarterly/i });
+      fireEvent.click(quarterlyButton);
+
+      // Then use keyboard to switch back to monthly
+      const monthlyButton = screen.getByRole('button', { name: /monthly/i });
+      monthlyButton.focus();
+      fireEvent.keyDown(monthlyButton, { key: 'Enter' });
+
+      expect(handlePeriodChange).toHaveBeenCalledWith('monthly');
+    });
+
     it('bars are keyboard accessible when onDrillDown provided', () => {
       const handleDrillDown = jest.fn();
       render(<ForecastChart forecast={mockForecastData} onDrillDown={handleDrillDown} />);
@@ -725,6 +760,26 @@ describe('ForecastChart Component', () => {
       expect(screen.getByTestId('bar-tooltip')).toBeInTheDocument();
 
       fireEvent.mouseLeave(janBar);
+      expect(screen.queryByTestId('bar-tooltip')).not.toBeInTheDocument();
+    });
+
+    it('shows tooltip on forecast bar hover', () => {
+      render(<ForecastChart forecast={mockForecastData} />);
+
+      const janForecastBar = screen.getByTestId('forecast-bar-Jan');
+      fireEvent.mouseEnter(janForecastBar);
+
+      expect(screen.getByTestId('bar-tooltip')).toBeInTheDocument();
+    });
+
+    it('hides tooltip on forecast bar mouse leave', () => {
+      render(<ForecastChart forecast={mockForecastData} />);
+
+      const janForecastBar = screen.getByTestId('forecast-bar-Jan');
+      fireEvent.mouseEnter(janForecastBar);
+      expect(screen.getByTestId('bar-tooltip')).toBeInTheDocument();
+
+      fireEvent.mouseLeave(janForecastBar);
       expect(screen.queryByTestId('bar-tooltip')).not.toBeInTheDocument();
     });
   });
