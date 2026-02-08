@@ -1043,4 +1043,739 @@ describe('LeadsDataTable Component', () => {
       expect(onSelectionChange).toHaveBeenCalledWith(['lead-001']);
     });
   });
+
+  describe('Row Checkbox Deselection', () => {
+    it('deselects a lead when checkbox is clicked while selected', () => {
+      const onSelectionChange = jest.fn();
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001', 'lead-002']}
+          onSelectionChange={onSelectionChange}
+        />
+      );
+
+      // Find the checkbox for lead-001 and click to deselect
+      const rowCheckboxes = screen.getAllByRole('checkbox');
+      // rowCheckboxes[0] is header, [1] is lead-001
+      fireEvent.click(rowCheckboxes[1]);
+
+      // Should call with lead-002 only (lead-001 removed)
+      expect(onSelectionChange).toHaveBeenCalledWith(['lead-002']);
+    });
+
+    it('does not call onSelectionChange when handler not provided', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001']}
+        />
+      );
+
+      const rowCheckboxes = screen.getAllByRole('checkbox');
+      // Should not throw
+      expect(() => fireEvent.click(rowCheckboxes[1])).not.toThrow();
+    });
+  });
+
+  describe('Source Filter Clearing', () => {
+    it('clears source filter when "Any Source" is selected', () => {
+      const onFilterChange = jest.fn();
+      const filters: Filters = { source: ['website'] };
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          filters={filters}
+          onFilterChange={onFilterChange}
+        />
+      );
+
+      const sourceFilter = screen.getByRole('combobox', { name: /source/i });
+      fireEvent.change(sourceFilter, { target: { value: 'all' } });
+
+      // Should remove source from filters
+      expect(onFilterChange).toHaveBeenCalledWith({});
+    });
+  });
+
+  describe('Status Filter Clearing', () => {
+    it('clears status filter when "All" is selected', () => {
+      const onFilterChange = jest.fn();
+      const filters: Filters = { status: ['new'] };
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          filters={filters}
+          onFilterChange={onFilterChange}
+        />
+      );
+
+      const statusFilter = screen.getByRole('combobox', { name: /status/i });
+      fireEvent.change(statusFilter, { target: { value: 'all' } });
+
+      // Should remove status from filters
+      expect(onFilterChange).toHaveBeenCalledWith({});
+    });
+  });
+
+  describe('Max Score Filter', () => {
+    it('calls onFilterChange when max score changes', () => {
+      const onFilterChange = jest.fn();
+      render(<LeadsDataTable leads={mockLeads} onFilterChange={onFilterChange} />);
+
+      const maxScoreInput = screen.getByLabelText(/max score/i);
+      fireEvent.change(maxScoreInput, { target: { value: '80' } });
+
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRange: expect.objectContaining({ max: 80 }),
+        })
+      );
+    });
+
+    it('clears max score when input is empty', () => {
+      const onFilterChange = jest.fn();
+      const filters: Filters = { scoreRange: { max: 80 } };
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          filters={filters}
+          onFilterChange={onFilterChange}
+        />
+      );
+
+      const maxScoreInput = screen.getByLabelText(/max score/i);
+      fireEvent.change(maxScoreInput, { target: { value: '' } });
+
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRange: expect.objectContaining({ max: undefined }),
+        })
+      );
+    });
+  });
+
+  describe('End Date Filter', () => {
+    it('calls onFilterChange when end date changes', () => {
+      const onFilterChange = jest.fn();
+      render(<LeadsDataTable leads={mockLeads} onFilterChange={onFilterChange} />);
+
+      const endDateInput = screen.getByLabelText(/end date/i);
+      fireEvent.change(endDateInput, { target: { value: '2026-02-28' } });
+
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dateRange: expect.objectContaining({ end: '2026-02-28' }),
+        })
+      );
+    });
+
+    it('clears end date when input is empty', () => {
+      const onFilterChange = jest.fn();
+      const filters: Filters = { dateRange: { end: '2026-02-28' } };
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          filters={filters}
+          onFilterChange={onFilterChange}
+        />
+      );
+
+      const endDateInput = screen.getByLabelText(/end date/i);
+      fireEvent.change(endDateInput, { target: { value: '' } });
+
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dateRange: expect.objectContaining({ end: undefined }),
+        })
+      );
+    });
+  });
+
+  describe('Filter Application', () => {
+    it('filters leads by status', () => {
+      const filters: Filters = { status: ['new'] };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      // Only John Smith has 'new' status
+      expect(screen.getByText('John Smith')).toBeInTheDocument();
+      expect(screen.queryByText('Sarah Johnson')).not.toBeInTheDocument();
+      expect(screen.queryByText('Michael Chen')).not.toBeInTheDocument();
+    });
+
+    it('filters leads by score range', () => {
+      const filters: Filters = { scoreRange: { min: 90, max: 100 } };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      // Only Michael Chen (92) and Robert Wilson (95) have scores >= 90
+      expect(screen.getByText('Michael Chen')).toBeInTheDocument();
+      expect(screen.getByText('Robert Wilson')).toBeInTheDocument();
+      expect(screen.queryByText('John Smith')).not.toBeInTheDocument();
+    });
+
+    it('filters leads by source', () => {
+      const filters: Filters = { source: ['referral'] };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      // Only Sarah Johnson has 'referral' source
+      expect(screen.getByText('Sarah Johnson')).toBeInTheDocument();
+      expect(screen.queryByText('John Smith')).not.toBeInTheDocument();
+    });
+
+    it('filters leads by date range start only', () => {
+      const filters: Filters = {
+        dateRange: {
+          start: '2026-02-01'
+        }
+      };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      // John Smith (2026-02-01), Sarah (2026-02-05), Michael (2026-02-06), Robert (2026-02-07) are in range
+      expect(screen.getByText('John Smith')).toBeInTheDocument();
+      expect(screen.getByText('Sarah Johnson')).toBeInTheDocument();
+      expect(screen.getByText('Michael Chen')).toBeInTheDocument();
+      expect(screen.getByText('Robert Wilson')).toBeInTheDocument();
+      // Emily (2026-01-30), Lisa (2026-01-20) should be filtered out
+      expect(screen.queryByText('Emily Davis')).not.toBeInTheDocument();
+      expect(screen.queryByText('Lisa Brown')).not.toBeInTheDocument();
+    });
+
+    it('filters leads by date range end only', () => {
+      const filters: Filters = {
+        dateRange: {
+          end: '2026-01-31'
+        }
+      };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      // Emily (2026-01-30), Lisa (2026-01-20) are in range (before Jan 31)
+      expect(screen.getByText('Emily Davis')).toBeInTheDocument();
+      expect(screen.getByText('Lisa Brown')).toBeInTheDocument();
+      // John (2026-02-01), Sarah (2026-02-05), Michael (2026-02-06), Robert (2026-02-07) are after Jan 31
+      expect(screen.queryByText('John Smith')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sarah Johnson')).not.toBeInTheDocument();
+      expect(screen.queryByText('Michael Chen')).not.toBeInTheDocument();
+      expect(screen.queryByText('Robert Wilson')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Last Activity Date Formatting', () => {
+    it('displays "Today" for activities from today', () => {
+      const todayLead: Lead = {
+        ...mockLeads[0],
+        id: 'lead-today',
+        lastActivity: new Date().toISOString(),
+      };
+      render(<LeadsDataTable leads={[todayLead]} />);
+
+      const row = screen.getByTestId('lead-row-lead-today');
+      const lastActivityCell = within(row).getByTestId('last-activity-cell');
+      expect(lastActivityCell).toHaveTextContent('Today');
+    });
+
+    it('displays "1 day ago" for activities from yesterday', () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayLead: Lead = {
+        ...mockLeads[0],
+        id: 'lead-yesterday',
+        lastActivity: yesterday.toISOString(),
+      };
+      render(<LeadsDataTable leads={[yesterdayLead]} />);
+
+      const row = screen.getByTestId('lead-row-lead-yesterday');
+      const lastActivityCell = within(row).getByTestId('last-activity-cell');
+      expect(lastActivityCell).toHaveTextContent('1 day ago');
+    });
+
+    it('displays "X days ago" for activities within a week', () => {
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const threeDaysLead: Lead = {
+        ...mockLeads[0],
+        id: 'lead-3days',
+        lastActivity: threeDaysAgo.toISOString(),
+      };
+      render(<LeadsDataTable leads={[threeDaysLead]} />);
+
+      const row = screen.getByTestId('lead-row-lead-3days');
+      const lastActivityCell = within(row).getByTestId('last-activity-cell');
+      expect(lastActivityCell).toHaveTextContent('3 days ago');
+    });
+
+    it('displays "1 week ago" for activities from a week ago', () => {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const weekLead: Lead = {
+        ...mockLeads[0],
+        id: 'lead-week',
+        lastActivity: oneWeekAgo.toISOString(),
+      };
+      render(<LeadsDataTable leads={[weekLead]} />);
+
+      const row = screen.getByTestId('lead-row-lead-week');
+      const lastActivityCell = within(row).getByTestId('last-activity-cell');
+      expect(lastActivityCell).toHaveTextContent('1 week ago');
+    });
+
+    it('displays "X weeks ago" for activities within a month', () => {
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      const twoWeeksLead: Lead = {
+        ...mockLeads[0],
+        id: 'lead-2weeks',
+        lastActivity: twoWeeksAgo.toISOString(),
+      };
+      render(<LeadsDataTable leads={[twoWeeksLead]} />);
+
+      const row = screen.getByTestId('lead-row-lead-2weeks');
+      const lastActivityCell = within(row).getByTestId('last-activity-cell');
+      expect(lastActivityCell).toHaveTextContent('2 weeks ago');
+    });
+
+    it('displays formatted date for activities older than a month', () => {
+      const oldLead: Lead = {
+        ...mockLeads[0],
+        id: 'lead-old',
+        lastActivity: '2025-01-15T10:00:00Z',
+      };
+      render(<LeadsDataTable leads={[oldLead]} />);
+
+      const row = screen.getByTestId('lead-row-lead-old');
+      const lastActivityCell = within(row).getByTestId('last-activity-cell');
+      // Should show formatted date like "Jan 15, 2025"
+      expect(lastActivityCell).toHaveTextContent(/Jan.*15.*2025/);
+    });
+  });
+
+  describe('Row Click With Checkbox', () => {
+    it('does not trigger row click when clicking checkbox', () => {
+      const onLeadClick = jest.fn();
+      const onSelectionChange = jest.fn();
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          onLeadClick={onLeadClick}
+          onSelectionChange={onSelectionChange}
+        />
+      );
+
+      const rowCheckboxes = screen.getAllByRole('checkbox');
+      // Click on the checkbox itself
+      fireEvent.click(rowCheckboxes[1]);
+
+      // onLeadClick should NOT be called
+      expect(onLeadClick).not.toHaveBeenCalled();
+      // onSelectionChange should be called
+      expect(onSelectionChange).toHaveBeenCalled();
+    });
+  });
+
+  describe('Pagination Edge Cases', () => {
+    const manyLeads: Lead[] = Array.from({ length: 50 }, (_, i) => ({
+      id: `lead-${String(i + 1).padStart(3, '0')}`,
+      name: `Lead ${i + 1}`,
+      email: `lead${i + 1}@example.com`,
+      company: `Company ${i + 1}`,
+      status: 'new' as LeadStatus,
+      source: 'website',
+      score: Math.floor(Math.random() * 100),
+      createdAt: '2026-01-15T10:30:00Z',
+      lastActivity: '2026-02-01T14:20:00Z',
+    }));
+
+    it('calls onPageChange with previous page number', () => {
+      const onPageChange = jest.fn();
+      render(
+        <LeadsDataTable
+          leads={manyLeads.slice(10, 20)}
+          pagination={{
+            pageSize: 10,
+            currentPage: 2,
+            totalItems: 50,
+            onPageChange,
+          }}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /previous/i }));
+
+      expect(onPageChange).toHaveBeenCalledWith(1);
+    });
+
+    it('displays correct page info for middle page', () => {
+      render(
+        <LeadsDataTable
+          leads={manyLeads.slice(20, 30)}
+          pagination={{
+            pageSize: 10,
+            currentPage: 3,
+            totalItems: 50,
+            onPageChange: jest.fn(),
+          }}
+        />
+      );
+
+      expect(screen.getByText(/21-30 of 50/)).toBeInTheDocument();
+    });
+
+    it('displays correct page info for partial last page', () => {
+      render(
+        <LeadsDataTable
+          leads={manyLeads.slice(45, 50)}
+          pagination={{
+            pageSize: 10,
+            currentPage: 5,
+            totalItems: 47,
+            onPageChange: jest.fn(),
+          }}
+        />
+      );
+
+      // 41-47 of 47
+      expect(screen.getByText(/41-47 of 47/)).toBeInTheDocument();
+    });
+  });
+
+  describe('Sort Direction Toggle', () => {
+    it('starts with ascending when clicking unsorted column', () => {
+      const onSort = jest.fn();
+      render(<LeadsDataTable leads={mockLeads} onSort={onSort} />);
+
+      fireEvent.click(screen.getByRole('columnheader', { name: /company/i }));
+
+      expect(onSort).toHaveBeenCalledWith('company', 'asc');
+    });
+
+    it('resets to ascending when switching to different column', () => {
+      const onSort = jest.fn();
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          onSort={onSort}
+          sortedBy="name"
+          sortDirection="desc"
+        />
+      );
+
+      fireEvent.click(screen.getByRole('columnheader', { name: /company/i }));
+
+      expect(onSort).toHaveBeenCalledWith('company', 'asc');
+    });
+  });
+
+  describe('Header Checkbox Without Selection Handler', () => {
+    it('does not throw when clicking header checkbox without onSelectionChange', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+        />
+      );
+
+      const headerCheckbox = screen.getAllByRole('checkbox')[0];
+      expect(() => fireEvent.click(headerCheckbox)).not.toThrow();
+    });
+  });
+
+  describe('Singular/Plural Selection Count', () => {
+    it('displays "1 lead selected" for single selection', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001']}
+        />
+      );
+
+      expect(screen.getByText('1 lead selected')).toBeInTheDocument();
+    });
+
+    it('displays "2 leads selected" for multiple selection', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001', 'lead-002']}
+        />
+      );
+
+      expect(screen.getByText('2 leads selected')).toBeInTheDocument();
+    });
+  });
+
+  describe('Table Without Pagination', () => {
+    it('does not render pagination when not configured', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      expect(screen.queryByTestId('pagination')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Default Skeleton Row Count', () => {
+    it('renders 5 skeleton rows by default', () => {
+      render(<LeadsDataTable leads={[]} loading={true} />);
+
+      const skeletonRows = screen.getAllByTestId('skeleton-row');
+      expect(skeletonRows).toHaveLength(5);
+    });
+  });
+
+  describe('Source Formatting Display', () => {
+    it('displays trade_show source formatted as readable text', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      // Emily Davis has trade_show source
+      const emilyRow = screen.getByTestId('lead-row-lead-004');
+      expect(within(emilyRow).getByText(/trade_show/i)).toBeInTheDocument();
+    });
+
+    it('displays cold_call source in table', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      // Robert Wilson has cold_call source
+      const robertRow = screen.getByTestId('lead-row-lead-005');
+      expect(within(robertRow).getByText(/cold_call/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Min Score Filter Clearing', () => {
+    it('clears min score when input is empty', () => {
+      const onFilterChange = jest.fn();
+      const filters: Filters = { scoreRange: { min: 50 } };
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          filters={filters}
+          onFilterChange={onFilterChange}
+        />
+      );
+
+      const minScoreInput = screen.getByLabelText(/min score/i);
+      fireEvent.change(minScoreInput, { target: { value: '' } });
+
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRange: expect.objectContaining({ min: undefined }),
+        })
+      );
+    });
+  });
+
+  describe('Start Date Filter Clearing', () => {
+    it('clears start date when input is empty', () => {
+      const onFilterChange = jest.fn();
+      const filters: Filters = { dateRange: { start: '2026-01-01' } };
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          filters={filters}
+          onFilterChange={onFilterChange}
+        />
+      );
+
+      const startDateInput = screen.getByLabelText(/start date/i);
+      fireEvent.change(startDateInput, { target: { value: '' } });
+
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dateRange: expect.objectContaining({ start: undefined }),
+        })
+      );
+    });
+  });
+
+  describe('Sort Indicator Rendering', () => {
+    it('renders default sort indicator for unsorted columns', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      // All column headers should have aria-sort="none" by default
+      const nameHeader = screen.getByRole('columnheader', { name: /name/i });
+      expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+    });
+
+    it('renders descending sort indicator', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          sortedBy="name"
+          sortDirection="desc"
+        />
+      );
+
+      const nameHeader = screen.getByRole('columnheader', { name: /name/i });
+      expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
+    });
+  });
+
+  describe('Filter Without Handler', () => {
+    it('does not throw when changing status filter without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const statusFilter = screen.getByRole('combobox', { name: /status/i });
+      expect(() => fireEvent.change(statusFilter, { target: { value: 'new' } })).not.toThrow();
+    });
+
+    it('does not throw when changing source filter without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const sourceFilter = screen.getByRole('combobox', { name: /source/i });
+      expect(() => fireEvent.change(sourceFilter, { target: { value: 'website' } })).not.toThrow();
+    });
+
+    it('does not throw when changing min score without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const minScoreInput = screen.getByLabelText(/min score/i);
+      expect(() => fireEvent.change(minScoreInput, { target: { value: '50' } })).not.toThrow();
+    });
+
+    it('does not throw when changing max score without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const maxScoreInput = screen.getByLabelText(/max score/i);
+      expect(() => fireEvent.change(maxScoreInput, { target: { value: '100' } })).not.toThrow();
+    });
+
+    it('does not throw when changing start date without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const startDateInput = screen.getByLabelText(/start date/i);
+      expect(() => fireEvent.change(startDateInput, { target: { value: '2026-01-01' } })).not.toThrow();
+    });
+
+    it('does not throw when changing end date without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const endDateInput = screen.getByLabelText(/end date/i);
+      expect(() => fireEvent.change(endDateInput, { target: { value: '2026-12-31' } })).not.toThrow();
+    });
+
+    it('does not throw when clicking clear filters without handler', () => {
+      const filters: Filters = { status: ['new'] };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      const clearButton = screen.getByRole('button', { name: /clear filters/i });
+      expect(() => fireEvent.click(clearButton)).not.toThrow();
+    });
+  });
+
+  describe('Bulk Action Without Handler', () => {
+    it('does not throw when clicking bulk action without handler', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001']}
+        />
+      );
+
+      const assignButton = screen.getByRole('button', { name: /assign/i });
+      expect(() => fireEvent.click(assignButton)).not.toThrow();
+    });
+  });
+
+  describe('Sort Without Handler', () => {
+    it('does not throw when clicking sortable column without handler', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const nameHeader = screen.getByRole('columnheader', { name: /name/i });
+      expect(() => fireEvent.click(nameHeader)).not.toThrow();
+    });
+  });
+
+  describe('Empty State With Active Filters Message', () => {
+    it('shows filter adjustment message when filters result in empty', () => {
+      const filters: Filters = {
+        status: ['won'],
+        scoreRange: { min: 100 },
+      };
+      render(<LeadsDataTable leads={mockLeads} filters={filters} />);
+
+      expect(screen.getByText(/try adjusting your filter criteria/i)).toBeInTheDocument();
+    });
+
+    it('shows add lead message when no leads and no filters', () => {
+      render(<LeadsDataTable leads={[]} />);
+
+      expect(screen.getByText(/add your first lead/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Selected Row Styling', () => {
+    it('applies aria-selected attribute to selected rows', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001']}
+        />
+      );
+
+      const johnRow = screen.getByTestId('lead-row-lead-001');
+      expect(johnRow).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('applies aria-selected false to unselected rows', () => {
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          selectedLeads={['lead-001']}
+        />
+      );
+
+      const sarahRow = screen.getByTestId('lead-row-lead-002');
+      expect(sarahRow).toHaveAttribute('aria-selected', 'false');
+    });
+  });
+
+  describe('Table Without onLeadClick', () => {
+    it('rows are not focusable when onLeadClick not provided', () => {
+      render(<LeadsDataTable leads={mockLeads} />);
+
+      const johnRow = screen.getByTestId('lead-row-lead-001');
+      expect(johnRow).not.toHaveAttribute('tabIndex');
+    });
+
+    it('rows are focusable when onLeadClick is provided', () => {
+      const onLeadClick = jest.fn();
+      render(<LeadsDataTable leads={mockLeads} onLeadClick={onLeadClick} />);
+
+      const johnRow = screen.getByTestId('lead-row-lead-001');
+      expect(johnRow).toHaveAttribute('tabIndex', '0');
+    });
+  });
+
+  describe('Keyboard Navigation Edge Cases', () => {
+    it('does not trigger selection on other key presses', () => {
+      const onSelectionChange = jest.fn();
+      render(
+        <LeadsDataTable
+          leads={mockLeads}
+          selectable={true}
+          onSelectionChange={onSelectionChange}
+        />
+      );
+
+      const johnRow = screen.getByTestId('lead-row-lead-001');
+      fireEvent.keyDown(johnRow, { key: 'Escape' });
+
+      expect(onSelectionChange).not.toHaveBeenCalled();
+    });
+
+    it('does not trigger lead click on Space when not selectable', () => {
+      const onLeadClick = jest.fn();
+      render(<LeadsDataTable leads={mockLeads} onLeadClick={onLeadClick} />);
+
+      const johnRow = screen.getByTestId('lead-row-lead-001');
+      fireEvent.keyDown(johnRow, { key: ' ' });
+
+      // Space should not trigger lead click when not selectable
+      expect(onLeadClick).not.toHaveBeenCalled();
+    });
+  });
 });
