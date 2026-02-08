@@ -19,15 +19,14 @@ COPY services/mcp-gateway/package*.json ./
 
 # Update shared dependency to use local path in container
 # Must update both package.json AND package-lock.json for npm ci to work
-# package-lock.json has multiple patterns: "file:../shared", "../shared": {}, "../shared/node_modules/..."
-RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json && \
-    sed -i 's|"\.\./shared|"\./shared|g' package-lock.json
+# Use npm install instead of npm ci to regenerate lock file with correct paths
+RUN sed -i 's|"file:../shared"|"file:./shared"|' package.json
 
 # Build shared package first (required dependency)
 RUN cd shared && npm ci && npm run build
 
-# Install dependencies (now package.json and package-lock.json are in sync)
-RUN npm ci
+# Install dependencies (regenerates lock file with correct shared path)
+RUN npm install --package-lock-only && npm ci
 
 # Copy source code
 COPY services/mcp-gateway/tsconfig.json ./
