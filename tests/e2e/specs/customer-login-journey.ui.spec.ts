@@ -116,9 +116,8 @@ test.describe('Customer Login Journey', () => {
     // Verify page loaded
     await expect(page).toHaveTitle(/Tamshai/i);
 
-    // Verify Client Login button exists
-    // The WelcomePage has a "Client Login" button that links to customer portal
-    const clientButton = page.locator('a:has-text("Client"), button:has-text("Client"), a:has-text("Client Login")');
+    // Verify Client Login button exists on the homepage
+    const clientButton = page.locator('a:has-text("Client Login")');
     await expect(clientButton.first()).toBeVisible({ timeout: 10000 });
   });
 

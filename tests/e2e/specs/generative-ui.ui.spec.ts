@@ -157,19 +157,8 @@ async function authenticateUser(page: Page): Promise<void> {
     throw new Error('No test credentials configured');
   }
 
-  // Navigate to employee login
-  await page.goto(`${urls.site}/employee-login.html`);
-
-  // Click SSO button
-  const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
-  await ssoButton.first().click();
-
-  // Wait for portal to load
-  await page.waitForURL(/\/app\/?/, { timeout: 10000 });
-
-  // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
-  const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
-  await employeeLoginBtn.first().click();
+  // Navigate to portal — auto-redirects to Keycloak SSO
+  await page.goto(`${urls.site}/app/`);
 
   // Wait for Keycloak login page
   await page.waitForSelector('#username, input[name="username"]', {

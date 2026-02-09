@@ -87,10 +87,8 @@ async function authenticateUser(page: Page): Promise<void> {
     test.skip(true, 'No test credentials configured');
   }
 
-  await page.goto(`${urls.site}/employee-login.html`);
-
-  const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
-  await ssoButton.first().click();
+  // Navigate to portal — auto-redirects to Keycloak SSO
+  await page.goto(`${urls.site}/app/`);
 
   await page.waitForSelector('#username', { state: 'visible', timeout: 30000 });
   await page.fill('#username', TEST_USER.username);

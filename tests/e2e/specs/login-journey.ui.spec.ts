@@ -2,8 +2,8 @@
  * E2E Login Journey Test
  *
  * Tests the full employee login flow including:
- * - Navigation to employee login page
- * - SSO redirect to Keycloak
+ * - Homepage Employee Login link points to /app/
+ * - Portal auto-redirects unauthenticated users to Keycloak SSO
  * - Keycloak authentication (username/password + TOTP)
  * - Redirect back to portal
  * - User info verification
@@ -341,41 +341,30 @@ test.describe('Employee Login Journey', () => {
     }
   });
 
-  test('should display employee login page with SSO button', async ({
+  test('should have Employee Login link on homepage pointing to portal', async ({
     page,
   }) => {
     const urls = BASE_URLS[ENV];
 
-    // Navigate to employee login page
-    await page.goto(`${urls.site}/employee-login.html`);
+    // Navigate to homepage
+    await page.goto(urls.site);
 
     // Verify page loaded
     await expect(page).toHaveTitle(/Tamshai/i);
 
-    // Verify SSO button exists (button text is "Sign in with SSO")
-    const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
-    await expect(ssoButton.first()).toBeVisible();
+    // Verify Employee Login button exists and links to /app/
+    const employeeBtn = page.locator('a.btn-login:has-text("Employee Login")');
+    await expect(employeeBtn.first()).toBeVisible();
+    await expect(employeeBtn.first()).toHaveAttribute('href', '/app/');
   });
 
-  test('should redirect to Keycloak when clicking SSO', async ({ page }) => {
+  test('should auto-redirect to Keycloak when visiting portal', async ({ page }) => {
     const urls = BASE_URLS[ENV];
 
-    // Navigate to employee login
-    await page.goto(`${urls.site}/employee-login.html`);
+    // Navigate directly to the portal (simulates clicking Employee Login)
+    await page.goto(`${urls.app}/`);
 
-    // Click SSO button (goes to /app/ portal)
-    const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
-    await ssoButton.first().click();
-
-    // Wait for portal to load
-    await page.waitForURL(/\/app\/?/, { timeout: 10000 });
-
-    // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
-    const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
-    await employeeLoginBtn.first().click();
-
-    // Wait for redirect to Keycloak (portal redirects to Keycloak for auth)
-    // Note: Realm is configurable via KEYCLOAK_REALM env var (default: tamshai-corp)
+    // Portal auto-redirects unauthenticated users to Keycloak (no WelcomePage)
     await page.waitForURL(new RegExp(`/auth/realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth`), { timeout: 30000 });
 
     // Verify Keycloak login form appears
@@ -393,19 +382,8 @@ test.describe('Employee Login Journey', () => {
       test.skip(true, 'No test credentials configured');
     }
 
-    // Start at employee login page
-    await page.goto(`${urls.site}/employee-login.html`);
-
-    // Click SSO button to go to portal
-    const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
-    await ssoButton.first().click();
-
-    // Wait for portal to load
-    await page.waitForURL(/\/app\/?/, { timeout: 10000 });
-
-    // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
-    const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
-    await employeeLoginBtn.first().click();
+    // Navigate to portal — auto-redirects to Keycloak SSO
+    await page.goto(`${urls.app}/`);
 
     // Wait for Keycloak login page
     await waitForKeycloakLogin(page);
@@ -472,19 +450,8 @@ test.describe('Employee Login Journey', () => {
   test('should handle invalid credentials gracefully', async ({ page }) => {
     const urls = BASE_URLS[ENV];
 
-    // Navigate to login
-    await page.goto(`${urls.site}/employee-login.html`);
-
-    // Click SSO to go to portal
-    const ssoButton = page.locator('a.sso-btn, a:has-text("Sign in with SSO")');
-    await ssoButton.first().click();
-
-    // Wait for portal to load
-    await page.waitForURL(/\/app\/?/, { timeout: 10000 });
-
-    // Portal shows WelcomePage - click Employee Login button to trigger OIDC redirect
-    const employeeLoginBtn = page.locator('button:has-text("Employee Login")');
-    await employeeLoginBtn.first().click();
+    // Navigate to portal — auto-redirects to Keycloak SSO
+    await page.goto(`${urls.app}/`);
 
     // Wait for Keycloak
     await waitForKeycloakLogin(page);
@@ -515,15 +482,15 @@ test.describe('Portal SPA Rendering', () => {
       errors.push(error.message);
     });
 
-    // Navigate to portal (unauthenticated - should redirect to login)
-    await page.goto(`${urls.app}/app/`);
+    // Navigate to portal (unauthenticated - auto-redirects to Keycloak)
+    await page.goto(`${urls.app}/`);
 
     // Wait for page to settle
     await page.waitForLoadState('networkidle');
 
-    // Check for critical errors (exclude expected auth redirects)
+    // Check for critical errors (exclude expected auth redirects and OIDC flows)
     const criticalErrors = errors.filter(
-      (e) => !e.includes('401') && !e.includes('unauthorized')
+      (e) => !e.includes('401') && !e.includes('unauthorized') && !e.includes('OIDC')
     );
 
     expect(criticalErrors).toHaveLength(0);
@@ -541,7 +508,7 @@ test.describe('Portal SPA Rendering', () => {
     });
 
     // Navigate to portal
-    await page.goto(`${urls.app}/app/`);
+    await page.goto(`${urls.app}/`);
     await page.waitForLoadState('networkidle');
 
     // No assets should 404
