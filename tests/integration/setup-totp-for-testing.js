@@ -11,7 +11,7 @@
 const axios = require('axios');
 
 const CONFIG = {
-  keycloakUrl: 'http://127.0.0.1:8180',
+  keycloakUrl: process.env.KEYCLOAK_URL,
   realm: 'tamshai-corp',
 };
 

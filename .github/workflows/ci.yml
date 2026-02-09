@@ -413,7 +413,7 @@ jobs:
       postgres-mcp:
         image: postgres:16-alpine
         ports:
-          - 5433:5432
+          - ${{ vars.DEV_POSTGRES }}:5432
         env:
           POSTGRES_USER: tamshai
           POSTGRES_PASSWORD: tamshai_password
@@ -427,7 +427,7 @@ jobs:
       mongodb:
         image: mongo:7
         ports:
-          - 27018:27017
+          - ${{ vars.DEV_MONGODB }}:27017
         env:
           MONGO_INITDB_ROOT_USERNAME: root
           MONGO_INITDB_ROOT_PASSWORD: tamshai_password
@@ -464,7 +464,7 @@ jobs:
 
           docker run -d \
             --name elasticsearch \
-            -p 9201:9200 \
+            -p ${{ vars.DEV_ELASTICSEARCH }}:9200 \
             -e discovery.type=single-node \
             -e xpack.security.enabled=false \
             -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
@@ -478,36 +478,36 @@ jobs:
       - name: Create additional PostgreSQL databases
         run: |
           # Wait for postgres-mcp service to be ready (tamshai database is created by default)
-          timeout 30 bash -c 'until pg_isready -h localhost -p 5433 -U tamshai -d tamshai; do sleep 1; done'
+          timeout 30 bash -c 'until pg_isready -h localhost -p ${{ vars.DEV_POSTGRES }} -U tamshai -d tamshai; do sleep 1; done'
 
           # Create tamshai_hr database (for HR sample data)
-          PGPASSWORD=$DB_PASSWORD psql -h localhost -p 5433 -U tamshai -d tamshai -c "CREATE DATABASE tamshai_hr OWNER tamshai;"
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_POSTGRES }} -U tamshai -d tamshai -c "CREATE DATABASE tamshai_hr OWNER tamshai;"
           echo "✅ Created tamshai_hr database"
 
           # Create tamshai_finance database
-          PGPASSWORD=$DB_PASSWORD psql -h localhost -p 5433 -U tamshai -d tamshai -c "CREATE DATABASE tamshai_finance;"
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_POSTGRES }} -U tamshai -d tamshai -c "CREATE DATABASE tamshai_finance;"
           echo "✅ Created tamshai_finance database"
 
       - name: Load sample data
         run: |
           # Load HR sample data (23 employees)
-          PGPASSWORD=$DB_PASSWORD psql -h localhost -p 5433 -U tamshai -d tamshai_hr < sample-data/hr-data.sql
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_POSTGRES }} -U tamshai -d tamshai_hr < sample-data/hr-data.sql
           echo "✅ Loaded HR sample data"
 
           # Load Finance sample data
-          PGPASSWORD=$DB_PASSWORD psql -h localhost -p 5433 -U tamshai -d tamshai_finance < sample-data/finance-data.sql
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_POSTGRES }} -U tamshai -d tamshai_finance < sample-data/finance-data.sql
           echo "✅ Loaded Finance sample data"
 
           # Load Sales sample data (MongoDB) using Docker
           docker run --rm --network host \
             -v "$(pwd)/sample-data:/data" \
             mongo:7 \
-            mongosh "mongodb://root:$MONGODB_PASSWORD@localhost:27018/tamshai_sales?authSource=admin" /data/sales-data.js
+            mongosh "mongodb://root:$MONGODB_PASSWORD@localhost:${{ vars.DEV_MONGODB }}/tamshai_sales?authSource=admin" /data/sales-data.js
           echo "✅ Loaded Sales sample data"
 
           # Load Support sample data (Elasticsearch - already started in earlier step)
           # Bulk load support tickets and knowledge base
-          curl -X POST "http://localhost:9201/_bulk" \
+          curl -X POST "http://localhost:${{ vars.DEV_ELASTICSEARCH }}/_bulk" \
             -H 'Content-Type: application/x-ndjson' \
             --data-binary @sample-data/support-data.ndjson
           echo "✅ Loaded Support sample data"
@@ -547,14 +547,14 @@ jobs:
             -e KC_HOSTNAME_STRICT=false \
             -e KC_HOSTNAME_STRICT_HTTPS=false \
             -e KC_HTTP_ENABLED=true \
-            -p 8180:8080 \
+            -p ${{ vars.DEV_KEYCLOAK }}:8080 \
             quay.io/keycloak/keycloak:24.0 start-dev
 
           # Wait for Keycloak to be ready (can take 60-90 seconds)
           echo "Waiting for Keycloak to start..."
           for i in {1..60}; do
             # Check if Keycloak master realm is accessible (more reliable than /health in dev mode)
-            if curl -sf http://localhost:8180/realms/master > /dev/null 2>&1; then
+            if curl -sf http://localhost:${{ vars.DEV_KEYCLOAK }}/realms/master > /dev/null 2>&1; then
               echo "Keycloak is ready!"
               # Give it a few more seconds to fully initialize
               sleep 5
@@ -607,7 +607,7 @@ jobs:
       - name: Verify Keycloak Configuration
         run: |
           # Verify tamshai-corp realm was created by Terraform
-          if curl -sf http://localhost:8180/realms/tamshai-corp > /dev/null 2>&1; then
+          if curl -sf http://localhost:${{ vars.DEV_KEYCLOAK }}/realms/tamshai-corp > /dev/null 2>&1; then
             echo "✅ tamshai-corp realm is accessible"
           else
             echo "❌ tamshai-corp realm not found"
@@ -647,10 +647,10 @@ jobs:
         working-directory: services/mcp-gateway
         run: npm start &
         env:
-          PORT: 3110
+          PORT: ${{ vars.DEV_MCP_GATEWAY }}
           # CRITICAL: Use 127.0.0.1 to match test runner (jest.setup.js)
           # This ensures JWT issuer claim matches Gateway's expected issuer
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
           MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
@@ -659,10 +659,10 @@ jobs:
           CLAUDE_API_KEY: sk-ant-test-dummy-key-for-ci
           NODE_ENV: test
           # MCP server URLs for AI query routing
-          MCP_HR_URL: http://127.0.0.1:3111
-          MCP_FINANCE_URL: http://127.0.0.1:3112
-          MCP_SALES_URL: http://127.0.0.1:3113
-          MCP_SUPPORT_URL: http://127.0.0.1:3114
+          MCP_HR_URL: http://127.0.0.1:${{ vars.DEV_MCP_HR }}
+          MCP_FINANCE_URL: http://127.0.0.1:${{ vars.DEV_MCP_FINANCE }}
+          MCP_SALES_URL: http://127.0.0.1:${{ vars.DEV_MCP_SALES }}
+          MCP_SUPPORT_URL: http://127.0.0.1:${{ vars.DEV_MCP_SUPPORT }}
           # Internal token secret for MCP server authentication
           MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
@@ -670,7 +670,7 @@ jobs:
         run: |
           echo "Waiting for MCP Gateway to be ready..."
           for i in {1..30}; do
-            if curl -sf http://localhost:3110/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:${{ vars.DEV_MCP_GATEWAY }}/health > /dev/null 2>&1; then
               echo "MCP Gateway is ready!"
               sleep 2  # Grace period for full initialization
               break
@@ -707,11 +707,11 @@ jobs:
         working-directory: services/mcp-hr
         run: npm start &
         env:
-          PORT: 3111
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          PORT: ${{ vars.DEV_MCP_HR }}
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5433
+          POSTGRES_PORT: ${{ vars.DEV_POSTGRES }}
           POSTGRES_USER: tamshai
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
           POSTGRES_DB: tamshai_hr
@@ -732,11 +732,11 @@ jobs:
         working-directory: services/mcp-finance
         run: npm start &
         env:
-          PORT: 3112
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          PORT: ${{ vars.DEV_MCP_FINANCE }}
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5433
+          POSTGRES_PORT: ${{ vars.DEV_POSTGRES }}
           POSTGRES_USER: tamshai
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
           POSTGRES_DB: tamshai_finance
@@ -757,10 +757,10 @@ jobs:
         working-directory: services/mcp-sales
         run: npm start &
         env:
-          PORT: 3113
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          PORT: ${{ vars.DEV_MCP_SALES }}
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
-          MONGODB_URL: mongodb://root:${{ env.MONGODB_PASSWORD }}@localhost:27018/tamshai_sales?authSource=admin
+          MONGODB_URL: mongodb://root:${{ env.MONGODB_PASSWORD }}@localhost:${{ vars.DEV_MONGODB }}/tamshai_sales?authSource=admin
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
@@ -778,10 +778,10 @@ jobs:
         working-directory: services/mcp-support
         run: npm start &
         env:
-          PORT: 3114
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          PORT: ${{ vars.DEV_MCP_SUPPORT }}
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
-          ELASTICSEARCH_URL: http://localhost:9201
+          ELASTICSEARCH_URL: http://localhost:${{ vars.DEV_ELASTICSEARCH }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
@@ -808,10 +808,10 @@ jobs:
           }
 
           # Check each MCP server
-          check_health "MCP HR" 3111 || exit 1
-          check_health "MCP Finance" 3112 || exit 1
-          check_health "MCP Sales" 3113 || exit 1
-          check_health "MCP Support" 3114 || exit 1
+          check_health "MCP HR" ${{ vars.DEV_MCP_HR }} || exit 1
+          check_health "MCP Finance" ${{ vars.DEV_MCP_FINANCE }} || exit 1
+          check_health "MCP Sales" ${{ vars.DEV_MCP_SALES }} || exit 1
+          check_health "MCP Support" ${{ vars.DEV_MCP_SUPPORT }} || exit 1
 
           echo "✅ All MCP servers are ready!"
           sleep 2  # Grace period for full initialization
@@ -828,15 +828,15 @@ jobs:
           echo ""
 
           echo "=== Keycloak Health Check ==="
-          curl -sf http://127.0.0.1:8180/ | grep -q "Keycloak" && echo "✅ Keycloak is responding" || echo "❌ Keycloak not responding"
+          curl -sf http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}/ | grep -q "Keycloak" && echo "✅ Keycloak is responding" || echo "❌ Keycloak not responding"
           echo ""
 
           echo "=== MCP Gateway Health Check ==="
-          curl -sf http://localhost:3110/health && echo "✅ Gateway is healthy" || echo "❌ Gateway not healthy"
+          curl -sf http://localhost:${{ vars.DEV_MCP_GATEWAY }}/health && echo "✅ Gateway is healthy" || echo "❌ Gateway not healthy"
           echo ""
 
           echo "=== Test Token Acquisition ==="
-          TOKEN_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:8180/realms/tamshai-corp/protocol/openid-connect/token \
+          TOKEN_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
             -d "grant_type=password" \
             -d "client_id=mcp-gateway" \
             -d "client_secret=${MCP_GATEWAY_CLIENT_SECRET}" \
@@ -878,17 +878,17 @@ jobs:
           CI: true
           # CRITICAL: Use 127.0.0.1 to match Gateway configuration (line 444)
           # This ensures tokens issued by Keycloak match Gateway's expected issuer
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
           MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
-          MCP_GATEWAY_URL: http://localhost:3110
-          # MCP server URLs - must match ports started above (3111-3114)
-          MCP_HR_URL: http://127.0.0.1:3111
-          MCP_FINANCE_URL: http://127.0.0.1:3112
-          MCP_SALES_URL: http://127.0.0.1:3113
-          MCP_SUPPORT_URL: http://127.0.0.1:3114
+          MCP_GATEWAY_URL: http://localhost:${{ vars.DEV_MCP_GATEWAY }}
+          # MCP server URLs - must match ports started above
+          MCP_HR_URL: http://127.0.0.1:${{ vars.DEV_MCP_HR }}
+          MCP_FINANCE_URL: http://127.0.0.1:${{ vars.DEV_MCP_FINANCE }}
+          MCP_SALES_URL: http://127.0.0.1:${{ vars.DEV_MCP_SALES }}
+          MCP_SUPPORT_URL: http://127.0.0.1:${{ vars.DEV_MCP_SUPPORT }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           # Shared secret for MCP server authentication
@@ -899,7 +899,7 @@ jobs:
         run: npm run test:integration
         env:
           CI: true
-          KEYCLOAK_URL: http://127.0.0.1:8180
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_PATH_PREFIX: ''  # CI Keycloak has no path prefix (local uses /auth)
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_ADMIN: admin
@@ -907,7 +907,7 @@ jobs:
           MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
           POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5433
+          POSTGRES_PORT: ${{ vars.DEV_POSTGRES }}
           POSTGRES_DB: tamshai_hr
           POSTGRES_USER: tamshai
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
@@ -963,6 +963,8 @@ jobs:
       - name: Setup Keycloak
         id: keycloak
         uses: ./.github/actions/setup-keycloak
+        with:
+          keycloak-port: ${{ vars.DEV_KEYCLOAK }}
 
       # =========================================================================
       # Build and Start MCP Gateway
@@ -985,14 +987,14 @@ jobs:
           npm start &
           sleep 5
         env:
-          PORT: 3100
+          PORT: ${{ vars.DEV_MCP_GATEWAY }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          KEYCLOAK_URL: http://localhost:8180
+          KEYCLOAK_URL: http://localhost:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_ISSUER: http://localhost:8180/auth/realms/tamshai-corp
-          JWKS_URI: http://localhost:8180/auth/realms/tamshai-corp/protocol/openid-connect/certs
+          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_KEYCLOAK }}/auth/realms/tamshai-corp
+          JWKS_URI: http://localhost:${{ vars.DEV_KEYCLOAK }}/auth/realms/tamshai-corp/protocol/openid-connect/certs
           TOKEN_REVOCATION_FAIL_OPEN: 'true'
           LOG_LEVEL: warn
 
@@ -1006,7 +1008,7 @@ jobs:
         working-directory: tests/e2e
         run: npm test -- --project=api
         env:
-          MCP_GATEWAY_URL: http://localhost:3100
+          MCP_GATEWAY_URL: http://localhost:${{ vars.DEV_MCP_GATEWAY }}
           CI: true
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           TEST_USER_TOTP_SECRET: ${{ secrets.TEST_USER_TOTP_SECRET }}
@@ -1059,6 +1061,8 @@ jobs:
       - name: Setup Keycloak
         id: keycloak
         uses: ./.github/actions/setup-keycloak
+        with:
+          keycloak-port: ${{ vars.DEV_KEYCLOAK }}
 
       # =========================================================================
       # MCP Gateway Setup
@@ -1081,20 +1085,20 @@ jobs:
           npm start &
           sleep 5
         env:
-          PORT: 3100
+          PORT: ${{ vars.DEV_MCP_GATEWAY }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           # Use localhost for Keycloak (running in Docker with port mapping)
-          KEYCLOAK_URL: http://localhost:8180
+          KEYCLOAK_URL: http://localhost:${{ vars.DEV_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_ISSUER: http://localhost:8180/auth/realms/tamshai-corp
-          JWKS_URI: http://localhost:8180/auth/realms/tamshai-corp/protocol/openid-connect/certs
+          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_KEYCLOAK }}/auth/realms/tamshai-corp
+          JWKS_URI: http://localhost:${{ vars.DEV_KEYCLOAK }}/auth/realms/tamshai-corp/protocol/openid-connect/certs
           LOG_LEVEL: warn
 
       - name: Verify Gateway Health
         run: |
-          curl -sf http://localhost:3100/health || {
+          curl -sf http://localhost:${{ vars.DEV_MCP_GATEWAY }}/health || {
             echo "Gateway health check failed"
             exit 1
           }
@@ -1109,8 +1113,8 @@ jobs:
           filename: tests/performance/scenarios/gateway-load.js
           flags: --vus 3 --duration 15s
         env:
-          MCP_GATEWAY_URL: http://localhost:3100
-          KEYCLOAK_URL: http://localhost:8180/auth
+          MCP_GATEWAY_URL: http://localhost:${{ vars.DEV_MCP_GATEWAY }}
+          KEYCLOAK_URL: http://localhost:${{ vars.DEV_KEYCLOAK }}/auth
           KEYCLOAK_REALM: tamshai-corp
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
         continue-on-error: true

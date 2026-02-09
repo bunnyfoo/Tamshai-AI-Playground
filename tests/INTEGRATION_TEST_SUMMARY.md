@@ -362,15 +362,15 @@ Semantic search and knowledge indexing.
 | Dependency | Required By | Purpose |
 |------------|-------------|---------|
 | Keycloak | All tests | Authentication, JWT tokens |
-| MCP Gateway (3100) | Proxy, RBAC, SSE, Query | Request routing |
-| MCP HR (3101) | Tools, Proxy, Query | Employee data |
-| MCP Finance (3102) | Tools, Proxy, Query | Budget/invoice data |
-| MCP Sales (3103) | Tools, Proxy | Opportunities/CRM |
-| MCP Support (3104) | Tools, Proxy | Tickets/KB |
-| MCP Payroll (3106) | Proxy (skipped) | Payroll data |
-| PostgreSQL (5433) | RLS, Schema, Identity | Relational data |
-| MongoDB (27018) | Schema validation | Sales/Support documents |
-| Redis (6380) | Confirmation flows | Token cache, pending actions |
+| MCP Gateway (`PORT_MCP_GATEWAY`) | Proxy, RBAC, SSE, Query | Request routing |
+| MCP HR (`PORT_MCP_HR`) | Tools, Proxy, Query | Employee data |
+| MCP Finance (`PORT_MCP_FINANCE`) | Tools, Proxy, Query | Budget/invoice data |
+| MCP Sales (`PORT_MCP_SALES`) | Tools, Proxy | Opportunities/CRM |
+| MCP Support (`PORT_MCP_SUPPORT`) | Tools, Proxy | Tickets/KB |
+| MCP Payroll (`PORT_MCP_PAYROLL`) | Proxy (skipped) | Payroll data |
+| PostgreSQL (`PORT_POSTGRES`) | RLS, Schema, Identity | Relational data |
+| MongoDB (`PORT_MONGODB`) | Schema validation | Sales/Support documents |
+| Redis (`PORT_REDIS`) | Confirmation flows | Token cache, pending actions |
 | Claude API | SSE, RBAC AI queries | AI response generation |
 
 ---

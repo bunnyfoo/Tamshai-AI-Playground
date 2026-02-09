@@ -8,7 +8,7 @@
 const axios = require('axios');
 
 const CONFIG = {
-  keycloakUrl: 'http://127.0.0.1:8180',
+  keycloakUrl: process.env.KEYCLOAK_URL,
   realm: 'tamshai-corp',
   clientId: 'mcp-gateway',
 };
@@ -144,7 +144,7 @@ async function main() {
       new URLSearchParams({
         grant_type: 'password',
         client_id: 'mcp-gateway',
-        client_secret: process.env.KEYCLOAK_CLIENT_SECRET || '[DEV-SECRET-NOT-SET]',
+        client_secret: process.env.MCP_GATEWAY_CLIENT_SECRET || '[DEV-SECRET-NOT-SET]',
         username: 'alice.chen',
         password: process.env.DEV_USER_PASSWORD || '[DEV-PASSWORD-NOT-SET]',
       }),

@@ -15,7 +15,7 @@
 const axios = require('axios');
 
 const CONFIG = {
-  keycloakUrl: 'http://127.0.0.1:8180',
+  keycloakUrl: process.env.KEYCLOAK_URL,
   realm: 'tamshai-corp',
 };
 
@@ -143,7 +143,7 @@ Option 2: Pre-configure with known secret (for testing)
    - Then on Keycloak setup screen, enter the code from your app
 
 Keycloak Account Console URL:
-   http://127.0.0.1:8180/realms/tamshai-corp/account
+   ${CONFIG.keycloakUrl}/realms/tamshai-corp/account
 
 Login:
    Username: eve.thompson

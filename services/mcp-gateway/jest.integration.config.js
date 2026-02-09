@@ -33,20 +33,20 @@ if (fs.existsSync(envPath)) {
 
 // Database connection (host-to-container via exposed ports)
 process.env.POSTGRES_HOST = process.env.POSTGRES_HOST || '127.0.0.1';
-process.env.POSTGRES_PORT = process.env.POSTGRES_PORT || process.env.PORT_POSTGRES || '5443';
+process.env.POSTGRES_PORT = process.env.POSTGRES_PORT || process.env.PORT_POSTGRES;
 process.env.POSTGRES_DB = process.env.POSTGRES_DB || 'tamshai_hr';
 process.env.POSTGRES_USER = process.env.POSTGRES_USER || 'tamshai_app';
 process.env.TAMSHAI_APP_PASSWORD = process.env.TAMSHAI_APP_PASSWORD || 'changeme';
 
 // Keycloak URL (for TOTP management in tests)
-const keycloakPort = process.env.PORT_KEYCLOAK || '8190';
+const keycloakPort = process.env.PORT_KEYCLOAK;
 process.env.KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${keycloakPort}`;
 process.env.KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 
 // MCP Service URLs (for integration tests)
-const mcpGatewayPort = process.env.PORT_MCP_GATEWAY || '3110';
-const mcpFinancePort = process.env.PORT_MCP_FINANCE || '3112';
-const mcpUiPort = process.env.PORT_MCP_UI || '3118';
+const mcpGatewayPort = process.env.PORT_MCP_GATEWAY;
+const mcpFinancePort = process.env.PORT_MCP_FINANCE;
+const mcpUiPort = process.env.PORT_MCP_UI;
 process.env.MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || `http://127.0.0.1:${mcpGatewayPort}`;
 process.env.MCP_FINANCE_URL = process.env.MCP_FINANCE_URL || `http://127.0.0.1:${mcpFinancePort}`;
 process.env.MCP_UI_URL = process.env.MCP_UI_URL || `http://127.0.0.1:${mcpUiPort}`;

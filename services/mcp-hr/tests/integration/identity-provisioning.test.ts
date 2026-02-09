@@ -4,7 +4,7 @@
  * Tests the Keycloak Atomic Migration implementation against real services.
  *
  * Environment Requirements:
- * - Keycloak running on KEYCLOAK_URL (default: http://localhost:8180)
+ * - Keycloak running on KEYCLOAK_URL (from environment)
  * - PostgreSQL running on POSTGRES_HOST:POSTGRES_PORT
  * - Redis running on REDIS_HOST:REDIS_PORT
  *
@@ -28,7 +28,7 @@ import {
 // Note: Local Docker uses KC_HTTP_RELATIVE_PATH=/auth, CI does not
 const config = {
   keycloak: {
-    baseUrl: process.env.KEYCLOAK_URL || 'http://localhost:8180',
+    baseUrl: process.env.KEYCLOAK_URL!,
     pathPrefix: process.env.KEYCLOAK_PATH_PREFIX ?? '/auth', // '/auth' for local, '' for CI
     realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
     adminUsername: process.env.KEYCLOAK_ADMIN || 'admin',
@@ -38,7 +38,7 @@ const config = {
   },
   postgres: {
     host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5433', 10),
+    port: parseInt(process.env.POSTGRES_PORT!, 10),
     database: process.env.POSTGRES_DB || 'tamshai_hr',
     user: process.env.POSTGRES_USER || 'tamshai',
     password: process.env.POSTGRES_PASSWORD || 'tamshai_password',

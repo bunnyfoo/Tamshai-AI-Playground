@@ -15,7 +15,7 @@
  * Before running tests, TOTP must be temporarily disabled in Keycloak:
  *
  * Option 1: Disable TOTP for realm (recommended for CI/CD):
- *   1. Login to Keycloak Admin Console (http://127.0.0.1:8180/admin)
+ *   1. Login to Keycloak Admin Console (http://127.0.0.1:$KEYCLOAK_PORT/admin)
  *   2. Select realm 'tamshai-corp'
  *   3. Go to Authentication > Required Actions
  *   4. Disable "Configure OTP" required action

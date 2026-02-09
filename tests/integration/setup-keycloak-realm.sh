@@ -2,7 +2,7 @@
 set -euo pipefail  # Strict error handling
 
 # Configuration
-KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8180}"
+KEYCLOAK_URL="${KEYCLOAK_URL:?KEYCLOAK_URL required - set via environment variable}"
 REALM="${KEYCLOAK_REALM:-tamshai-corp}"
 ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
 ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD required - set in .env file}"

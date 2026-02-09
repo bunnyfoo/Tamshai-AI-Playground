@@ -8,9 +8,10 @@ const http = require('http');
 const querystring = require('querystring');
 
 const CONFIG = {
-  keycloakUrl: 'http://127.0.0.1:8180',
+  keycloakUrl: process.env.KEYCLOAK_URL,
   realm: 'tamshai-corp',
 };
+const keycloakParsed = new URL(CONFIG.keycloakUrl);
 
 async function getAdminToken() {
   return new Promise((resolve, reject) => {
@@ -22,8 +23,8 @@ async function getAdminToken() {
     });
 
     const options = {
-      hostname: '127.0.0.1',
-      port: 8180,
+      hostname: keycloakParsed.hostname,
+      port: keycloakParsed.port,
       path: '/realms/master/protocol/openid-connect/token',
       method: 'POST',
       headers: {
@@ -83,8 +84,8 @@ async function createClient(adminToken) {
     const postData = JSON.stringify(clientConfig);
 
     const options = {
-      hostname: '127.0.0.1',
-      port: 8180,
+      hostname: keycloakParsed.hostname,
+      port: keycloakParsed.port,
       path: `/admin/realms/${CONFIG.realm}/clients`,
       method: 'POST',
       headers: {

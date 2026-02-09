@@ -73,11 +73,11 @@ const MCP_ENDPOINTS = {
 // Test configuration
 // Fail-closed: Required secrets must be set via environment variables
 const CONFIG = {
-  mcpGatewayUrl: process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3110',
-  keycloakUrl: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190',
+  mcpGatewayUrl: process.env.MCP_GATEWAY_URL!,
+  keycloakUrl: process.env.KEYCLOAK_URL!,
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || '',
+  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET || '',
 };
 
 const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
@@ -87,7 +87,7 @@ if (!TEST_PASSWORD) {
 }
 
 if (!CONFIG.clientSecret) {
-  console.warn('WARNING: KEYCLOAK_CLIENT_SECRET not set - authentication tests will fail');
+  console.warn('WARNING: MCP_GATEWAY_CLIENT_SECRET not set - authentication tests will fail');
 }
 
 // Test users matching frontend role requirements

@@ -25,8 +25,8 @@ const requestCounter = new Counter('total_requests');
 const hourlyErrors = new Counter('hourly_errors');
 
 // Configuration
-const GATEWAY_URL = __ENV.MCP_GATEWAY_URL || 'http://localhost:3100';
-const KEYCLOAK_URL = __ENV.KEYCLOAK_URL || 'http://localhost:8180';
+const GATEWAY_URL = __ENV.MCP_GATEWAY_URL;
+const KEYCLOAK_URL = __ENV.KEYCLOAK_URL;
 const KEYCLOAK_REALM = __ENV.KEYCLOAK_REALM || 'tamshai-corp';
 const SOAK_DURATION = __ENV.SOAK_DURATION || '4h';
 

@@ -8,7 +8,7 @@
  * ==========================================
  * These tests use Resource Owner Password Grant which does not support TOTP.
  * Before running tests, temporarily disable TOTP in Keycloak:
- *   1. Login to Keycloak Admin Console (http://127.0.0.1:8180/admin)
+ *   1. Login to Keycloak Admin Console (http://127.0.0.1:$KEYCLOAK_PORT/admin)
  *   2. Select realm 'tamshai-corp'
  *   3. Go to Authentication > Required Actions
  *   4. Disable "Configure OTP" required action

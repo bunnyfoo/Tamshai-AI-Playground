@@ -149,13 +149,13 @@ jest.setTimeout(60000);
 const DB_CONFIG = {
   postgres: {
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5443'), // External port: 5443 -> internal 5432
+    port: parseInt(process.env.DB_PORT || process.env.PORT_POSTGRES!), // External port from env -> internal 5432
     user: process.env.DB_USER || 'tamshai',
     password: process.env.DB_PASSWORD || process.env.TAMSHAI_DB_PASSWORD || '',
   },
   mongodb: {
     host: process.env.MONGODB_HOST || 'localhost',
-    port: parseInt(process.env.MONGODB_PORT || '27028'), // External port: 27028 -> internal 27017
+    port: parseInt(process.env.MONGODB_PORT || process.env.PORT_MONGODB!), // External port from env -> internal 27017
     user: process.env.MONGODB_USER || 'tamshai',
     password: process.env.MONGODB_PASSWORD || '',
   },
