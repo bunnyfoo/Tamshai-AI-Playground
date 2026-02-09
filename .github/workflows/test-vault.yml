@@ -62,22 +62,24 @@ jobs:
         run: |
           cat > .env << EOF
           # CI Environment - Vault Integration Test
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          TAMSHAI_DB_PASSWORD=${TAMSHAI_DB_PASSWORD}
-          KEYCLOAK_DB_PASSWORD=${{ secrets.KEYCLOAK_DB_PASSWORD }}
-          MONGODB_PASSWORD=${MONGODB_PASSWORD}
+          # Note: Some secrets use placeholders for docker-compose parsing
+          # since this test only runs Vault, not the full stack
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'vault-test-placeholder' }}
+          TAMSHAI_DB_PASSWORD=${TAMSHAI_DB_PASSWORD:-vault-test-placeholder}
+          KEYCLOAK_DB_PASSWORD=${{ secrets.KEYCLOAK_DB_PASSWORD || 'vault-test-placeholder' }}
+          MONGODB_PASSWORD=${MONGODB_PASSWORD:-vault-test-placeholder}
           KEYCLOAK_ADMIN=admin
-          KEYCLOAK_ADMIN_PASSWORD=${DEV_KEYCLOAK_ADMIN_PASSWORD}
+          KEYCLOAK_ADMIN_PASSWORD=${DEV_KEYCLOAK_ADMIN_PASSWORD:-admin}
           MINIO_ROOT_USER=minio
-          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-vault-test-placeholder}
           REDIS_PASSWORD=redis_password
           ELASTIC_PASSWORD=elastic_password
           CLAUDE_API_KEY=${{ env.CLAUDE_API_KEY }}
           VAULT_DEV_ROOT_TOKEN=${{ env.VAULT_TOKEN }}
-          E2E_ADMIN_API_KEY=${E2E_ADMIN_API_KEY}
-          MCP_UI_CLIENT_SECRET=${MCP_UI_CLIENT_SECRET}
-          MCP_INTERNAL_SECRET=${MCP_INTERNAL_SECRET}
-          MCP_HR_SERVICE_CLIENT_SECRET=${MCP_HR_SERVICE_CLIENT_SECRET}
+          E2E_ADMIN_API_KEY=${E2E_ADMIN_API_KEY:-vault-test-placeholder}
+          MCP_UI_CLIENT_SECRET=${MCP_UI_CLIENT_SECRET:-vault-test-placeholder}
+          MCP_INTERNAL_SECRET=${MCP_INTERNAL_SECRET:-vault-test-placeholder}
+          MCP_HR_SERVICE_CLIENT_SECRET=${MCP_HR_SERVICE_CLIENT_SECRET:-vault-test-placeholder}
           MCP_GATEWAY_CLIENT_SECRET=vault-test-client-secret
 
           # Port Configuration (required by docker-compose.yml)
