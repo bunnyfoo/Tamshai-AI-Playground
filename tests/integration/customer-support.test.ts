@@ -130,7 +130,7 @@ async function getInternalAccessToken(username: string, password: string): Promi
   const params = new URLSearchParams({
     grant_type: 'password',
     client_id: 'mcp-gateway',
-    client_secret: process.env.KEYCLOAK_CLIENT_SECRET!,
+    client_secret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
     username,
     password,
     scope: 'openid profile email',

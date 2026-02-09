@@ -76,7 +76,7 @@ const CONFIG = {
   keycloakUrl: process.env.KEYCLOAK_URL,
   keycloakRealm: process.env.KEYCLOAK_REALM,
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
+  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
 };
 
 const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
