@@ -162,13 +162,13 @@ test.describe('Customer Login Journey', () => {
     await page.waitForLoadState('networkidle', { timeout: 30000 });
 
     // Verify we're on the customer portal dashboard
-    // Dashboard shows welcome message with user's name or "Support Portal" heading
-    const welcomeText = page.locator('text=Dashboard, text=Welcome, h1:has-text("Support"), h2:has-text("Welcome")');
+    // Dashboard shows "Welcome back, {firstName}!" heading
+    const welcomeText = page.locator('h1:has-text("Welcome"), h2:has-text("Welcome"), a:has-text("Dashboard")');
     await expect(welcomeText.first()).toBeVisible({ timeout: 30000 });
 
-    // Verify user info is displayed (username or name)
-    const userDisplay = page.locator(`text=${TEST_LEAD_CUSTOMER.firstName}, text=${TEST_LEAD_CUSTOMER.username}`);
-    await expect(userDisplay.first()).toBeVisible({ timeout: 10000 });
+    // Verify user info is displayed (first name in welcome heading)
+    const pageText = await page.textContent('body');
+    expect(pageText).toContain(TEST_LEAD_CUSTOMER.firstName);
 
     // Check that the page has loaded correctly (not a blank page)
     const pageContent = await page.textContent('body');
@@ -197,7 +197,7 @@ test.describe('Customer Login Journey', () => {
     await page.waitForLoadState('networkidle', { timeout: 30000 });
 
     // Verify we're on the customer portal dashboard
-    const welcomeText = page.locator('text=Dashboard, text=Welcome, h1:has-text("Support")');
+    const welcomeText = page.locator('h1:has-text("Welcome"), h2:has-text("Welcome"), a:has-text("Dashboard")');
     await expect(welcomeText.first()).toBeVisible({ timeout: 30000 });
 
     console.log(`Basic customer login journey completed successfully for ${TEST_BASIC_CUSTOMER.username}`);
@@ -324,7 +324,7 @@ test.describe('Customer Portal Navigation', () => {
 
       // Verify tickets page loaded
       await page.waitForLoadState('networkidle');
-      const ticketsHeading = page.locator('h1:has-text("Ticket"), h2:has-text("Ticket"), text=My Tickets');
+      const ticketsHeading = page.locator('h1:has-text("Ticket"), h2:has-text("Ticket")');
       await expect(ticketsHeading.first()).toBeVisible({ timeout: 10000 });
     }
   });
@@ -349,7 +349,7 @@ test.describe('Customer Portal Navigation', () => {
 
       // Verify KB page loaded
       await page.waitForLoadState('networkidle');
-      const kbHeading = page.locator('h1:has-text("Knowledge"), h2:has-text("Knowledge"), text=Knowledge Base');
+      const kbHeading = page.locator('h1:has-text("Knowledge"), h2:has-text("Knowledge")');
       await expect(kbHeading.first()).toBeVisible({ timeout: 10000 });
     }
   });

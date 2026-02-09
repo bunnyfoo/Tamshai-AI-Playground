@@ -177,6 +177,18 @@ export const oidcConfig = new Proxy({} as ReturnType<typeof getOidcConfig>, {
     }
     return (_oidcConfig as any)[prop];
   },
+  ownKeys() {
+    if (!_oidcConfig) {
+      _oidcConfig = getOidcConfig();
+    }
+    return Reflect.ownKeys(_oidcConfig!);
+  },
+  getOwnPropertyDescriptor(_, prop) {
+    if (!_oidcConfig) {
+      _oidcConfig = getOidcConfig();
+    }
+    return Object.getOwnPropertyDescriptor(_oidcConfig!, prop);
+  },
 });
 
 /**

@@ -31,6 +31,27 @@ function isDeployedEnvironment(hostname: string): boolean {
 }
 
 /**
+ * Get the Keycloak authority URL for the customer realm.
+ * Keycloak's issuer uses the www domain (configured frontend URL),
+ * so the authority must match regardless of which subdomain the app runs on.
+ */
+function getKeycloakAuthorityUrl(): string {
+  const hostname = window.location.hostname;
+  const port = window.location.port;
+  const portSuffix = port && port !== '443' && port !== '80' ? `:${port}` : '';
+
+  // Map customer subdomain to www domain (matches Keycloak's issuer)
+  const domainMap: Record<string, string> = {
+    'customers.tamshai-playground.local': 'www.tamshai-playground.local',
+    'customers.tamshai.com': 'www.tamshai.com',
+    'customer-support.tamshai.com': 'www.tamshai.com',
+  };
+
+  const keycloakHost = domainMap[hostname] || hostname;
+  return `https://${keycloakHost}${portSuffix}/auth/realms/tamshai-customers`;
+}
+
+/**
  * Get the customer portal OIDC configuration
  * Uses tamshai-customers realm instead of tamshai
  */
@@ -41,7 +62,7 @@ function getCustomerOidcConfig() {
   // Deployed environment (Caddy routing proxies /auth to Keycloak)
   if (isDeployedEnvironment(hostname)) {
     return {
-      authority: `${origin}/auth/realms/tamshai-customers`,
+      authority: getKeycloakAuthorityUrl(),
       client_id: 'customer-portal',
       redirect_uri: `${origin}/callback`,
       post_logout_redirect_uri: origin,
@@ -97,6 +118,18 @@ export const customerOidcConfig = new Proxy({} as ReturnType<typeof buildOidcCon
       _oidcConfig = buildOidcConfig();
     }
     return (_oidcConfig as any)[prop];
+  },
+  ownKeys() {
+    if (!_oidcConfig) {
+      _oidcConfig = buildOidcConfig();
+    }
+    return Reflect.ownKeys(_oidcConfig!);
+  },
+  getOwnPropertyDescriptor(_, prop) {
+    if (!_oidcConfig) {
+      _oidcConfig = buildOidcConfig();
+    }
+    return Object.getOwnPropertyDescriptor(_oidcConfig!, prop);
   },
 });
 
