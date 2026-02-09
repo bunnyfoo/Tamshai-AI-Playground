@@ -13,7 +13,7 @@ These tests follow Test-Driven Development principles:
 ## Prerequisites
 
 - [k6](https://k6.io/docs/getting-started/installation/) installed
-- MCP Gateway running on localhost:3100 (or set `MCP_GATEWAY_URL`)
+- MCP Gateway running (set `MCP_GATEWAY_URL` environment variable)
 - Optional: Keycloak running for authenticated endpoint tests
 
 ## Installation
@@ -158,8 +158,8 @@ SOAK_DURATION=2h k6 run scenarios/soak.js
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_GATEWAY_URL` | `http://localhost:3100` | MCP Gateway URL |
-| `KEYCLOAK_URL` | `http://localhost:8180` | Keycloak URL |
+| `MCP_GATEWAY_URL` | **(required)** | MCP Gateway URL (from `PORT_MCP_GATEWAY`) |
+| `KEYCLOAK_URL` | **(required)** | Keycloak URL (from `PORT_KEYCLOAK`) |
 | `KEYCLOAK_REALM` | `tamshai-corp` | Keycloak realm |
 | `TEST_PASSWORD` | `[REDACTED-DEV-PASSWORD]` | Test user password |
 | `SOAK_DURATION` | `4h` | Soak test duration |
@@ -182,7 +182,7 @@ Add to GitHub Actions:
   with:
     filename: tests/performance/scenarios/smoke.js
   env:
-    MCP_GATEWAY_URL: http://localhost:3100
+    MCP_GATEWAY_URL: http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}
 
 - name: Upload Results
   uses: actions/upload-artifact@v4

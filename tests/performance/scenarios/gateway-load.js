@@ -5,8 +5,8 @@
  * Run with report: k6 run --out json=results.json scenarios/gateway-load.js
  *
  * Prerequisites:
- * - MCP Gateway running on GATEWAY_URL (default: http://localhost:3100)
- * - Keycloak running for authenticated tests
+ * - MCP Gateway running on MCP_GATEWAY_URL (from environment, no default)
+ * - Keycloak running on KEYCLOAK_URL (from environment, no default)
  */
 
 import http from 'k6/http';

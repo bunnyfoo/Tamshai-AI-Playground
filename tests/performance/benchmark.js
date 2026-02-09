@@ -6,7 +6,11 @@
  * - Response sizes: target -60% reduction (with compression)
  */
 
-const GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://localhost:3110';
+const GATEWAY_URL = process.env.MCP_GATEWAY_URL;
+if (!GATEWAY_URL) {
+  console.error('ERROR: MCP_GATEWAY_URL environment variable is required.');
+  process.exit(1);
+}
 const ITERATIONS = 100;
 
 async function measureEndpoint(url, name, headers = {}) {

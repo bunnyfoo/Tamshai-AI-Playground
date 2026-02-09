@@ -12,9 +12,9 @@
  * - Customer realm provisioned (keycloak/realm-export-customers-dev.json)
  * - MongoDB with sample data loaded
  *
- * Environment Variables:
- * - KEYCLOAK_URL: Keycloak base URL (default: http://127.0.0.1:8190/auth)
- * - MCP_SUPPORT_URL: MCP Support service URL (default: http://127.0.0.1:3114)
+ * Environment Variables (from .env, no hardcoded defaults):
+ * - KEYCLOAK_URL: Keycloak base URL (derived from PORT_KEYCLOAK)
+ * - MCP_SUPPORT_URL: MCP Support service URL (derived from PORT_MCP_SUPPORT)
  */
 
 import axios, { AxiosInstance } from 'axios';
