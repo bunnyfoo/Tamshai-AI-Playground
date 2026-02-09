@@ -51,36 +51,39 @@ jobs:
       - name: Create .env file with all required variables
         working-directory: infrastructure/docker
         env:
+          # All secrets use DEV_ prefix naming convention
           DEV_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
-          E2E_ADMIN_API_KEY: ${{ secrets.E2E_ADMIN_API_KEY }}
-          MCP_UI_CLIENT_SECRET: ${{ secrets.MCP_UI_CLIENT_SECRET }}
-          MCP_INTERNAL_SECRET: ${{ secrets.MCP_INTERNAL_SECRET }}
-          MCP_HR_SERVICE_CLIENT_SECRET: ${{ secrets.MCP_HR_SERVICE_CLIENT_SECRET }}
-          TAMSHAI_DB_PASSWORD: ${{ secrets.TAMSHAI_DB_PASSWORD }}
-          MONGODB_PASSWORD: ${{ secrets.MONGODB_DEV_PASSWORD }}
-          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          DEV_E2E_ADMIN_API_KEY: ${{ secrets.DEV_E2E_ADMIN_API_KEY }}
+          DEV_MCP_UI_CLIENT_SECRET: ${{ secrets.DEV_MCP_UI_CLIENT_SECRET }}
+          DEV_MCP_INTERNAL_SECRET: ${{ secrets.DEV_MCP_INTERNAL_SECRET }}
+          DEV_MCP_HR_SERVICE_CLIENT_SECRET: ${{ secrets.DEV_MCP_HR_SERVICE_CLIENT_SECRET }}
+          DEV_TAMSHAI_DB_PASSWORD: ${{ secrets.DEV_TAMSHAI_DB_PASSWORD }}
+          DEV_MONGODB_PASSWORD: ${{ secrets.DEV_MONGODB_PASSWORD }}
+          DEV_MINIO_ROOT_PASSWORD: ${{ secrets.DEV_MINIO_ROOT_PASSWORD }}
+          DEV_POSTGRES_PASSWORD: ${{ secrets.DEV_POSTGRES_PASSWORD }}
+          DEV_KEYCLOAK_DB_PASSWORD: ${{ secrets.DEV_KEYCLOAK_DB_PASSWORD }}
+          DEV_MCP_GATEWAY_CLIENT_SECRET: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
         run: |
           cat > .env << EOF
           # CI Environment - Vault Integration Test
-          # Note: Some secrets use placeholders for docker-compose parsing
-          # since this test only runs Vault, not the full stack
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'vault-test-placeholder' }}
-          TAMSHAI_DB_PASSWORD=${TAMSHAI_DB_PASSWORD:-vault-test-placeholder}
-          KEYCLOAK_DB_PASSWORD=${{ secrets.KEYCLOAK_DB_PASSWORD || 'vault-test-placeholder' }}
-          MONGODB_PASSWORD=${MONGODB_PASSWORD:-vault-test-placeholder}
+          # All secrets loaded from GitHub Secrets with DEV_ prefix
+          POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
+          TAMSHAI_DB_PASSWORD=${DEV_TAMSHAI_DB_PASSWORD}
+          KEYCLOAK_DB_PASSWORD=${DEV_KEYCLOAK_DB_PASSWORD}
+          MONGODB_PASSWORD=${DEV_MONGODB_PASSWORD}
           KEYCLOAK_ADMIN=admin
-          KEYCLOAK_ADMIN_PASSWORD=${DEV_KEYCLOAK_ADMIN_PASSWORD:-admin}
+          KEYCLOAK_ADMIN_PASSWORD=${DEV_KEYCLOAK_ADMIN_PASSWORD}
           MINIO_ROOT_USER=minio
-          MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-vault-test-placeholder}
+          MINIO_ROOT_PASSWORD=${DEV_MINIO_ROOT_PASSWORD}
           REDIS_PASSWORD=redis_password
           ELASTIC_PASSWORD=elastic_password
           CLAUDE_API_KEY=${{ env.CLAUDE_API_KEY }}
           VAULT_DEV_ROOT_TOKEN=${{ env.VAULT_TOKEN }}
-          E2E_ADMIN_API_KEY=${E2E_ADMIN_API_KEY:-vault-test-placeholder}
-          MCP_UI_CLIENT_SECRET=${MCP_UI_CLIENT_SECRET:-vault-test-placeholder}
-          MCP_INTERNAL_SECRET=${MCP_INTERNAL_SECRET:-vault-test-placeholder}
-          MCP_HR_SERVICE_CLIENT_SECRET=${MCP_HR_SERVICE_CLIENT_SECRET:-vault-test-placeholder}
-          MCP_GATEWAY_CLIENT_SECRET=vault-test-client-secret
+          E2E_ADMIN_API_KEY=${DEV_E2E_ADMIN_API_KEY}
+          MCP_UI_CLIENT_SECRET=${DEV_MCP_UI_CLIENT_SECRET}
+          MCP_INTERNAL_SECRET=${DEV_MCP_INTERNAL_SECRET}
+          MCP_HR_SERVICE_CLIENT_SECRET=${DEV_MCP_HR_SERVICE_CLIENT_SECRET}
+          MCP_GATEWAY_CLIENT_SECRET=${DEV_MCP_GATEWAY_CLIENT_SECRET}
 
           # Port Configuration (required by docker-compose.yml)
           PORT_CADDY_HTTP=80
