@@ -1,17 +1,23 @@
 import { defineConfig, devices } from '@playwright/test';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-// Load environment variables from .env file (for local development)
-// quiet: true suppresses the verbose dotenv log messages
+// Load environment variables from infrastructure .env (ports, secrets)
+// then local .env (test-specific overrides). Later calls don't overwrite existing vars.
+dotenv.config({ path: path.resolve(__dirname, '../../infrastructure/docker/.env'), quiet: true });
 dotenv.config({ quiet: true });
 
 // Determine environment from TEST_ENV
 const testEnv = process.env.TEST_ENV || 'dev';
 
+// Port configuration from environment (set by Terraform in .env)
+const PORT_CADDY_HTTPS = process.env.PORT_CADDY_HTTPS || '8443';
+const PORT_MCP_GATEWAY = process.env.PORT_MCP_GATEWAY || '3110';
+
 // Base URLs per environment
 const envConfig: Record<string, { baseURL: string; ignoreHTTPSErrors: boolean }> = {
   dev: {
-    baseURL: 'https://www.tamshai-playground.local:8443',
+    baseURL: `https://www.tamshai-playground.local:${PORT_CADDY_HTTPS}`,
     ignoreHTTPSErrors: true, // Self-signed certs in dev
   },
   stage: {
@@ -44,7 +50,7 @@ export default defineConfig({
     ...(process.env.CI ? [['github' as const]] : []),
   ],
   use: {
-    baseURL: envConfig[testEnv]?.baseURL || 'https://www.tamshai-playground.local:8443',
+    baseURL: envConfig[testEnv]?.baseURL || `https://www.tamshai-playground.local:${PORT_CADDY_HTTPS}`,
     ignoreHTTPSErrors: envConfig[testEnv]?.ignoreHTTPSErrors ?? true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -66,7 +72,7 @@ export default defineConfig({
   // Only start web server for dev environment (not for stage/prod/CI)
   webServer: process.env.CI || testEnv !== 'dev' ? undefined : {
     command: 'cd ../../infrastructure/docker && docker compose up -d mcp-gateway',
-    url: 'http://localhost:3110/health',
+    url: `http://localhost:${PORT_MCP_GATEWAY}/health`,
     reuseExistingServer: true,
     timeout: 120000,
   },
