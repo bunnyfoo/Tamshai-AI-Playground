@@ -166,12 +166,12 @@ jobs:
             exit 1
           fi
 
-          # Verify keycloak_client_secret exists
-          CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.data.data.keycloak_client_secret')
+          # Verify mcp_gateway_client_secret exists
+          CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.data.data.mcp_gateway_client_secret')
           if [ -n "$CLIENT_SECRET" ] && [ "$CLIENT_SECRET" != "null" ]; then
-            echo "✓ keycloak_client_secret exists"
+            echo "✓ mcp_gateway_client_secret exists"
           else
-            echo "✗ keycloak_client_secret missing!"
+            echo "✗ mcp_gateway_client_secret missing!"
             exit 1
           fi
 
