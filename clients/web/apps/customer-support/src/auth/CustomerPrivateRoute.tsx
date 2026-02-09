@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useCustomerAuth } from './useCustomerAuth';
 
 interface CustomerPrivateRouteProps {
@@ -11,36 +11,25 @@ interface CustomerPrivateRouteProps {
  *
  * - Requires customer authentication (tamshai-customers realm)
  * - Optionally requires Lead Contact role
- * - Shows loading state during auth check
+ * - Auto-redirects unauthenticated users to Keycloak
  */
 export function CustomerPrivateRoute({ children, requireLead = false }: CustomerPrivateRouteProps) {
   const { isLoading, isAuthenticated, isLeadContact, login, customerProfile } = useCustomerAuth();
+  const redirecting = useRef(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !redirecting.current) {
+      redirecting.current = true;
+      login();
+    }
+  }, [isLoading, isAuthenticated, login]);
+
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Customer Support Portal</h1>
-          <p className="text-gray-600 mb-6">
-            Please log in to access your support tickets and knowledge base.
-          </p>
-          <button
-            onClick={() => login()}
-            className="w-full px-6 py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            Log In
-          </button>
+          <p className="text-gray-600">Redirecting to login...</p>
         </div>
       </div>
     );

@@ -1,35 +1,37 @@
+import { useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { PrivateRoute, useAuth } from '@tamshai/auth';
-import WelcomePage from './pages/WelcomePage';
 import LandingPage from './pages/LandingPage';
 import CallbackPage from './pages/CallbackPage';
 import DownloadsPage from './pages/DownloadsPage';
 
 /**
- * Root route that shows Welcome page for unauthenticated users
- * and redirects authenticated users to the portal
+ * Root route that auto-redirects unauthenticated users to Keycloak SSO
+ * and sends authenticated users to the portal
  */
 function RootRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, signIn } = useAuth();
+  const redirecting = useRef(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !redirecting.current) {
+      redirecting.current = true;
+      signIn();
+    }
+  }, [isLoading, isAuthenticated, signIn]);
+
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary-50">
         <div className="text-center">
           <div className="spinner mb-4"></div>
-          <p className="text-secondary-600">Loading...</p>
+          <p className="text-secondary-600">Redirecting to login...</p>
         </div>
       </div>
     );
   }
 
-  // Authenticated users go to the portal
-  if (isAuthenticated) {
-    return <Navigate to="/portal" replace />;
-  }
-
-  // Unauthenticated users see the welcome page
-  return <WelcomePage />;
+  return <Navigate to="/portal" replace />;
 }
 
 function App() {

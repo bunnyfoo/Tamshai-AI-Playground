@@ -21,13 +21,24 @@ const CUSTOMER_PORTAL_HOSTS: Record<string, string> = {
 
 function getCustomerPortalUrl(): string {
   const hostname = window.location.hostname;
+  const port = window.location.port;
   const mapped = CUSTOMER_PORTAL_HOSTS[hostname];
   if (mapped) {
+    // Preserve non-standard port (e.g. :8443 for dev)
+    if (port && port !== '443' && port !== '80') {
+      try {
+        const url = new URL(mapped);
+        url.port = port;
+        return url.toString().replace(/\/$/, '');
+      } catch {
+        return mapped;
+      }
+    }
     return mapped;
   }
 
   // Local development
-  return 'http://localhost:4006';
+  return 'http://localhost:4017';
 }
 
 export default function WelcomePage() {
