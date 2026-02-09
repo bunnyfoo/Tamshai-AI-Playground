@@ -51,7 +51,7 @@ source "$SCRIPT_DIR/lib/auth.sh"
 configure_customer_environment() {
     case "$ENV" in
         dev)
-            KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8180}"
+            KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
             ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
             ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
             CUSTOMER_PORTAL_URL="http://localhost:4006"

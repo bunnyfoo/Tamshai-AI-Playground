@@ -49,6 +49,8 @@ $output = @{
     "mcp_gateway_client_secret" = ""
     "mcp_ui_client_secret" = ""
     "mcp_hr_service_client_secret" = ""
+    # Customer portal
+    "customer_user_password" = ""
     # Other service secrets
     "e2e_admin_api_key" = ""
     "elastic_password" = ""
@@ -154,6 +156,11 @@ try {
     $output["mcp_gateway_client_secret"] = Get-EnvSecret "MCP_GATEWAY_CLIENT_SECRET"
     $output["mcp_ui_client_secret"] = Get-EnvSecret "MCP_UI_CLIENT_SECRET"
     $output["mcp_hr_service_client_secret"] = Get-EnvSecret "MCP_HR_SERVICE_CLIENT_SECRET"
+
+    # =========================================================================
+    # CUSTOMER PORTAL (global - same across all environments)
+    # =========================================================================
+    $output["customer_user_password"] = Get-GlobalSecret "CUSTOMER_USER_PASSWORD"
 
     # =========================================================================
     # OTHER SERVICE SECRETS (environment-specific)

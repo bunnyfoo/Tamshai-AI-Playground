@@ -16,6 +16,7 @@ if (fs.existsSync(envPath)) {
 // CI Keycloak runs at root path (no /auth) - CI sets KEYCLOAK_URL explicitly
 process.env.KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${process.env.PORT_KEYCLOAK}/auth`;
 process.env.KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
+process.env.KEYCLOAK_CUSTOMER_REALM = process.env.KEYCLOAK_CUSTOMER_REALM || 'tamshai-customers';
 process.env.MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || `http://127.0.0.1:${process.env.PORT_MCP_GATEWAY}`;
 process.env.MCP_HR_URL = process.env.MCP_HR_URL || `http://127.0.0.1:${process.env.PORT_MCP_HR}`;
 process.env.MCP_FINANCE_URL = process.env.MCP_FINANCE_URL || `http://127.0.0.1:${process.env.PORT_MCP_FINANCE}`;

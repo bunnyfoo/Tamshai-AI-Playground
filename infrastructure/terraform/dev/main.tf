@@ -371,8 +371,9 @@ resource "local_file" "docker_env" {
     environment = var.environment
 
     # User passwords (from GitHub Secrets - environment-specific)
-    dev_user_password  = data.external.github_secrets.result.user_password
-    test_user_password = data.external.github_secrets.result.test_user_password
+    dev_user_password      = data.external.github_secrets.result.user_password
+    test_user_password     = data.external.github_secrets.result.test_user_password
+    customer_user_password = try(data.external.github_secrets.result.customer_user_password, "")
 
     # Port configuration (from GitHub Variables)
     ports = local.ports
@@ -734,6 +735,55 @@ EOF
     environment = {
       TEST_USER_TOTP_SECRET_RAW = data.external.github_secrets.result.test_user_totp_secret_raw
       MSYS_NO_PATHCONV          = "1"
+    }
+  }
+}
+
+# =============================================================================
+# KEYCLOAK CUSTOMER REALM SYNC
+# =============================================================================
+#
+# Syncs the tamshai-customers realm (roles, clients, groups, sample users)
+# after Keycloak imports the realm from realm-export-customers-dev.json.
+#
+# =============================================================================
+
+resource "null_resource" "keycloak_sync_customer_realm" {
+  count = var.auto_start_services ? 1 : 0
+
+  depends_on = [null_resource.keycloak_set_passwords]
+
+  triggers = {
+    always_run = timestamp()
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      echo "Syncing customer realm..."
+
+      # Copy scripts into container
+      docker cp "${var.project_root}/keycloak/scripts/sync-customer-realm.sh" tamshai-keycloak:/tmp/sync-customer-realm.sh
+      docker cp "${var.project_root}/keycloak/scripts/lib" tamshai-keycloak:/tmp/lib
+
+      # Fix line endings and permissions
+      docker exec -u 0 tamshai-keycloak bash -c '
+        sed -i "s/\r$//" /tmp/sync-customer-realm.sh
+        find /tmp/lib -name "*.sh" -exec sed -i "s/\r$//" {} \;
+        chmod +x /tmp/sync-customer-realm.sh
+        find /tmp/lib -name "*.sh" -exec chmod +x {} \;
+      '
+
+      # Run customer realm sync
+      docker exec -e CUSTOMER_USER_PASSWORD="$CUSTOMER_USER_PASSWORD" \
+        tamshai-keycloak /tmp/sync-customer-realm.sh dev
+
+      echo "Customer realm sync complete!"
+    EOT
+
+    environment = {
+      CUSTOMER_USER_PASSWORD = try(data.external.github_secrets.result.customer_user_password, "")
+      MSYS_NO_PATHCONV       = "1"
     }
   }
 }

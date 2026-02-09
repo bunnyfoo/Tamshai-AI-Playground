@@ -41,7 +41,7 @@ let customerRealmAvailable = true;
  */
 async function checkCustomerRealmAvailable(): Promise<boolean> {
   try {
-    const realmUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakCustomerRealm}/.well-known/openid_configuration`;
+    const realmUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakCustomerRealm}/.well-known/openid-configuration`;
     await axios.get(realmUrl, { timeout: 5000 });
     return true;
   } catch {

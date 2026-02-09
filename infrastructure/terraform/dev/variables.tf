@@ -77,6 +77,13 @@ variable "test_user_password" {
   default     = "" # Optional - E2E tests will warn if not set
 }
 
+variable "customer_user_password" {
+  description = "Password for customer test users - GitHub secret CUSTOMER_USER_PASSWORD"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "mcp_gateway_client_secret" {
   description = "OAuth client secret for MCP Gateway"
   type        = string
