@@ -324,10 +324,9 @@ describeProxy('MCP Gateway - Support Endpoints', () => {
 
 // =============================================================================
 // PAYROLL ENDPOINT TESTS (via Gateway)
-// NOTE: Always skipped - MCP Payroll requires local docker-compose setup
 // =============================================================================
 
-describe.skip('MCP Gateway - Payroll Endpoints', () => {
+describeProxy('MCP Gateway - Payroll Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
@@ -411,8 +410,7 @@ describe.skip('MCP Gateway - Payroll Endpoints', () => {
 // =============================================================================
 
 describeProxy('MCP Gateway - Cross-Role Access Control', () => {
-  // Payroll test skipped - requires MCP Payroll server
-  test.skip('Executive can access payroll endpoints', async () => {
+  test('Executive can access payroll endpoints', async () => {
     const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
     const client = createGatewayClient(token);
 
@@ -479,8 +477,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
 // =============================================================================
 
 describeProxy('MCP Gateway - Response Field Validation', () => {
-  // Payroll tests skipped - requires MCP Payroll server
-  test.skip('Payroll summary has fields expected by DashboardPage', async () => {
+  test('Payroll summary has fields expected by DashboardPage', async () => {
     const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
     const client = createGatewayClient(token);
 
@@ -500,7 +497,7 @@ describeProxy('MCP Gateway - Response Field Validation', () => {
     }
   });
 
-  test.skip('Pay runs have fields expected by PayRunsPage', async () => {
+  test('Pay runs have fields expected by PayRunsPage', async () => {
     const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
     const client = createGatewayClient(token);
 
@@ -523,7 +520,7 @@ describeProxy('MCP Gateway - Response Field Validation', () => {
     }
   });
 
-  test.skip('Benefits have fields expected by BenefitsPage', async () => {
+  test('Benefits have fields expected by BenefitsPage', async () => {
     const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
     const client = createGatewayClient(token);
 
