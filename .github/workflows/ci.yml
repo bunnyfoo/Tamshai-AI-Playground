@@ -532,14 +532,14 @@ jobs:
 
       - name: Start Keycloak
         env:
-          KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
+          DEV_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
         run: |
           # Start Keycloak WITHOUT realm import - Terraform will create everything
           docker run -d \
             --name keycloak \
             --network keycloak-network \
             -e KEYCLOAK_ADMIN=admin \
-            -e KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
+            -e KEYCLOAK_ADMIN_PASSWORD="${DEV_KEYCLOAK_ADMIN_PASSWORD}" \
             -e KC_DB=postgres \
             -e KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak \
             -e KC_DB_USERNAME=keycloak \
@@ -576,8 +576,9 @@ jobs:
 
       - name: Configure Keycloak with Terraform
         env:
-          KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
+          DEV_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
+          DEV_MCP_GATEWAY_CLIENT_SECRET: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
         working-directory: infrastructure/terraform/keycloak
         run: |
           echo "=== Configuring Keycloak with Terraform ==="
@@ -586,15 +587,16 @@ jobs:
           terraform init
 
           # Apply Terraform configuration
-          # Override ci.tfvars passwords with GitHub secrets for security
+          # All secrets are passed via -var flags from GitHub secrets (not in tfvars)
           echo "Creating Keycloak realm, roles, users, and clients with Terraform..."
           terraform apply -auto-approve \
             -var-file=environments/ci.tfvars \
-            -var="keycloak_admin_password=${KEYCLOAK_DEV_ADMIN_PASSWORD}" \
-            -var="test_user_password=${DEV_USER_PASSWORD}"
+            -var="keycloak_admin_password=${DEV_KEYCLOAK_ADMIN_PASSWORD}" \
+            -var="test_user_password=${DEV_USER_PASSWORD}" \
+            -var="mcp_gateway_client_secret=${DEV_MCP_GATEWAY_CLIENT_SECRET}"
 
           # Export client secret for integration tests
-          echo "KEYCLOAK_CLIENT_SECRET=$(terraform output -raw mcp_gateway_client_secret)" >> $GITHUB_ENV
+          echo "MCP_GATEWAY_CLIENT_SECRET=$(terraform output -raw mcp_gateway_client_secret)" >> $GITHUB_ENV
 
           # Display summary
           echo "✅ Terraform deployment complete"
@@ -613,7 +615,7 @@ jobs:
           fi
 
           # Client secret was already exported by Terraform step
-          if [ -n "$KEYCLOAK_CLIENT_SECRET" ]; then
+          if [ -n "$MCP_GATEWAY_CLIENT_SECRET" ]; then
             echo "✅ Client secret available from Terraform output"
           else
             echo "❌ Client secret not set"
@@ -651,7 +653,7 @@ jobs:
           KEYCLOAK_URL: http://127.0.0.1:8180
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_CLIENT_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           CLAUDE_API_KEY: sk-ant-test-dummy-key-for-ci
@@ -662,7 +664,7 @@ jobs:
           MCP_SALES_URL: http://127.0.0.1:3113
           MCP_SUPPORT_URL: http://127.0.0.1:3114
           # Internal token secret for MCP server authentication
-          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Wait for MCP Gateway
         run: |
@@ -716,7 +718,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
-          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Install MCP Finance dependencies
         working-directory: services/mcp-finance
@@ -741,7 +743,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
-          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Install MCP Sales dependencies
         working-directory: services/mcp-sales
@@ -762,7 +764,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
-          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Install MCP Support dependencies
         working-directory: services/mcp-support
@@ -783,7 +785,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
-          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Wait for MCP Servers
         run: |
@@ -817,11 +819,11 @@ jobs:
       - name: Debug Keycloak and Authentication
         env:
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
-          KEYCLOAK_CLIENT_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
         run: |
           echo "=== Environment Variables ==="
-          echo "KEYCLOAK_CLIENT_SECRET is set: ${KEYCLOAK_CLIENT_SECRET:+YES}"
-          echo "KEYCLOAK_CLIENT_SECRET length: $(echo -n "${KEYCLOAK_CLIENT_SECRET}" | wc -c)"
+          echo "MCP_GATEWAY_CLIENT_SECRET is set: ${MCP_GATEWAY_CLIENT_SECRET:+YES}"
+          echo "MCP_GATEWAY_CLIENT_SECRET length: $(echo -n "${MCP_GATEWAY_CLIENT_SECRET}" | wc -c)"
           echo "DEV_USER_PASSWORD is set: ${DEV_USER_PASSWORD:+YES}"
           echo ""
 
@@ -837,7 +839,7 @@ jobs:
           TOKEN_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:8180/realms/tamshai-corp/protocol/openid-connect/token \
             -d "grant_type=password" \
             -d "client_id=mcp-gateway" \
-            -d "client_secret=${KEYCLOAK_CLIENT_SECRET}" \
+            -d "client_secret=${MCP_GATEWAY_CLIENT_SECRET}" \
             -d "username=alice.chen" \
             -d "password=${DEV_USER_PASSWORD}" \
             -d "scope=openid profile email")
@@ -878,8 +880,8 @@ jobs:
           # This ensures tokens issued by Keycloak match Gateway's expected issuer
           KEYCLOAK_URL: http://127.0.0.1:8180
           KEYCLOAK_REALM: tamshai-corp
-          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
-          KEYCLOAK_CLIENT_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
+          MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
           GATEWAY_URL: http://localhost:3110
           # MCP server URLs - must match ports started above (3111-3114)
@@ -890,7 +892,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           # Shared secret for MCP server authentication
-          MCP_INTERNAL_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Run MCP HR integration tests
         working-directory: services/mcp-hr
@@ -901,8 +903,8 @@ jobs:
           KEYCLOAK_PATH_PREFIX: ''  # CI Keycloak has no path prefix (local uses /auth)
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_ADMIN: admin
-          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
-          KEYCLOAK_CLIENT_SECRET: ${{ env.KEYCLOAK_CLIENT_SECRET }}
+          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
+          MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5433
