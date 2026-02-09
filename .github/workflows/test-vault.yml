@@ -51,7 +51,7 @@ jobs:
       - name: Create .env file with all required variables
         working-directory: infrastructure/docker
         env:
-          KEYCLOAK_DEV_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_DEV_ADMIN_PASSWORD }}
+          DEV_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
           E2E_ADMIN_API_KEY: ${{ secrets.E2E_ADMIN_API_KEY }}
           MCP_UI_CLIENT_SECRET: ${{ secrets.MCP_UI_CLIENT_SECRET }}
           MCP_INTERNAL_SECRET: ${{ secrets.MCP_INTERNAL_SECRET }}
@@ -67,7 +67,7 @@ jobs:
           KEYCLOAK_DB_PASSWORD=${{ secrets.KEYCLOAK_DB_PASSWORD }}
           MONGODB_PASSWORD=${MONGODB_PASSWORD}
           KEYCLOAK_ADMIN=admin
-          KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_DEV_ADMIN_PASSWORD}
+          KEYCLOAK_ADMIN_PASSWORD=${DEV_KEYCLOAK_ADMIN_PASSWORD}
           MINIO_ROOT_USER=minio
           MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
           REDIS_PASSWORD=redis_password
