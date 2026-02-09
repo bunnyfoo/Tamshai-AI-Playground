@@ -763,11 +763,11 @@ resource "null_resource" "keycloak_sync_customer_realm" {
       echo "Syncing customer realm..."
 
       # Copy scripts into container
-      docker cp "${var.project_root}/keycloak/scripts/sync-customer-realm.sh" tamshai-keycloak:/tmp/sync-customer-realm.sh
-      docker cp "${var.project_root}/keycloak/scripts/lib" tamshai-keycloak:/tmp/lib
+      docker cp "${var.project_root}/keycloak/scripts/sync-customer-realm.sh" tamshai-pg-keycloak:/tmp/sync-customer-realm.sh
+      docker cp "${var.project_root}/keycloak/scripts/lib" tamshai-pg-keycloak:/tmp/lib
 
       # Fix line endings and permissions
-      docker exec -u 0 tamshai-keycloak bash -c '
+      docker exec -u 0 tamshai-pg-keycloak bash -c '
         sed -i "s/\r$//" /tmp/sync-customer-realm.sh
         find /tmp/lib -name "*.sh" -exec sed -i "s/\r$//" {} \;
         chmod +x /tmp/sync-customer-realm.sh
@@ -776,7 +776,7 @@ resource "null_resource" "keycloak_sync_customer_realm" {
 
       # Run customer realm sync
       docker exec -e CUSTOMER_USER_PASSWORD="$CUSTOMER_USER_PASSWORD" \
-        tamshai-keycloak /tmp/sync-customer-realm.sh dev
+        tamshai-pg-keycloak /tmp/sync-customer-realm.sh dev
 
       echo "Customer realm sync complete!"
     EOT
