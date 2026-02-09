@@ -448,16 +448,15 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
     expect(response.status).toBe(200);
   });
 
-  test('HR user cannot access budgets (employee role denied for TIER 2)', async () => {
+  test('HR manager can access budgets (manager role satisfies TIER 2)', async () => {
     // v1.5: TIER 2 - Budgets require manager, finance, or executive role
-    // Employees without these roles are denied at the MCP server level
+    // alice.chen has manager role via /Managers group — RLS scopes to her department
     const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_BUDGETS);
-    // Employee role is denied by MCP Finance server (TIER 2 requires manager+)
-    expect(response.status).toBe(403);
-    expect(response.data.code).toBe('INSUFFICIENT_PERMISSIONS');
+    expect(response.status).toBe(200);
+    expect(response.data.status).toBe('success');
   });
 
   test('Finance user can access HR endpoints via employee role (self-access)', async () => {
