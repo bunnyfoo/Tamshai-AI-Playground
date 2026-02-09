@@ -29,6 +29,7 @@ const envConfig: Record<string, { baseURL: string; ignoreHTTPSErrors: boolean }>
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
+  globalSetup: './global-setup.ts',
   testDir: './specs',
   // IMPORTANT: E2E tests must run sequentially due to TOTP authentication
   // TOTP codes are time-based and auth sessions can conflict in parallel

@@ -397,8 +397,11 @@ test.describe('Employee Login Journey', () => {
 
     // TOTP secret priority:
     // 1) Auto-capture during TOTP setup (if setup page appears)
-    // 2) Environment variable (TEST_USER_TOTP_SECRET) - always takes precedence when set
-    // 3) Cached file from previous run - enables test resilience
+    // 2) Cached file (written by globalSetup with Base32-encoded bridge value)
+    // 3) Environment variable (TEST_USER_TOTP_SECRET) - direct fallback
+    //
+    // Cache file takes precedence over env var because globalSetup writes
+    // a Base32-encoded version that matches Keycloak's internal encoding.
 
     // Check if TOTP setup is required FIRST (handles first-time login)
     const capturedSecret = await handleTotpSetupIfRequired(page);
@@ -407,8 +410,9 @@ test.describe('Employee Login Journey', () => {
     let effectiveTotpSecret: string | null = capturedSecret;
 
     if (!effectiveTotpSecret) {
-      // Fall back to env var or cached secret
-      effectiveTotpSecret = TEST_USER.totpSecret || loadTotpSecret(TEST_USER.username, ENV);
+      // Cache file first (globalSetup writes Base32-encoded bridge value),
+      // then fall back to raw env var
+      effectiveTotpSecret = loadTotpSecret(TEST_USER.username, ENV) || TEST_USER.totpSecret;
     } else {
       // Save the captured secret for use in subsequent test runs
       saveTotpSecret(TEST_USER.username, ENV, capturedSecret);
