@@ -55,17 +55,36 @@ async function getUserCredentials(userId) {
  * Get admin token from Keycloak master realm
  */
 async function getAdminToken() {
-  const response = await axios.post(
-    `${CONFIG.keycloakUrl}/realms/master/protocol/openid-connect/token`,
-    new URLSearchParams({
-      client_id: 'admin-cli',
-      username: 'admin',
-      password: process.env.KEYCLOAK_ADMIN_PASSWORD,
-      grant_type: 'password',
-    }),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-  );
-  return response.data.access_token;
+  const tokenUrl = `${CONFIG.keycloakUrl}/realms/master/protocol/openid-connect/token`;
+  const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD;
+
+  console.log(`\n=== Admin Token Acquisition ===`);
+  console.log(`Token URL: ${tokenUrl}`);
+  console.log(`Admin password set: ${adminPassword ? 'YES (' + adminPassword.length + ' chars)' : 'NO'}`);
+
+  try {
+    const response = await axios.post(
+      tokenUrl,
+      new URLSearchParams({
+        client_id: 'admin-cli',
+        username: 'admin',
+        password: adminPassword,
+        grant_type: 'password',
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    console.log(`✅ Admin token acquired successfully`);
+    return response.data.access_token;
+  } catch (error) {
+    console.error(`❌ Admin token acquisition failed`);
+    if (error.response) {
+      console.error(`HTTP Status: ${error.response.status}`);
+      console.error(`Response: ${JSON.stringify(error.response.data)}`);
+    } else {
+      console.error(`Error: ${error.message}`);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -266,6 +285,15 @@ async function checkKeycloakHealth() {
  */
 beforeAll(async () => {
   console.log('🔍 Verifying all services are healthy...\n');
+
+  // Debug: Log test configuration
+  console.log('=== Jest Setup Configuration ===');
+  console.log(`KEYCLOAK_URL: ${CONFIG.keycloakUrl}`);
+  console.log(`KEYCLOAK_REALM: ${CONFIG.keycloakRealm}`);
+  console.log(`GATEWAY_URL: ${CONFIG.gatewayUrl}`);
+  console.log(`CI mode: ${process.env.CI === 'true' ? 'YES' : 'NO'}`);
+  console.log(`KEYCLOAK_ADMIN_PASSWORD set: ${process.env.KEYCLOAK_ADMIN_PASSWORD ? 'YES' : 'NO'}`);
+  console.log('================================\n');
 
   // In CI, only check Keycloak (MCP services are mocked)
   const isCI = process.env.CI === 'true';
