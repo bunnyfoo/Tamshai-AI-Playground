@@ -147,7 +147,7 @@ create_customer_roles() {
     log_info "Creating customer roles..."
 
     # Lead Customer role
-    if ! _kcadm get roles -r "$CUSTOMER_REALM" | grep -q '"name":"lead-customer"'; then
+    if ! _kcadm get roles -r "$CUSTOMER_REALM" | grep -q 'lead-customer'; then
         _kcadm create roles -r "$CUSTOMER_REALM" \
             -s name=lead-customer \
             -s description="Lead Customer Contact - can view all org tickets and manage contacts"
@@ -157,7 +157,7 @@ create_customer_roles() {
     fi
 
     # Basic Customer role
-    if ! _kcadm get roles -r "$CUSTOMER_REALM" | grep -q '"name":"basic-customer"'; then
+    if ! _kcadm get roles -r "$CUSTOMER_REALM" | grep -q 'basic-customer'; then
         _kcadm create roles -r "$CUSTOMER_REALM" \
             -s name=basic-customer \
             -s description="Basic Customer - can only view/create own tickets"
@@ -177,7 +177,7 @@ create_organization_scope() {
     # Check if scope exists
     local scope_id
     scope_id=$(_kcadm get client-scopes -r "$CUSTOMER_REALM" --fields id,name | \
-        grep -B1 '"name":"organization"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/' || echo "")
+        grep -B1 '"organization"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/' || echo "")
 
     if [ -n "$scope_id" ]; then
         log_info "Organization scope already exists (id: $scope_id)"
@@ -194,7 +194,7 @@ create_organization_scope() {
 
     # Get the new scope ID
     scope_id=$(_kcadm get client-scopes -r "$CUSTOMER_REALM" --fields id,name | \
-        grep -B1 '"name":"organization"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+        grep -B1 '"organization"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/')
 
     log_info "Created organization scope (id: $scope_id)"
 
@@ -236,18 +236,36 @@ create_organization_scope() {
 create_customer_portal_client() {
     log_info "Creating customer-portal client..."
 
+    # Build redirect URIs and web origins per environment
+    # Dev includes Caddy :8443 variants, direct Docker ports, and localhost
+    local redirect_uris web_origins
+    case "$ENV" in
+        dev)
+            redirect_uris='["http://localhost:4006/*","http://localhost:4017/*","http://127.0.0.1:4017/*","https://customers.tamshai-playground.local/*","https://customers.tamshai-playground.local:8443/*"]'
+            web_origins='["http://localhost:4006","http://localhost:4017","http://127.0.0.1:4017","https://customers.tamshai-playground.local","https://customers.tamshai-playground.local:8443"]'
+            ;;
+        stage)
+            redirect_uris='["https://customers.tamshai.com/*"]'
+            web_origins='["https://customers.tamshai.com"]'
+            ;;
+        prod)
+            redirect_uris='["https://customers.tamshai.com/*"]'
+            web_origins='["https://customers.tamshai.com"]'
+            ;;
+    esac
+
     # Check if client exists
     local client_id
     client_id=$(_kcadm get clients -r "$CUSTOMER_REALM" --fields id,clientId | \
-        grep -B1 '"clientId":"customer-portal"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/' || echo "")
+        grep -B1 '"customer-portal"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/' || echo "")
 
     if [ -n "$client_id" ]; then
         log_info "Customer portal client already exists (id: $client_id)"
 
         # Update redirect URIs
         _kcadm update clients/"$client_id" -r "$CUSTOMER_REALM" \
-            -s "redirectUris=[\"http://localhost:4006/*\",\"https://customers.tamshai-playground.local/*\",\"${CUSTOMER_PORTAL_URL}/*\"]" \
-            -s "webOrigins=[\"http://localhost:4006\",\"https://customers.tamshai-playground.local\",\"${CUSTOMER_PORTAL_URL}\"]"
+            -s "redirectUris=$redirect_uris" \
+            -s "webOrigins=$web_origins"
 
         log_info "Updated customer portal redirect URIs"
         return 0
@@ -266,20 +284,20 @@ create_customer_portal_client() {
         -s protocol=openid-connect \
         -s rootUrl="$CUSTOMER_PORTAL_URL" \
         -s baseUrl="/" \
-        -s "redirectUris=[\"http://localhost:4006/*\",\"https://customers.tamshai-playground.local/*\",\"${CUSTOMER_PORTAL_URL}/*\"]" \
-        -s "webOrigins=[\"http://localhost:4006\",\"https://customers.tamshai-playground.local\",\"${CUSTOMER_PORTAL_URL}\"]" \
+        -s "redirectUris=$redirect_uris" \
+        -s "webOrigins=$web_origins" \
         -s 'attributes.pkce.code.challenge.method=S256'
 
     log_info "Created customer-portal client"
 
     # Get the new client ID
     client_id=$(_kcadm get clients -r "$CUSTOMER_REALM" --fields id,clientId | \
-        grep -B1 '"clientId":"customer-portal"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+        grep -B1 '"customer-portal"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/')
 
     # Add organization scope as default
     local scope_id
     scope_id=$(_kcadm get client-scopes -r "$CUSTOMER_REALM" --fields id,name | \
-        grep -B1 '"name":"organization"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/' || echo "")
+        grep -B1 '"organization"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/' || echo "")
 
     if [ -n "$scope_id" ]; then
         _kcadm update clients/"$client_id"/default-client-scopes/"$scope_id" -r "$CUSTOMER_REALM" || true
@@ -307,13 +325,13 @@ create_customer_groups() {
     log_info "Creating customer groups..."
 
     # Lead Contacts group
-    if ! _kcadm get groups -r "$CUSTOMER_REALM" | grep -q '"name":"Lead-Contacts"'; then
+    if ! _kcadm get groups -r "$CUSTOMER_REALM" | grep -q 'Lead-Contacts'; then
         _kcadm create groups -r "$CUSTOMER_REALM" -s name=Lead-Contacts
 
         # Get group ID and assign role
         local group_id
         group_id=$(_kcadm get groups -r "$CUSTOMER_REALM" --fields id,name | \
-            grep -B1 '"name":"Lead-Contacts"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+            grep -B1 '"Lead-Contacts"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/')
 
         _kcadm add-roles -r "$CUSTOMER_REALM" --gid "$group_id" --rolename lead-customer
         log_info "Created group: Lead-Contacts with lead-customer role"
@@ -322,13 +340,13 @@ create_customer_groups() {
     fi
 
     # Basic Contacts group
-    if ! _kcadm get groups -r "$CUSTOMER_REALM" | grep -q '"name":"Basic-Contacts"'; then
+    if ! _kcadm get groups -r "$CUSTOMER_REALM" | grep -q 'Basic-Contacts'; then
         _kcadm create groups -r "$CUSTOMER_REALM" -s name=Basic-Contacts
 
         # Get group ID and assign role
         local group_id
         group_id=$(_kcadm get groups -r "$CUSTOMER_REALM" --fields id,name | \
-            grep -B1 '"name":"Basic-Contacts"' | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+            grep -B1 '"Basic-Contacts"' | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/')
 
         _kcadm add-roles -r "$CUSTOMER_REALM" --gid "$group_id" --rolename basic-customer
         log_info "Created group: Basic-Contacts with basic-customer role"
@@ -380,7 +398,7 @@ provision_sample_customers() {
     log_info "Sample customers provisioned"
 }
 
-# Create a customer user
+# Create or update a customer user (idempotent)
 create_customer_user() {
     local email="$1"
     local first_name="$2"
@@ -392,39 +410,43 @@ create_customer_user() {
     local password="$8"
 
     # Check if user exists
-    if _kcadm get users -r "$CUSTOMER_REALM" -q "email=$email" | grep -q '"id"'; then
-        log_info "User $email already exists"
-        return 0
-    fi
-
-    # Create user
-    _kcadm create users -r "$CUSTOMER_REALM" \
-        -s username="$email" \
-        -s email="$email" \
-        -s firstName="$first_name" \
-        -s lastName="$last_name" \
-        -s enabled=true \
-        -s emailVerified=true \
-        -s "attributes.organization_id=[\"$org_id\"]" \
-        -s "attributes.organization_name=[\"$org_name\"]" \
-        -s "attributes.title=[\"$title\"]"
-
-    # Get user ID
     local user_id
     user_id=$(_kcadm get users -r "$CUSTOMER_REALM" -q "email=$email" --fields id | \
-        grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+        grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/' || echo "")
 
-    # Set password
+    if [ -z "$user_id" ]; then
+        # Create user
+        _kcadm create users -r "$CUSTOMER_REALM" \
+            -s username="$email" \
+            -s email="$email" \
+            -s firstName="$first_name" \
+            -s lastName="$last_name" \
+            -s enabled=true \
+            -s emailVerified=true \
+            -s "attributes.organization_id=[\"$org_id\"]" \
+            -s "attributes.organization_name=[\"$org_name\"]" \
+            -s "attributes.title=[\"$title\"]"
+
+        # Get the new user ID
+        user_id=$(_kcadm get users -r "$CUSTOMER_REALM" -q "email=$email" --fields id | \
+            grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+
+        log_info "Created user: $email"
+    else
+        log_info "User $email already exists — ensuring password and group"
+    fi
+
+    # Always set password (idempotent — ensures correct password after realm import)
     _kcadm set-password -r "$CUSTOMER_REALM" --username "$email" --new-password "$password"
 
-    # Add to group
+    # Always ensure group membership
     local group_id
     group_id=$(_kcadm get groups -r "$CUSTOMER_REALM" --fields id,name | \
-        grep -B1 "\"name\":\"$group\"" | grep '"id"' | sed 's/.*"id" : "\([^"]*\)".*/\1/')
+        grep -B1 "\"$group\"" | grep '"id"' | sed 's/.*"id"[^"]*"\([^"]*\)".*/\1/' || echo "")
 
     if [ -n "$group_id" ]; then
         _kcadm update users/"$user_id"/groups/"$group_id" -r "$CUSTOMER_REALM" -s realm="$CUSTOMER_REALM" -n || true
-        log_info "Created user: $email in group $group"
+        log_info "Ensured user $email in group $group"
     else
         log_warn "Could not find group $group for user $email"
     fi
