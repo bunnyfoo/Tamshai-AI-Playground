@@ -19,7 +19,7 @@ import { fail } from 'assert';
 const CONFIG = {
   keycloakUrl: process.env.KEYCLOAK_URL,
   keycloakRealm: process.env.KEYCLOAK_REALM,
-  gatewayUrl: process.env.GATEWAY_URL,
+  gatewayUrl: process.env.MCP_GATEWAY_URL,
   clientId: 'mcp-gateway',
   clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
 };

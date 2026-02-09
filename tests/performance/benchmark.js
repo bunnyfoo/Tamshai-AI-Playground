@@ -6,7 +6,7 @@
  * - Response sizes: target -60% reduction (with compression)
  */
 
-const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3110';
+const GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://localhost:3110';
 const ITERATIONS = 100;
 
 async function measureEndpoint(url, name, headers = {}) {

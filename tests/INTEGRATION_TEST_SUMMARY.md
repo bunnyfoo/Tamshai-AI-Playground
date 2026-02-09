@@ -59,7 +59,7 @@ Tests that require `CLAUDE_API_KEY` use the `testOrSkip` pattern and skip gracef
 | `KEYCLOAK_ADMIN_PASSWORD` | No | `admin` | Local dev default |
 | `KEYCLOAK_URL` | No | `http://127.0.0.1:8190/auth` | Docker Compose |
 | `KEYCLOAK_REALM` | No | `tamshai-corp` | Docker Compose |
-| `GATEWAY_URL` | No | `http://127.0.0.1:3110` | Docker Compose |
+| `MCP_GATEWAY_URL` | No | `http://127.0.0.1:3110` | Docker Compose |
 | `MCP_HR_URL` | No | `http://127.0.0.1:3111` | Docker Compose |
 | `MCP_FINANCE_URL` | No | `http://127.0.0.1:3112` | Docker Compose |
 | `MCP_SALES_URL` | No | `http://127.0.0.1:3113` | Docker Compose |

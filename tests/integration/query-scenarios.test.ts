@@ -36,7 +36,7 @@ import crypto from 'crypto';
 const CONFIG = {
   keycloakUrl: process.env.KEYCLOAK_URL,
   keycloakRealm: process.env.KEYCLOAK_REALM,
-  gatewayUrl: process.env.GATEWAY_URL,
+  gatewayUrl: process.env.MCP_GATEWAY_URL,
   mcpHrUrl: process.env.MCP_HR_URL,
   mcpFinanceUrl: process.env.MCP_FINANCE_URL,
   clientId: 'mcp-gateway',

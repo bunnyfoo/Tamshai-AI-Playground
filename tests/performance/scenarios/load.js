@@ -23,7 +23,7 @@ const mcpToolsDuration = new Trend('mcp_tools_duration', true);
 const requestCounter = new Counter('total_requests');
 
 // Configuration
-const GATEWAY_URL = __ENV.GATEWAY_URL || 'http://localhost:3100';
+const GATEWAY_URL = __ENV.MCP_GATEWAY_URL || 'http://localhost:3100';
 const KEYCLOAK_URL = __ENV.KEYCLOAK_URL || 'http://localhost:8180';
 const KEYCLOAK_REALM = __ENV.KEYCLOAK_REALM || 'tamshai-corp';
 
