@@ -23,12 +23,24 @@ const CONFIG = {
   mcpSupportUrl: process.env.MCP_SUPPORT_URL!,
   redisUrl: process.env.REDIS_URL,
   clientId: 'mcp-gateway',
-  clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
+  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
   mcpInternalSecret: process.env.MCP_INTERNAL_SECRET!,
 };
 
 // Test user password from environment variable
 const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
+
+// Debug: Log configuration at test initialization
+console.log('\n=== MCP Tools Test Configuration ===');
+console.log(`KEYCLOAK_URL: ${CONFIG.keycloakUrl}`);
+console.log(`KEYCLOAK_REALM: ${CONFIG.keycloakRealm}`);
+console.log(`MCP_HR_URL: ${CONFIG.mcpHrUrl}`);
+console.log(`CLIENT_ID: ${CONFIG.clientId}`);
+console.log(`CLIENT_SECRET set: ${CONFIG.clientSecret ? 'YES (' + CONFIG.clientSecret.length + ' chars)' : 'NO'}`);
+console.log(`MCP_INTERNAL_SECRET set: ${CONFIG.mcpInternalSecret ? 'YES (' + CONFIG.mcpInternalSecret.length + ' chars)' : 'NO'}`);
+console.log(`DEV_USER_PASSWORD set: ${TEST_PASSWORD ? 'YES (' + TEST_PASSWORD.length + ' chars)' : 'NO'}`);
+console.log('====================================\n');
+
 if (!TEST_PASSWORD) {
   console.warn('WARNING: DEV_USER_PASSWORD not set - tests may fail');
 }
@@ -115,11 +127,29 @@ async function getAccessToken(username: string, password: string): Promise<strin
     scope: 'openid profile email',  // Removed "roles" - Keycloak includes roles in resource_access by default
   });
 
-  const response = await axios.post<TokenResponse>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
+  try {
+    const response = await axios.post<TokenResponse>(tokenUrl, params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
 
-  return response.data.access_token;
+    return response.data.access_token;
+  } catch (error: any) {
+    // Log detailed error info for debugging CI failures
+    console.error('\n=== Token Acquisition Failed ===');
+    console.error(`URL: ${tokenUrl}`);
+    console.error(`Username: ${username}`);
+    console.error(`Password length: ${password?.length || 0}`);
+    console.error(`Client ID: ${CONFIG.clientId}`);
+    console.error(`Client Secret set: ${CONFIG.clientSecret ? 'YES' : 'NO'}`);
+    if (error.response) {
+      console.error(`HTTP Status: ${error.response.status}`);
+      console.error(`Response body: ${JSON.stringify(error.response.data)}`);
+    } else {
+      console.error(`Error: ${error.message}`);
+    }
+    console.error('================================\n');
+    throw error;
+  }
 }
 
 /**
