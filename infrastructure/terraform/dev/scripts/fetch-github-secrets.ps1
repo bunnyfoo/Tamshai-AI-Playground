@@ -3,15 +3,19 @@
 # =============================================================================
 #
 # This script is called by Terraform's external data source to fetch
-# user passwords from GitHub Secrets based on the environment.
+# secrets from GitHub Secrets based on the environment.
 #
 # Input (JSON from stdin):
-#   { "environment": "dev" }  -> fetches DEV_USER_PASSWORD, TEST_USER_PASSWORD
-#   { "environment": "stage" } -> fetches STAGE_USER_PASSWORD, TEST_USER_PASSWORD
-#   { "environment": "prod" }  -> fetches PROD_USER_PASSWORD, TEST_USER_PASSWORD
+#   { "environment": "dev" }   -> fetches DEV_* secrets
+#   { "environment": "stage" } -> fetches STAGE_* secrets
+#   { "environment": "prod" }  -> fetches PROD_* secrets
+#
+# Naming Convention:
+#   All environment-specific secrets use PREFIX pattern: ${ENV}_SECRET_NAME
+#   Examples: DEV_MCP_GATEWAY_CLIENT_SECRET, STAGE_POSTGRES_PASSWORD
 #
 # Output (JSON to stdout):
-#   { "user_password": "value", "test_user_password": "value" }
+#   { "mcp_gateway_client_secret": "value", "postgres_password": "value", ... }
 #
 # =============================================================================
 
@@ -23,30 +27,34 @@ $inputData = $inputJson | ConvertFrom-Json
 
 $environment = $inputData.environment.ToUpper()
 
-# Map environment to secret name
-$userPasswordSecretName = "${environment}_USER_PASSWORD"
-$testUserSecretName = "TEST_USER_PASSWORD"
-
 # Build output object - defaults to empty
 $output = @{
+    # User passwords
     "user_password" = ""
     "test_user_password" = ""
     "test_user_totp_secret_raw" = ""
+    # API keys
     "gemini_api_key" = ""
     "claude_api_key" = ""
-    # Database passwords (environment-specific)
+    # Database passwords
     "mongodb_password" = ""
     "postgres_password" = ""
     "tamshai_db_password" = ""
     "keycloak_db_password" = ""
     "redis_password" = ""
-    # MCP Gateway secrets
+    # Keycloak admin
+    "keycloak_admin_password" = ""
+    # MCP secrets
     "mcp_internal_secret" = ""
-    "keycloak_client_secret" = ""
-    "e2e_admin_api_key" = ""
-    "elastic_password" = ""
+    "mcp_gateway_client_secret" = ""
     "mcp_ui_client_secret" = ""
     "mcp_hr_service_client_secret" = ""
+    # Other service secrets
+    "e2e_admin_api_key" = ""
+    "elastic_password" = ""
+    "minio_root_user" = ""
+    "minio_root_password" = ""
+    "vault_root_token" = ""
 }
 
 try {
@@ -90,92 +98,71 @@ try {
     # Download artifact
     gh run download $runId -n "secrets-export" -D $tempDir 2>&1 | Out-Null
 
-    # Read environment-specific user password
-    $userPwdFile = Join-Path $tempDir $userPasswordSecretName
-    if (Test-Path $userPwdFile) {
-        $output["user_password"] = (Get-Content $userPwdFile -Raw).Trim()
+    # Helper function to read secret with environment prefix
+    function Get-EnvSecret {
+        param([string]$SecretName)
+        $file = Join-Path $tempDir "${environment}_${SecretName}"
+        if (Test-Path $file) {
+            return (Get-Content $file -Raw).Trim()
+        }
+        return ""
     }
 
-    # Read test user password (same across all environments)
-    $testPwdFile = Join-Path $tempDir $testUserSecretName
-    if (Test-Path $testPwdFile) {
-        $output["test_user_password"] = (Get-Content $testPwdFile -Raw).Trim()
+    # Helper function to read global secret (no environment prefix)
+    function Get-GlobalSecret {
+        param([string]$SecretName)
+        $file = Join-Path $tempDir $SecretName
+        if (Test-Path $file) {
+            return (Get-Content $file -Raw).Trim()
+        }
+        return ""
     }
 
-    # Read test user TOTP secret (raw format for Keycloak)
-    $totpSecretFile = Join-Path $tempDir "TEST_USER_TOTP_SECRET_RAW"
-    if (Test-Path $totpSecretFile) {
-        $output["test_user_totp_secret_raw"] = (Get-Content $totpSecretFile -Raw).Trim()
-    }
+    # =========================================================================
+    # USER PASSWORDS (environment-specific)
+    # =========================================================================
+    $output["user_password"] = Get-EnvSecret "USER_PASSWORD"
 
-    # Read Gemini API key (for mcp-journey)
-    $geminiKeyFile = Join-Path $tempDir "GEMINI_API_KEY"
-    if (Test-Path $geminiKeyFile) {
-        $output["gemini_api_key"] = (Get-Content $geminiKeyFile -Raw).Trim()
-    }
+    # Test user password (same across all environments)
+    $output["test_user_password"] = Get-GlobalSecret "TEST_USER_PASSWORD"
+    $output["test_user_totp_secret_raw"] = Get-GlobalSecret "TEST_USER_TOTP_SECRET_RAW"
 
-    # Read Claude API key (for playground environment)
-    $claudeApiFile = Join-Path $tempDir "CLAUDE_API_KEY"
-    if (Test-Path $claudeApiFile) {
-        $output["claude_api_key"] = (Get-Content $claudeApiFile -Raw).Trim()
-    }
+    # =========================================================================
+    # API KEYS (environment-specific)
+    # =========================================================================
+    $output["gemini_api_key"] = Get-EnvSecret "GEMINI_API_KEY"
+    $output["claude_api_key"] = Get-EnvSecret "CLAUDE_API_KEY"
 
-    # Read database passwords (environment-specific)
-    $mongoDbPwdFile = Join-Path $tempDir "MONGODB_${environment}_PASSWORD"
-    if (Test-Path $mongoDbPwdFile) {
-        $output["mongodb_password"] = (Get-Content $mongoDbPwdFile -Raw).Trim()
-    }
+    # =========================================================================
+    # DATABASE PASSWORDS (environment-specific)
+    # =========================================================================
+    $output["mongodb_password"] = Get-EnvSecret "MONGODB_PASSWORD"
+    $output["postgres_password"] = Get-EnvSecret "POSTGRES_PASSWORD"
+    $output["tamshai_db_password"] = Get-EnvSecret "TAMSHAI_DB_PASSWORD"
+    $output["keycloak_db_password"] = Get-EnvSecret "KEYCLOAK_DB_PASSWORD"
+    $output["redis_password"] = Get-EnvSecret "REDIS_PASSWORD"
 
-    $postgresPwdFile = Join-Path $tempDir "POSTGRES_${environment}_PASSWORD"
-    if (Test-Path $postgresPwdFile) {
-        $output["postgres_password"] = (Get-Content $postgresPwdFile -Raw).Trim()
-    }
+    # =========================================================================
+    # KEYCLOAK ADMIN (environment-specific)
+    # =========================================================================
+    $output["keycloak_admin_password"] = Get-EnvSecret "KEYCLOAK_ADMIN_PASSWORD"
 
-    $tamshaiDbPwdFile = Join-Path $tempDir "TAMSHAI_DB_${environment}_PASSWORD"
-    if (Test-Path $tamshaiDbPwdFile) {
-        $output["tamshai_db_password"] = (Get-Content $tamshaiDbPwdFile -Raw).Trim()
-    }
+    # =========================================================================
+    # MCP SECRETS (environment-specific)
+    # =========================================================================
+    $output["mcp_internal_secret"] = Get-EnvSecret "MCP_INTERNAL_SECRET"
+    $output["mcp_gateway_client_secret"] = Get-EnvSecret "MCP_GATEWAY_CLIENT_SECRET"
+    $output["mcp_ui_client_secret"] = Get-EnvSecret "MCP_UI_CLIENT_SECRET"
+    $output["mcp_hr_service_client_secret"] = Get-EnvSecret "MCP_HR_SERVICE_CLIENT_SECRET"
 
-    $keycloakDbPwdFile = Join-Path $tempDir "KEYCLOAK_DB_${environment}_PASSWORD"
-    if (Test-Path $keycloakDbPwdFile) {
-        $output["keycloak_db_password"] = (Get-Content $keycloakDbPwdFile -Raw).Trim()
-    }
-
-    $redisPwdFile = Join-Path $tempDir "REDIS_${environment}_PASSWORD"
-    if (Test-Path $redisPwdFile) {
-        $output["redis_password"] = (Get-Content $redisPwdFile -Raw).Trim()
-    }
-
-    # MCP Gateway secrets (not environment-specific)
-    $mcpInternalSecretFile = Join-Path $tempDir "MCP_INTERNAL_SECRET"
-    if (Test-Path $mcpInternalSecretFile) {
-        $output["mcp_internal_secret"] = (Get-Content $mcpInternalSecretFile -Raw).Trim()
-    }
-
-    $keycloakClientSecretFile = Join-Path $tempDir "MCP_GATEWAY_CLIENT_SECRET"
-    if (Test-Path $keycloakClientSecretFile) {
-        $output["keycloak_client_secret"] = (Get-Content $keycloakClientSecretFile -Raw).Trim()
-    }
-
-    $e2eAdminApiKeyFile = Join-Path $tempDir "E2E_ADMIN_API_KEY"
-    if (Test-Path $e2eAdminApiKeyFile) {
-        $output["e2e_admin_api_key"] = (Get-Content $e2eAdminApiKeyFile -Raw).Trim()
-    }
-
-    $elasticPasswordFile = Join-Path $tempDir "ELASTIC_PASSWORD"
-    if (Test-Path $elasticPasswordFile) {
-        $output["elastic_password"] = (Get-Content $elasticPasswordFile -Raw).Trim()
-    }
-
-    $mcpUiClientSecretFile = Join-Path $tempDir "MCP_UI_CLIENT_SECRET"
-    if (Test-Path $mcpUiClientSecretFile) {
-        $output["mcp_ui_client_secret"] = (Get-Content $mcpUiClientSecretFile -Raw).Trim()
-    }
-
-    $mcpHrServiceClientSecretFile = Join-Path $tempDir "MCP_HR_SERVICE_CLIENT_SECRET"
-    if (Test-Path $mcpHrServiceClientSecretFile) {
-        $output["mcp_hr_service_client_secret"] = (Get-Content $mcpHrServiceClientSecretFile -Raw).Trim()
-    }
+    # =========================================================================
+    # OTHER SERVICE SECRETS (environment-specific)
+    # =========================================================================
+    $output["e2e_admin_api_key"] = Get-EnvSecret "E2E_ADMIN_API_KEY"
+    $output["elastic_password"] = Get-EnvSecret "ELASTIC_PASSWORD"
+    $output["minio_root_user"] = Get-EnvSecret "MINIO_ROOT_USER"
+    $output["minio_root_password"] = Get-EnvSecret "MINIO_ROOT_PASSWORD"
+    $output["vault_root_token"] = Get-EnvSecret "VAULT_ROOT_TOKEN"
 
     # Cleanup temp directory
     Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue

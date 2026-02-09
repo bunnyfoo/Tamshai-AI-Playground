@@ -30,8 +30,7 @@
   "accessCodeLifespanLogin": 1800,
   "actionTokenGeneratedByAdminLifespan": 43200,
   "actionTokenGeneratedByUserLifespan": 300,
-  "passwordPolicy": "length(8) and digits(1) and notUsername",
-  "roles": {
+    "roles": {
     "realm": [
       {
         "name": "lead-customer",

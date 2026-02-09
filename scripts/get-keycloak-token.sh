@@ -13,7 +13,7 @@ set -e
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8180}"
 REALM="${KEYCLOAK_REALM:-tamshai-corp}"
 CLIENT_ID="${KEYCLOAK_CLIENT_ID:-mcp-gateway}"
-CLIENT_SECRET="${KEYCLOAK_CLIENT_SECRET:-}"
+CLIENT_SECRET="${MCP_GATEWAY_CLIENT_SECRET:-}"
 
 # Default password from environment (GitHub Secret: DEV_USER_PASSWORD or TEST_USER_PASSWORD)
 # Falls back to DEV_USER_PASSWORD for corporate users, TEST_PASSWORD for test-user.journey

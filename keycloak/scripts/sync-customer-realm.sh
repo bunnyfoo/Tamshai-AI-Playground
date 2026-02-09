@@ -120,10 +120,23 @@ create_customer_realm() {
         -s bruteForceProtected=true \
         -s accessTokenLifespan=14400 \
         -s ssoSessionIdleTimeout=28800 \
-        -s ssoSessionMaxLifespan=36000 \
-        -s passwordPolicy="length(8) and digits(1) and notUsername"
+        -s ssoSessionMaxLifespan=36000
 
     log_info "Customer realm created successfully"
+}
+
+# Set password policy for customer realm
+# This is done separately because setting it during realm import causes errors
+set_customer_password_policy() {
+    log_info "Setting customer realm password policy..."
+
+    # Password policy: 8+ chars, 1 uppercase, 1 lowercase, 1 digit, not username
+    _kcadm update realms/"$CUSTOMER_REALM" \
+        -s 'passwordPolicy=length(8) and upperCase(1) and lowerCase(1) and digits(1) and notUsername' 2>/dev/null || {
+            log_warn "Failed to set password policy (may require existing users to reset)"
+        }
+
+    log_info "Password policy configured"
 }
 
 # =============================================================================
@@ -432,6 +445,9 @@ main() {
 
     # Create realm if needed
     create_customer_realm
+
+    # Set password policy (done after realm exists to avoid import errors)
+    set_customer_password_policy
 
     # Create roles
     create_customer_roles
