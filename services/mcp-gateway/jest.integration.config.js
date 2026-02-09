@@ -39,8 +39,10 @@ process.env.POSTGRES_USER = process.env.POSTGRES_USER || 'tamshai_app';
 process.env.TAMSHAI_APP_PASSWORD = process.env.TAMSHAI_APP_PASSWORD || 'changeme';
 
 // Keycloak URL (for TOTP management in tests)
+// Local dev Keycloak uses /auth prefix (KC_HTTP_RELATIVE_PATH=/auth in docker-compose.yml)
+// CI Keycloak runs at root path (no /auth) - CI sets KEYCLOAK_URL explicitly
 const keycloakPort = process.env.PORT_KEYCLOAK;
-process.env.KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${keycloakPort}`;
+process.env.KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${keycloakPort}/auth`;
 process.env.KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 
 // MCP Service URLs (for integration tests)

@@ -12,7 +12,9 @@ if (fs.existsSync(envPath)) {
 }
 
 // Derive service URLs from PORT_* variables (no hardcoded defaults)
-process.env.KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${process.env.PORT_KEYCLOAK}`;
+// Local dev Keycloak uses /auth prefix (KC_HTTP_RELATIVE_PATH=/auth in docker-compose.yml)
+// CI Keycloak runs at root path (no /auth) - CI sets KEYCLOAK_URL explicitly
+process.env.KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${process.env.PORT_KEYCLOAK}/auth`;
 process.env.KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
 process.env.MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || `http://127.0.0.1:${process.env.PORT_MCP_GATEWAY}`;
 process.env.MCP_HR_URL = process.env.MCP_HR_URL || `http://127.0.0.1:${process.env.PORT_MCP_HR}`;
