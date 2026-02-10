@@ -12,7 +12,7 @@
  * Following Salesforce Lightning patterns for bulk operations.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, BrowserContext } from '@playwright/test';
 import {
   createDatabaseSnapshot,
   rollbackToSnapshot,
@@ -28,22 +28,27 @@ import {
   cancelBulkAction,
   expectSelectedCount,
   expectBulkActionsAvailable,
+  createAuthenticatedContext,
+  BASE_URLS,
+  ENV,
+  TEST_USER,
 } from '../utils';
 
-// Environment configuration
-const ENV = process.env.TEST_ENV || 'dev';
-const BASE_URLS: Record<string, string> = {
-  dev: 'https://www.tamshai-playground.local:8443',
-  stage: 'https://www.tamshai.com',
-  prod: 'https://app.tamshai.com',
-};
+const INVOICES_URL = `${BASE_URLS[ENV]}/app/finance/invoices`;
+
+let authenticatedContext: BrowserContext | null = null;
 
 test.describe('Finance Invoice Bulk Operations', () => {
   let snapshotId: string;
 
-  test.beforeAll(async () => {
-    // Create snapshot before test suite for rollback
+  test.beforeAll(async ({ browser }) => {
+    if (!TEST_USER.password) return;
+    authenticatedContext = await createAuthenticatedContext(browser);
     snapshotId = await createDatabaseSnapshot();
+  });
+
+  test.afterAll(async () => {
+    await authenticatedContext?.close();
   });
 
   test.afterEach(async () => {
@@ -52,240 +57,265 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Action Toolbar State', () => {
-    test('bulk action menu is disabled when no rows are selected', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-
-      // Wait for table to load
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Initially, no rows are selected
-      await expectBulkMenuDisabled(page);
+    test('bulk action menu is disabled when no rows are selected', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await expectBulkMenuDisabled(page);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('bulk action menu enables when rows are selected', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select first row
-      await selectTableRows(page, [0]);
-
-      // Bulk menu should now be enabled
-      await expectBulkMenuEnabled(page);
+    test('bulk action menu enables when rows are selected', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0]);
+        await expectBulkMenuEnabled(page);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('bulk action menu disables when all rows are deselected', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select then deselect
-      await selectTableRows(page, [0]);
-      await expectBulkMenuEnabled(page);
-
-      await deselectTableRows(page, [0]);
-      await expectBulkMenuDisabled(page);
+    test('bulk action menu disables when all rows are deselected', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0]);
+        await expectBulkMenuEnabled(page);
+        await deselectTableRows(page, [0]);
+        await expectBulkMenuDisabled(page);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('shows correct selected count in toolbar', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select 3 rows
-      await selectTableRows(page, [0, 1, 2]);
-
-      // Verify count display
-      await expectSelectedCount(page, 3);
+    test('shows correct selected count in toolbar', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0, 1, 2]);
+        await expectSelectedCount(page, 3);
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Row Selection Behavior', () => {
-    test('individual row checkboxes toggle selection', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select first row
-      await selectTableRows(page, [0]);
-      expect(await getSelectedRowCount(page)).toBe(1);
-
-      // Select second row
-      await selectTableRows(page, [1]);
-      expect(await getSelectedRowCount(page)).toBe(2);
-
-      // Deselect first row
-      await deselectTableRows(page, [0]);
-      expect(await getSelectedRowCount(page)).toBe(1);
+    test('individual row checkboxes toggle selection', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0]);
+        expect(await getSelectedRowCount(page)).toBe(1);
+        await selectTableRows(page, [1]);
+        expect(await getSelectedRowCount(page)).toBe(2);
+        await deselectTableRows(page, [0]);
+        expect(await getSelectedRowCount(page)).toBe(1);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('header checkbox selects all visible rows', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Get row count
-      const rowCount = await page.locator('tbody tr').count();
-
-      // Select all
-      await selectAllRows(page);
-
-      // Verify all selected
-      expect(await getSelectedRowCount(page)).toBe(rowCount);
+    test('header checkbox selects all visible rows', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        const rowCount = await page.locator('tbody tr').count();
+        await selectAllRows(page);
+        expect(await getSelectedRowCount(page)).toBe(rowCount);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('header checkbox deselects all when all are selected', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select all
-      await selectAllRows(page);
-      expect(await getSelectedRowCount(page)).toBeGreaterThan(0);
-
-      // Deselect all
-      await deselectAllRows(page);
-      expect(await getSelectedRowCount(page)).toBe(0);
+    test('header checkbox deselects all when all are selected', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectAllRows(page);
+        expect(await getSelectedRowCount(page)).toBeGreaterThan(0);
+        await deselectAllRows(page);
+        expect(await getSelectedRowCount(page)).toBe(0);
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Bulk Approval Flow', () => {
-    test('approve action is available for pending invoices', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices?status=pending`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select pending invoices
-      await selectTableRows(page, [0, 1]);
-
-      // Verify approve action is available
-      await expectBulkActionsAvailable(page, ['approve']);
+    test('approve action is available for pending invoices', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${INVOICES_URL}?status=pending`);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0, 1]);
+        await expectBulkActionsAvailable(page, ['approve']);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('shows confirmation dialog before bulk approval', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices?status=pending`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select invoices
-      await selectTableRows(page, [0, 1, 2]);
-
-      // Click approve action
-      await clickBulkAction(page, 'approve');
-
-      // Confirmation dialog should appear
-      const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
-      await expect(dialog).toBeVisible();
-
-      // Dialog should show count of items being approved
-      await expect(dialog).toContainText('3');
+    test('shows confirmation dialog before bulk approval', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${INVOICES_URL}?status=pending`);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0, 1, 2]);
+        await clickBulkAction(page, 'approve');
+        const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
+        await expect(dialog).toBeVisible();
+        await expect(dialog).toContainText('3');
+      } finally {
+        await page.close();
+      }
     });
 
-    test('canceling confirmation does not modify data', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices?status=pending`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Get initial pending count
-      const initialCount = await page.locator('tbody tr').count();
-
-      // Select and attempt to approve
-      await selectTableRows(page, [0]);
-      await clickBulkAction(page, 'approve');
-
-      // Cancel the action
-      await cancelBulkAction(page);
-
-      // Count should be unchanged
-      const finalCount = await page.locator('tbody tr').count();
-      expect(finalCount).toBe(initialCount);
+    test('canceling confirmation does not modify data', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${INVOICES_URL}?status=pending`);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        const initialCount = await page.locator('tbody tr').count();
+        await selectTableRows(page, [0]);
+        await clickBulkAction(page, 'approve');
+        await cancelBulkAction(page);
+        const finalCount = await page.locator('tbody tr').count();
+        expect(finalCount).toBe(initialCount);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('confirming approval updates invoice statuses', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices?status=pending`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Get initial pending count
-      const initialCount = await page.locator('tbody tr').count();
-
-      // Select and approve
-      await selectTableRows(page, [0, 1]);
-      await clickBulkAction(page, 'approve');
-      await confirmBulkAction(page);
-
-      // Wait for UI to update
-      await page.waitForLoadState('networkidle');
-
-      // Pending count should decrease by 2
-      const finalCount = await page.locator('tbody tr').count();
-      expect(finalCount).toBe(initialCount - 2);
+    test('confirming approval updates invoice statuses', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${INVOICES_URL}?status=pending`);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        const initialCount = await page.locator('tbody tr').count();
+        await selectTableRows(page, [0, 1]);
+        await clickBulkAction(page, 'approve');
+        await confirmBulkAction(page);
+        await page.waitForLoadState('networkidle');
+        const finalCount = await page.locator('tbody tr').count();
+        expect(finalCount).toBe(initialCount - 2);
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Bulk Rejection Flow', () => {
-    test('reject action is available for pending invoices', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices?status=pending`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      await selectTableRows(page, [0]);
-      await expectBulkActionsAvailable(page, ['reject']);
+    test('reject action is available for pending invoices', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${INVOICES_URL}?status=pending`);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0]);
+        await expectBulkActionsAvailable(page, ['reject']);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('rejection requires reason input', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices?status=pending`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      await selectTableRows(page, [0]);
-      await clickBulkAction(page, 'reject');
-
-      // Dialog should have reason field
-      const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
-      await expect(dialog).toBeVisible();
-
-      const reasonInput = dialog.locator('textarea, input[name="reason"]');
-      await expect(reasonInput).toBeVisible();
+    test('rejection requires reason input', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${INVOICES_URL}?status=pending`);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0]);
+        await clickBulkAction(page, 'reject');
+        const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
+        await expect(dialog).toBeVisible();
+        const reasonInput = dialog.locator('textarea, input[name="reason"]');
+        await expect(reasonInput).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Bulk Export Flow', () => {
-    test('export action is available for any selection', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      await selectTableRows(page, [0, 1, 2]);
-      await expectBulkActionsAvailable(page, ['export']);
+    test('export action is available for any selection', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0, 1, 2]);
+        await expectBulkActionsAvailable(page, ['export']);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('export downloads file for selected invoices', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      // Select invoices
-      await selectTableRows(page, [0, 1]);
-
-      // Start waiting for download before clicking
-      const downloadPromise = page.waitForEvent('download');
-
-      // Click export
-      await clickBulkAction(page, 'export');
-
-      // Wait for download to complete
-      const download = await downloadPromise;
-      expect(download.suggestedFilename()).toContain('invoices');
+    test('export downloads file for selected invoices', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0, 1]);
+        const downloadPromise = page.waitForEvent('download');
+        await clickBulkAction(page, 'export');
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toContain('invoices');
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Accessibility', () => {
-    test('bulk action toolbar has proper ARIA attributes', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      await selectTableRows(page, [0]);
-
-      const toolbar = page.locator('[data-testid="bulk-action-toolbar"]');
-      await expect(toolbar).toHaveAttribute('role', 'toolbar');
-      await expect(toolbar).toHaveAttribute('aria-label');
+    test('bulk action toolbar has proper ARIA attributes', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0]);
+        const toolbar = page.locator('[data-testid="bulk-action-toolbar"]');
+        await expect(toolbar).toHaveAttribute('role', 'toolbar');
+        await expect(toolbar).toHaveAttribute('aria-label');
+      } finally {
+        await page.close();
+      }
     });
 
-    test('selected row count is announced to screen readers', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/finance/invoices`);
-      await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
-
-      await selectTableRows(page, [0, 1]);
-
-      const liveRegion = page.locator('[aria-live="polite"], [role="status"]');
-      await expect(liveRegion).toContainText(/2.*selected/i);
+    test('selected row count is announced to screen readers', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(INVOICES_URL);
+        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await selectTableRows(page, [0, 1]);
+        const liveRegion = page.locator('[aria-live="polite"], [role="status"]');
+        await expect(liveRegion).toContainText(/2.*selected/i);
+      } finally {
+        await page.close();
+      }
     });
   });
 });

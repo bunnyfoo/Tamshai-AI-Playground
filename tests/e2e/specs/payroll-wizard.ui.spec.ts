@@ -12,7 +12,7 @@
  * Following Gusto/ADP-style payroll processing patterns.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, BrowserContext } from '@playwright/test';
 import {
   createDatabaseSnapshot,
   rollbackToSnapshot,
@@ -31,21 +31,25 @@ import {
   getCurrentStepNumber,
   getTotalSteps,
   expectBreadcrumbsVisible,
+  createAuthenticatedContext,
+  BASE_URLS,
+  ENV,
+  TEST_USER,
 } from '../utils';
 
-// Environment configuration
-const ENV = process.env.TEST_ENV || 'dev';
-const BASE_URLS: Record<string, string> = {
-  dev: 'https://www.tamshai-playground.local:8443',
-  stage: 'https://www.tamshai.com',
-  prod: 'https://app.tamshai.com',
-};
+let authenticatedContext: BrowserContext | null = null;
 
 test.describe('Payroll Run Wizard', () => {
   let snapshotId: string;
 
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ browser }) => {
+    if (!TEST_USER.password) return;
+    authenticatedContext = await createAuthenticatedContext(browser);
     snapshotId = await createDatabaseSnapshot();
+  });
+
+  test.afterAll(async () => {
+    await authenticatedContext?.close();
   });
 
   test.afterEach(async () => {
@@ -53,290 +57,398 @@ test.describe('Payroll Run Wizard', () => {
   });
 
   test.describe('Wizard Flow', () => {
-    test('wizard starts at Pay Period step', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('wizard starts at Pay Period step', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      await expectWizardStepActive(page, 'Pay Period');
-      expect(await getCurrentStepNumber(page)).toBe(1);
+        await expectWizardStepActive(page, 'Pay Period');
+        expect(await getCurrentStepNumber(page)).toBe(1);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('has 4 steps: Pay Period, Earnings, Deductions, Review', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('has 4 steps: Pay Period, Earnings, Deductions, Review', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      expect(await getTotalSteps(page)).toBe(4);
+        expect(await getTotalSteps(page)).toBe(4);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('breadcrumbs show all steps', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new?showBreadcrumbs=true`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('breadcrumbs show all steps', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new?showBreadcrumbs=true`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      await expectBreadcrumbsVisible(page);
+        await expectBreadcrumbsVisible(page);
 
-      const breadcrumbs = page.locator('nav[aria-label="Wizard progress"] li');
-      expect(await breadcrumbs.count()).toBe(4);
+        const breadcrumbs = page.locator('nav[aria-label="Wizard progress"] li');
+        expect(await breadcrumbs.count()).toBe(4);
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Step 1: Pay Period Selection', () => {
-    test('shows pay period date range selection', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('shows pay period date range selection', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      const startDate = page.locator('[data-testid="pay-period-start"]');
-      const endDate = page.locator('[data-testid="pay-period-end"]');
+        const startDate = page.locator('[data-testid="pay-period-start"]');
+        const endDate = page.locator('[data-testid="pay-period-end"]');
 
-      await expect(startDate).toBeVisible();
-      await expect(endDate).toBeVisible();
+        await expect(startDate).toBeVisible();
+        await expect(endDate).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
-    test('validates pay period dates before proceeding', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('validates pay period dates before proceeding', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Clear dates
-      await fillWizardField(page, 'pay-period-start', '');
-      await fillWizardField(page, 'pay-period-end', '');
+        // Clear dates
+        await fillWizardField(page, 'pay-period-start', '');
+        await fillWizardField(page, 'pay-period-end', '');
 
-      // Try to proceed
-      await goToNextStep(page);
+        // Try to proceed
+        await goToNextStep(page);
 
-      // Should show validation error
-      await expectValidationErrors(page, ['Pay period start date is required']);
-      expect(await getCurrentStepNumber(page)).toBe(1);
+        // Should show validation error
+        await expectValidationErrors(page, ['Pay period start date is required']);
+        expect(await getCurrentStepNumber(page)).toBe(1);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('proceeds to Earnings step with valid dates', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('proceeds to Earnings step with valid dates', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Fill valid dates
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        // Fill valid dates
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
 
-      await goToNextStep(page);
+        await goToNextStep(page);
 
-      await expectWizardStepActive(page, 'Earnings');
-      expect(await getCurrentStepNumber(page)).toBe(2);
+        await expectWizardStepActive(page, 'Earnings');
+        expect(await getCurrentStepNumber(page)).toBe(2);
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Step 2: Earnings Review', () => {
-    test('displays employee earnings table', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('displays employee earnings table', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Go to Earnings step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
+        // Go to Earnings step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
 
-      // Earnings table should be visible
-      const earningsTable = page.locator('[data-testid="earnings-table"]');
-      await expect(earningsTable).toBeVisible();
+        // Earnings table should be visible
+        const earningsTable = page.locator('[data-testid="earnings-table"]');
+        await expect(earningsTable).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
-    test('shows total gross pay calculation', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('shows total gross pay calculation', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Earnings step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
+        // Navigate to Earnings step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
 
-      // Total should be displayed
-      const totalGross = page.locator('[data-testid="total-gross-pay"]');
-      await expect(totalGross).toBeVisible();
-      await expect(totalGross).toContainText('$');
+        // Total should be displayed
+        const totalGross = page.locator('[data-testid="total-gross-pay"]');
+        await expect(totalGross).toBeVisible();
+        await expect(totalGross).toContainText('$');
+      } finally {
+        await page.close();
+      }
     });
 
-    test('allows editing individual earnings', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('allows editing individual earnings', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Earnings step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
+        // Navigate to Earnings step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
 
-      // Click edit on first row
-      const editButton = page.locator('[data-testid="edit-earnings-0"]');
-      await editButton.click();
+        // Click edit on first row
+        const editButton = page.locator('[data-testid="edit-earnings-0"]');
+        await editButton.click();
 
-      // Edit dialog should appear
-      const editDialog = page.locator('[data-testid="edit-earnings-dialog"]');
-      await expect(editDialog).toBeVisible();
+        // Edit dialog should appear
+        const editDialog = page.locator('[data-testid="edit-earnings-dialog"]');
+        await expect(editDialog).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Step 3: Deductions & Taxes', () => {
-    test('shows tax withholding calculations', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('shows tax withholding calculations', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Deductions step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Deductions step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Should be on Deductions step
-      await expectWizardStepActive(page, 'Deductions');
+        // Should be on Deductions step
+        await expectWizardStepActive(page, 'Deductions');
 
-      // Tax table should be visible
-      const taxTable = page.locator('[data-testid="tax-withholdings-table"]');
-      await expect(taxTable).toBeVisible();
+        // Tax table should be visible
+        const taxTable = page.locator('[data-testid="tax-withholdings-table"]');
+        await expect(taxTable).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
-    test('displays Federal, State, and FICA taxes', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('displays Federal, State, and FICA taxes', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Deductions step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Deductions step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Verify tax categories are shown
-      await expect(page.locator('text=Federal Income Tax')).toBeVisible();
-      await expect(page.locator('text=State Income Tax')).toBeVisible();
-      await expect(page.locator('text=FICA')).toBeVisible();
+        // Verify tax categories are shown
+        await expect(page.locator('text=Federal Income Tax')).toBeVisible();
+        await expect(page.locator('text=State Income Tax')).toBeVisible();
+        await expect(page.locator('text=FICA')).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
-    test('shows total net pay calculation', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('shows total net pay calculation', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Deductions step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Deductions step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Total net pay should be displayed
-      const totalNet = page.locator('[data-testid="total-net-pay"]');
-      await expect(totalNet).toBeVisible();
+        // Total net pay should be displayed
+        const totalNet = page.locator('[data-testid="total-net-pay"]');
+        await expect(totalNet).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Step 4: Review & Submit', () => {
-    test('shows summary of payroll run', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('shows summary of payroll run', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Review step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Review step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Should be on Review step
-      await expectWizardStepActive(page, 'Review');
+        // Should be on Review step
+        await expectWizardStepActive(page, 'Review');
 
-      // Summary should be visible
-      const summary = page.locator('[data-testid="payroll-summary"]');
-      await expect(summary).toBeVisible();
+        // Summary should be visible
+        const summary = page.locator('[data-testid="payroll-summary"]');
+        await expect(summary).toBeVisible();
+      } finally {
+        await page.close();
+      }
     });
 
-    test('displays Submit button on final step', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('displays Submit button on final step', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Review step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Review step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      await expectSubmitButtonVisible(page);
+        await expectSubmitButtonVisible(page);
+      } finally {
+        await page.close();
+      }
     });
 
-    test('submit shows confirmation before processing', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('submit shows confirmation before processing', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Review step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Review step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Click submit
-      await submitWizard(page);
+        // Click submit
+        await submitWizard(page);
 
-      // Confirmation dialog should appear
-      const confirmDialog = page.locator('[data-testid="confirm-payroll-dialog"]');
-      await expect(confirmDialog).toBeVisible();
-      await expect(confirmDialog).toContainText('Are you sure you want to process this payroll');
+        // Confirmation dialog should appear
+        const confirmDialog = page.locator('[data-testid="confirm-payroll-dialog"]');
+        await expect(confirmDialog).toBeVisible();
+        await expect(confirmDialog).toContainText('Are you sure you want to process this payroll');
+      } finally {
+        await page.close();
+      }
     });
 
-    test('successful submission shows processing state', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('successful submission shows processing state', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Review step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Review step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Submit and confirm
-      await submitWizard(page);
-      const confirmButton = page.locator('[data-testid="confirm-submit"]');
-      await confirmButton.click();
+        // Submit and confirm
+        await submitWizard(page);
+        const confirmButton = page.locator('[data-testid="confirm-submit"]');
+        await confirmButton.click();
 
-      // Should show processing
-      await expectWizardProcessing(page);
+        // Should show processing
+        await expectWizardProcessing(page);
+      } finally {
+        await page.close();
+      }
     });
   });
 
   test.describe('Pre-flight Validation (Gusto Pattern)', () => {
-    test('shows warning for employees with missing tax info', async ({ page }) => {
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('shows warning for employees with missing tax info', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Review step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Review step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Check for pre-flight warnings
-      const warnings = page.locator('[data-testid="preflight-warnings"]');
-      const warningCount = await warnings.count();
+        // Check for pre-flight warnings
+        const warnings = page.locator('[data-testid="preflight-warnings"]');
+        const warningCount = await warnings.count();
 
-      if (warningCount > 0) {
-        await expect(warnings.first()).toBeVisible();
+        if (warningCount > 0) {
+          await expect(warnings.first()).toBeVisible();
+        }
+      } finally {
+        await page.close();
       }
     });
 
-    test('blocks submission for critical errors', async ({ page }) => {
-      // Navigate to a pay run with known issues
-      await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new?simulate=missing-ssn`);
-      await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
+    test('blocks submission for critical errors', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+      try {
+        // Navigate to a pay run with known issues
+        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new?simulate=missing-ssn`);
+        await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-      // Navigate to Review step
-      await fillWizardField(page, 'pay-period-start', '2026-01-01');
-      await fillWizardField(page, 'pay-period-end', '2026-01-15');
-      await goToNextStep(page);
-      await goToNextStep(page);
-      await goToNextStep(page);
+        // Navigate to Review step
+        await fillWizardField(page, 'pay-period-start', '2026-01-01');
+        await fillWizardField(page, 'pay-period-end', '2026-01-15');
+        await goToNextStep(page);
+        await goToNextStep(page);
+        await goToNextStep(page);
 
-      // Submit button should be disabled
-      const submitButton = page.locator('button:has-text("Submit")');
-      await expect(submitButton).toBeDisabled();
+        // Submit button should be disabled
+        const submitButton = page.locator('button:has-text("Submit")');
+        await expect(submitButton).toBeDisabled();
 
-      // Error should be shown
-      const criticalError = page.locator('[data-testid="critical-error"]');
-      await expect(criticalError).toContainText('Missing SSN');
+        // Error should be shown
+        const criticalError = page.locator('[data-testid="critical-error"]');
+        await expect(criticalError).toContainText('Missing SSN');
+      } finally {
+        await page.close();
+      }
     });
   });
 });

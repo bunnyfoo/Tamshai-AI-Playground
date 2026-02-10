@@ -190,7 +190,9 @@ async function authenticateUser(page: Page): Promise<void> {
     });
 
     if (otpInput) {
-      const totpSecret = TEST_USER.totpSecret || loadTotpSecret(TEST_USER.username, ENV) || '';
+      // Cache file first (globalSetup writes Base32-encoded bridge value),
+      // then fall back to raw env var
+      const totpSecret = loadTotpSecret(TEST_USER.username, ENV) || TEST_USER.totpSecret || '';
       if (!totpSecret) {
         throw new Error('TOTP required but no secret available');
       }
@@ -250,7 +252,9 @@ async function authenticateAndNavigateToApp(page: Page, appUrl: string): Promise
       });
 
       if (otpInput) {
-        const totpSecret = TEST_USER.totpSecret || loadTotpSecret(TEST_USER.username, ENV) || '';
+        // Cache file first (globalSetup writes Base32-encoded bridge value),
+        // then fall back to raw env var
+        const totpSecret = loadTotpSecret(TEST_USER.username, ENV) || TEST_USER.totpSecret || '';
         if (!totpSecret) {
           throw new Error('TOTP required but no secret available');
         }

@@ -75,3 +75,14 @@ export {
   expectBreadcrumbsVisible,
   expectBreadcrumbsHidden,
 } from './wizard';
+
+// Authentication utilities for SSO + TOTP login flow
+export {
+  authenticateUser,
+  createAuthenticatedContext,
+  generateTotpCode,
+  loadTotpSecret,
+  ENV,
+  BASE_URLS,
+  TEST_USER,
+} from './auth';
