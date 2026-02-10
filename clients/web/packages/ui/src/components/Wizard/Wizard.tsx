@@ -245,7 +245,7 @@ export function Wizard({
           <p className="text-sm text-secondary-500 mb-1">
             Step {currentStepIndex + 1} of {visibleSteps.length}
           </p>
-          <h2 className="text-lg font-semibold text-secondary-900">
+          <h2 className="text-lg font-semibold text-secondary-900" data-testid="wizard-step-title">
             {currentStep?.title}
           </h2>
           {currentStep?.description && (

@@ -76,6 +76,11 @@ import {
   executeDeleteExpenseReport,
   DeleteExpenseReportInputSchema,
 } from './tools/delete-expense-report';
+import {
+  bulkApproveInvoices,
+  executeBulkApproveInvoices,
+  BulkApproveInvoicesInputSchema,
+} from './tools/bulk-approve-invoices';
 import { getPendingExpenses, GetPendingExpensesInputSchema } from './tools/get-pending-expenses';
 import { getPendingBudgets, GetPendingBudgetsInputSchema } from './tools/get-pending-budgets';
 import { MCPToolResponse } from './types/response';
@@ -748,6 +753,45 @@ app.post('/tools/approve_invoice', async (req: Request, res: Response) => {
 });
 
 /**
+ * Bulk Approve Invoices Tool (WRITE - finance-write or executive only)
+ */
+app.post('/tools/bulk_approve_invoices', async (req: Request, res: Response) => {
+  try {
+    const { userContext, invoiceIds, approverNotes } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - WRITE: finance-write or executive only
+    if (!canWriteFinance(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. Bulk approving invoices requires finance-write or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance write access permissions.',
+      });
+      return;
+    }
+
+    const result = await bulkApproveInvoices({ invoiceIds, approverNotes }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('bulk_approve_invoices error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to bulk approve invoices',
+    });
+  }
+});
+
+/**
  * Pay Invoice Tool (WRITE - finance-write or executive only)
  */
 app.post('/tools/pay_invoice', async (req: Request, res: Response) => {
@@ -1196,6 +1240,10 @@ app.post('/execute', async (req: Request, res: Response) => {
 
       case 'approve_invoice':
         result = await executeApproveInvoice(data, userContext);
+        break;
+
+      case 'bulk_approve_invoices':
+        result = await executeBulkApproveInvoices(data, userContext);
         break;
 
       case 'pay_invoice':

@@ -32,7 +32,7 @@ const SELECTORS = {
 
   // Step content
   stepContent: 'main[role="main"]',
-  stepTitle: 'main h2',
+  stepTitle: '[data-testid="wizard-step-title"]',
   stepDescription: 'main p',
   stepIndicator: 'main p:has-text("Step")',
 

@@ -5,6 +5,11 @@
  */
 import request from 'supertest';
 
+// Mock gateway auth middleware to pass through in tests
+jest.mock('@tamshai/shared', () => ({
+  requireGatewayAuth: () => (req: any, res: any, next: any) => next(),
+}));
+
 // Mock dependencies before importing app
 jest.mock('../../database/connection', () => ({
   getCollection: jest.fn(),
@@ -234,5 +239,99 @@ describe('escalate_ticket', () => {
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('error');
     expect(response.body.code).toBe('TICKET_NOT_FOUND');
+  });
+});
+
+describe('get_sla_tickets', () => {
+  const validUserContext = {
+    userId: 'user-123',
+    username: 'dan.williams',
+    email: 'dan@tamshai.local',
+    roles: ['support-read', 'support-write'],
+  };
+
+  const now = new Date();
+  const pastDeadline = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
+  const soonDeadline = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+
+  const mockBreachedTicket = {
+    ticket_id: 'TICK-010',
+    title: 'Breached SLA ticket',
+    priority: 'critical',
+    status: 'open',
+    customer_tier: 'enterprise',
+    assigned_to: 'dan.williams',
+    resolution_deadline: pastDeadline,
+  };
+
+  const mockAtRiskTicket = {
+    ticket_id: 'TICK-011',
+    title: 'At risk SLA ticket',
+    priority: 'high',
+    status: 'in_progress',
+    customer_tier: 'professional',
+    assigned_to: 'dan.williams',
+    resolution_deadline: soonDeadline,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return both at_risk and breached tickets when status is omitted', async () => {
+    const mockFind = jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnValue({
+        limit: jest.fn().mockReturnValue({
+          toArray: jest.fn().mockResolvedValue([mockBreachedTicket, mockAtRiskTicket]),
+        }),
+      }),
+    });
+    mockGetCollection.mockResolvedValue({ find: mockFind } as any);
+
+    const response = await request(app)
+      .post('/tools/get_sla_tickets')
+      .send({ userContext: validUserContext });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('success');
+    expect(response.body.data).toHaveLength(2);
+  });
+
+  it('should return only breached tickets when status is breached', async () => {
+    const mockFind = jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnValue({
+        limit: jest.fn().mockReturnValue({
+          toArray: jest.fn().mockResolvedValue([mockBreachedTicket]),
+        }),
+      }),
+    });
+    mockGetCollection.mockResolvedValue({ find: mockFind } as any);
+
+    const response = await request(app)
+      .post('/tools/get_sla_tickets')
+      .send({ userContext: validUserContext, status: 'breached' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('success');
+    expect(response.body.data).toHaveLength(1);
+  });
+
+  it('should return only at_risk tickets when status is at_risk', async () => {
+    const mockFind = jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnValue({
+        limit: jest.fn().mockReturnValue({
+          toArray: jest.fn().mockResolvedValue([mockAtRiskTicket]),
+        }),
+      }),
+    });
+    mockGetCollection.mockResolvedValue({ find: mockFind } as any);
+
+    const response = await request(app)
+      .post('/tools/get_sla_tickets')
+      .send({ userContext: validUserContext, status: 'at_risk' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('success');
+    expect(response.body.data).toHaveLength(1);
   });
 });

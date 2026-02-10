@@ -272,7 +272,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
         await goToNextStep(page);
 
         // Should show validation error
-        await expectValidationErrors(page, ['Account name is required']);
+        await expectValidationErrors(page, ['Opportunity title is required']);
 
         // Should still be on step 2
         expect(await getCurrentStepNumber(page)).toBe(2);
@@ -294,7 +294,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
         // Clear required field and try to proceed
         await fillWizardField(page, 'account-name', '');
         await goToNextStep(page);
-        await expectValidationErrors(page, ['Account name is required']);
+        await expectValidationErrors(page, ['Opportunity title is required']);
 
         // Correct the field
         await fillWizardField(page, 'account-name', 'Valid Company');

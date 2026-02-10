@@ -545,7 +545,7 @@ async function getSLASummary(userContext: UserContext): Promise<MCPToolResponse<
 // =============================================================================
 
 const GetSLATicketsInputSchema = z.object({
-  status: z.enum(['at_risk', 'breached']),
+  status: z.enum(['at_risk', 'breached']).optional(),
   limit: z.number().int().min(1).max(100).default(50),
 });
 
@@ -577,12 +577,19 @@ async function getSLATickets(input: any, userContext: UserContext): Promise<MCPT
 
     if (status === 'breached') {
       filter.resolution_deadline = { $lt: now };
-    } else {
+    } else if (status === 'at_risk') {
       // at_risk: deadline is within next 2 hours but not breached
       filter.resolution_deadline = {
         $gt: now,
         $lt: new Date(now.getTime() + 2 * 60 * 60 * 1000)
       };
+    } else {
+      // "all" — return both at_risk and breached tickets
+      filter.$or = [
+        { resolution_deadline: { $ne: null, $lt: now } },
+        { resolution_deadline: { $gt: now, $lt: new Date(now.getTime() + 2 * 60 * 60 * 1000) } }
+      ];
+      delete filter.resolution_deadline;
     }
 
     const tickets = await collection
