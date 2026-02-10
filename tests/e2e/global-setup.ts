@@ -33,8 +33,10 @@ const KEYCLOAK_URLS: Record<string, string> = {
 // Directory for persisting TOTP secrets per environment (shared with login-journey.ui.spec.ts)
 const TOTP_SECRETS_DIR = path.join(__dirname, '.totp-secrets');
 
-// HTTPS agent that accepts self-signed certs (dev environment)
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+// HTTPS agent: only disable cert validation for dev (self-signed certs)
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: ENV !== 'dev',
+});
 
 /**
  * RFC 4648 Base32 encoder (A-Z, 2-7 alphabet).

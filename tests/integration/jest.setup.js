@@ -60,7 +60,7 @@ async function getAdminToken() {
 
   console.log(`\n=== Admin Token Acquisition ===`);
   console.log(`Token URL: ${tokenUrl}`);
-  console.log(`Admin password set: ${adminPassword ? 'YES (' + adminPassword.length + ' chars)' : 'NO'}`);
+  console.log(`Admin password set: ${adminPassword ? 'YES' : 'NO'}`);
 
   try {
     const response = await axios.post(
