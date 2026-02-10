@@ -193,9 +193,11 @@ export function buildSafeQueryParams(
 
     // Process value based on type
     if (typeof value === 'string') {
-      // Try to parse as integer if it looks numeric
-      if (/^\d+$/.test(value)) {
-        params[key] = parseInt(value, 10);
+      // Try to parse as integer if it looks numeric AND fits in safe integer range
+      // (ObjectIds and other long numeric strings must stay as strings)
+      const parsed = /^\d+$/.test(value) ? parseInt(value, 10) : NaN;
+      if (Number.isSafeInteger(parsed)) {
+        params[key] = parsed;
       } else {
         params[key] = value;
       }

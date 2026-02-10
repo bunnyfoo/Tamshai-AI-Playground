@@ -53,8 +53,8 @@ export default function AgentMetricsPage() {
     if (!performance?.agents) return [];
 
     return [...performance.agents].sort((a, b) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
+      const aVal = a[sortField] ?? 0;
+      const bVal = b[sortField] ?? 0;
       const multiplier = sortDirection === 'desc' ? -1 : 1;
       return (aVal - bVal) * multiplier;
     });
@@ -306,15 +306,15 @@ export default function AgentMetricsPage() {
                       </td>
                       <td className="table-cell text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <span className={`font-medium ${getCSATColor(agent.csat_score)}`}>
-                            {agent.csat_score.toFixed(1)}
+                          <span className={`font-medium ${getCSATColor(agent.csat_score ?? 0)}`}>
+                            {(agent.csat_score ?? 0).toFixed(1)}
                           </span>
-                          <span className="text-secondary-400 text-xs">({agent.csat_responses})</span>
+                          <span className="text-secondary-400 text-xs">({agent.csat_responses ?? 0})</span>
                         </div>
                       </td>
                       <td className="table-cell text-right">
-                        <span className={agent.reopen_rate > 5 ? 'text-danger-600' : 'text-secondary-600'}>
-                          {agent.reopen_rate.toFixed(1)}%
+                        <span className={(agent.reopen_rate ?? 0) > 5 ? 'text-danger-600' : 'text-secondary-600'}>
+                          {(agent.reopen_rate ?? 0).toFixed(1)}%
                         </span>
                       </td>
                       <td className="table-cell text-right">

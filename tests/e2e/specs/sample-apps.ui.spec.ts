@@ -356,8 +356,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
       await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
-      // Click on Performance nav link
-      await sharedPage.click('a:has-text("Performance")');
+      // Click on Performance nav link (use .nav-link to avoid matching ticket titles containing "performance")
+      await sharedPage.click('a.nav-link:has-text("Performance")');
       await sharedPage.waitForLoadState('networkidle');
 
       // Verify page title
@@ -373,8 +373,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
       await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
-      // Click on Performance nav link
-      await sharedPage.click('a:has-text("Performance")');
+      // Click on Performance nav link (use .nav-link to avoid matching ticket titles containing "performance")
+      await sharedPage.click('a.nav-link:has-text("Performance")');
       await sharedPage.waitForLoadState('networkidle');
 
       // Verify Agent Leaderboard section exists
@@ -387,8 +387,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
       await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
-      // Click on Performance nav link
-      await sharedPage.click('a:has-text("Performance")');
+      // Click on Performance nav link (use .nav-link to avoid matching ticket titles containing "performance")
+      await sharedPage.click('a.nav-link:has-text("Performance")');
       await sharedPage.waitForLoadState('networkidle');
 
       // Verify period selection control exists
