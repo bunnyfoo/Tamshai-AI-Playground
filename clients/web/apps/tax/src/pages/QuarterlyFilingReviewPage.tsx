@@ -14,7 +14,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import { DataTable, ConfirmDialog } from '@tamshai/ui';
+import { DataTable } from '@tamshai/ui';
 import { QuarterlyFilingReviewWizard } from '../components/QuarterlyFilingReviewWizard';
 import type { QuarterlyFiling, TaxApiResponse } from '../types';
 
@@ -333,38 +333,38 @@ export function QuarterlyFilingReviewPage() {
     }, 2000);
   };
 
-  // Table columns for DataTable
-  const columns = [
+  // Table columns for DataTable (uses ColumnDef<T> API: accessor + cell(value, row))
+  const columns: import('@tamshai/ui').ColumnDef<QuarterlyFiling>[] = [
     {
       id: 'period',
       header: 'Period',
-      accessorFn: (row: QuarterlyFiling) => getQuarterLabel(row.year, row.quarter),
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => (
-        <span className="font-medium">{getQuarterLabel(row.original.year, row.original.quarter)}</span>
+      accessor: (row) => getQuarterLabel(row.year, row.quarter),
+      cell: (_value, row) => (
+        <span className="font-medium">{getQuarterLabel(row.year, row.quarter)}</span>
       ),
     },
     {
       id: 'jurisdictions',
       header: 'Jurisdictions',
-      accessorFn: (row: QuarterlyFiling) => row.jurisdictions.length,
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => (
-        <span>{row.original.jurisdictions.length} states</span>
+      accessor: (row) => row.jurisdictions.length,
+      cell: (_value, row) => (
+        <span>{row.jurisdictions.length} states</span>
       ),
     },
     {
       id: 'taxCollected',
       header: 'Tax Collected',
-      accessorFn: (row: QuarterlyFiling) => row.totals.taxCollected,
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => (
-        <span className="font-medium">{formatCurrency(row.original.totals.taxCollected)}</span>
+      accessor: (row) => row.totals.taxCollected,
+      cell: (_value, row) => (
+        <span className="font-medium">{formatCurrency(row.totals.taxCollected)}</span>
       ),
     },
     {
       id: 'status',
       header: 'Status',
-      accessorFn: (row: QuarterlyFiling) => row.status,
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => {
-        const badge = getStatusBadge(row.original.status);
+      accessor: (row) => row.status,
+      cell: (_value, row) => {
+        const badge = getStatusBadge(row.status);
         return (
           <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.className}`}>
             {badge.label}
@@ -375,38 +375,39 @@ export function QuarterlyFilingReviewPage() {
     {
       id: 'reviewedBy',
       header: 'Reviewed By',
-      accessorFn: (row: QuarterlyFiling) => row.reviewedBy || '-',
+      accessor: (row) => row.reviewedBy || '-',
     },
     {
       id: 'filedAt',
       header: 'Filed',
-      accessorFn: (row: QuarterlyFiling) => row.filedAt || '-',
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => (
-        <span>{row.original.filedAt ? formatDate(row.original.filedAt) : '-'}</span>
+      accessor: (row) => row.filedAt || '-',
+      cell: (_value, row) => (
+        <span>{row.filedAt ? formatDate(row.filedAt) : '-'}</span>
       ),
     },
     {
       id: 'confirmationNumber',
       header: 'Confirmation #',
-      accessorFn: (row: QuarterlyFiling) => row.confirmationNumber || '-',
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => (
-        <span className="font-mono text-sm">{row.original.confirmationNumber || '-'}</span>
+      accessor: (row) => row.confirmationNumber || '-',
+      cell: (_value, row) => (
+        <span className="font-mono text-sm">{row.confirmationNumber || '-'}</span>
       ),
     },
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }: { row: { original: QuarterlyFiling } }) => (
+      accessor: (row) => row.id,
+      cell: (_value, row) => (
         <button
-          onClick={() => handleOpenReview(row.original)}
+          onClick={() => handleOpenReview(row)}
           className={`px-3 py-1 text-sm font-medium rounded-md ${
-            row.original.status === 'filed'
+            row.status === 'filed'
               ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               : 'bg-primary-500 text-white hover:bg-primary-600'
           }`}
-          data-testid={`review-btn-${row.original.id}`}
+          data-testid={`review-btn-${row.id}`}
         >
-          {row.original.status === 'filed' ? 'View' : 'Review'}
+          {row.status === 'filed' ? 'View' : 'Review'}
         </button>
       ),
     },
@@ -472,8 +473,8 @@ export function QuarterlyFilingReviewPage() {
           <DataTable
             data={filings}
             columns={columns}
+            keyField="id"
             sortable
-            pagination={{ pageSize: 10 }}
             emptyState={
               <div className="text-center py-12">
                 <p className="text-gray-500">No quarterly filings found</p>
