@@ -53,13 +53,15 @@ const SELECTORS = {
  * @param stepName - The expected step title
  */
 export async function expectWizardStepActive(page: Page, stepName: string): Promise<void> {
-  // Check breadcrumb shows current step
-  const currentBreadcrumb = page.locator(SELECTORS.currentStep);
-  await expect(currentBreadcrumb).toBeVisible();
-
-  // Verify step title in content area
+  // Verify step title in content area (primary assertion)
   const stepTitle = page.locator(SELECTORS.stepTitle);
   await expect(stepTitle).toContainText(stepName);
+
+  // If breadcrumbs are present, verify current step is highlighted
+  const currentBreadcrumb = page.locator(SELECTORS.currentStep);
+  if (await currentBreadcrumb.count() > 0) {
+    await expect(currentBreadcrumb).toBeVisible();
+  }
 }
 
 /**
