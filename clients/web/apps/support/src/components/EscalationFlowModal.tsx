@@ -153,7 +153,7 @@ export default function EscalationFlowModal({
           </div>
 
           {/* Breach Warning */}
-          {ticket.is_breached && (
+          {(ticket.is_breached || ticket.time_remaining_minutes < 0) && (
             <div className="p-3 bg-danger-50 border border-danger-200 rounded-lg">
               <p className="text-sm text-danger-700 font-medium">
                 SLA breached - Immediate escalation required

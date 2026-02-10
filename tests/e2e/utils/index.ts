@@ -80,6 +80,7 @@ export {
 export {
   authenticateUser,
   createAuthenticatedContext,
+  warmUpContext,
   generateTotpCode,
   loadTotpSecret,
   ENV,

@@ -22,6 +22,7 @@
 import { test, expect, BrowserContext } from '@playwright/test';
 import {
   createAuthenticatedContext,
+  warmUpContext,
   BASE_URLS,
   ENV,
   TEST_USER,
@@ -35,16 +36,6 @@ const TAX_URL = `${BASE_URLS[ENV]}/tax`;
  * establishment via PrivateRoute. Doing this in beforeAll ensures
  * all test pages have a fully initialized auth session.
  */
-async function warmUpContext(ctx: BrowserContext, url: string): Promise<void> {
-  const warmup = await ctx.newPage();
-  try {
-    await warmup.goto(url, { timeout: 30000 });
-    await warmup.waitForSelector('h1', { timeout: 30000 });
-  } catch {
-    // Warm-up failure is non-fatal; tests will retry
-  }
-  await warmup.close();
-}
 
 // --- Block 1: All component/feature tests (single auth context) ---
 

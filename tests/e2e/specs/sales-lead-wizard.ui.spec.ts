@@ -17,6 +17,7 @@ import {
   createDatabaseSnapshot,
   rollbackToSnapshot,
   createAuthenticatedContext,
+  warmUpContext,
   BASE_URLS,
   ENV,
   TEST_USER,
@@ -48,16 +49,6 @@ let authenticatedContext: BrowserContext | null = null;
  * Warm up an authenticated context by visiting the app URL once.
  * This primes PrivateRoute OIDC checks so subsequent pages render immediately.
  */
-async function warmUpContext(ctx: BrowserContext, url: string): Promise<void> {
-  const warmup = await ctx.newPage();
-  try {
-    await warmup.goto(url, { timeout: 30000 });
-    await warmup.waitForSelector('[role="dialog"].wizard', { timeout: 30000 });
-  } catch {
-    // Warm-up failure is non-fatal; tests will retry
-  }
-  await warmup.close();
-}
 
 test.describe('Sales Lead Conversion Wizard', () => {
   let snapshotId: string;

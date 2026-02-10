@@ -182,3 +182,55 @@ export async function createAuthenticatedContext(browser: Browser): Promise<Brow
 
   return context;
 }
+
+/**
+ * Warm up an authenticated context by visiting an app URL.
+ *
+ * The initial tokens captured by createAuthenticatedContext come from the
+ * portal page. When a sub-app (e.g. /support/, /payroll/) loads, its OIDC
+ * client may not accept portal-scoped tokens and will silently redirect
+ * through Keycloak SSO to obtain app-specific tokens.
+ *
+ * This function completes that redirect cycle and re-captures the resulting
+ * sessionStorage so every subsequent page in the context starts with the
+ * correct tokens — eliminating further redirects.
+ *
+ * @param ctx - Authenticated browser context from createAuthenticatedContext
+ * @param url - Target app URL to warm up (e.g. BASE_URLS[ENV] + '/support/sla')
+ * @param selectors - Optional CSS selector to wait for (default: '[data-testid], .page-container')
+ */
+export async function warmUpContext(
+  ctx: BrowserContext,
+  url: string,
+  selectors: string = '[data-testid], .page-container',
+): Promise<void> {
+  const warmup = await ctx.newPage();
+  try {
+    await warmup.goto(url, { timeout: 60000 });
+    // Wait for the app to fully render (after potential OIDC redirect cycle)
+    await warmup.waitForSelector(selectors, { timeout: 45000 });
+
+    // Re-capture sessionStorage which now contains app-specific OIDC tokens
+    const sessionData = await warmup.evaluate(() => {
+      const data: Record<string, string> = {};
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)!;
+        data[key] = sessionStorage.getItem(key)!;
+      }
+      return data;
+    });
+
+    // Add new initScript with app-specific tokens (addInitScript accumulates;
+    // the last write to each sessionStorage key wins)
+    if (Object.keys(sessionData).length > 0) {
+      await ctx.addInitScript((data: Record<string, string>) => {
+        for (const [key, value] of Object.entries(data)) {
+          sessionStorage.setItem(key, value);
+        }
+      }, sessionData);
+    }
+  } catch {
+    // Warm-up failure is non-fatal; tests may still pass via Keycloak SSO cookies
+  }
+  await warmup.close();
+}
