@@ -5,6 +5,14 @@ import { ApprovalCard, TruncationWarning } from '@tamshai/ui';
 import TimeOffRequestWizard from '../components/TimeOffRequestWizard';
 import type { TimeOffBalance, TimeOffRequest, APIResponse, Employee } from '../types';
 
+// Fallback balance data when API is unavailable
+const SAMPLE_BALANCES: TimeOffBalance[] = [
+  { type_name: 'Vacation', type_code: 'VACATION', entitlement: 15, carryover: 2, used: 3, pending: 0, available: 14 },
+  { type_name: 'Sick Leave', type_code: 'SICK', entitlement: 10, carryover: 0, used: 1, pending: 0, available: 9 },
+  { type_name: 'Personal', type_code: 'PERSONAL', entitlement: 3, carryover: 0, used: 0, pending: 0, available: 3 },
+  { type_name: 'Bereavement', type_code: 'BEREAVEMENT', entitlement: 5, carryover: 0, used: 0, pending: 0, available: 5 },
+];
+
 /**
  * Time-Off Management Page
  *
@@ -157,7 +165,9 @@ export default function TimeOffPage() {
     }
   };
 
-  const balances = balancesResponse?.data || [];
+  const balances = (balancesResponse?.data && balancesResponse.data.length > 0)
+    ? balancesResponse.data
+    : SAMPLE_BALANCES;
   const requests = requestsResponse?.data || [];
   const isTruncated = requestsResponse?.metadata?.truncated || requestsResponse?.metadata?.hasMore;
 

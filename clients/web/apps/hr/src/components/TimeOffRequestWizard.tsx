@@ -39,8 +39,8 @@ interface RequestData {
 function calculateBusinessDays(start: string, end: string, halfStart: boolean, halfEnd: boolean): number {
   if (!start || !end) return 0;
 
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+  const startDate = new Date(start + 'T12:00:00');
+  const endDate = new Date(end + 'T12:00:00');
 
   if (endDate < startDate) return 0;
 
@@ -576,8 +576,6 @@ export default function TimeOffRequestWizard({
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      role="dialog"
-      aria-labelledby="wizard-title"
     >
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <Wizard
@@ -586,8 +584,8 @@ export default function TimeOffRequestWizard({
           initialData={initialData}
           onComplete={handleSubmit}
           onCancel={onClose}
+          showBreadcrumbs={true}
           submitLabel="Submit Request"
-          submittingLabel="Submitting..."
         />
       </div>
     </div>

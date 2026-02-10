@@ -83,7 +83,7 @@ export default function PayRunsPage() {
           to="/pay-runs/new"
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
         >
-          <button type="button">New Pay Run</button>
+          New Pay Run
         </Link>
       </div>
 

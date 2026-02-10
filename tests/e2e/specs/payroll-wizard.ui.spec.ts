@@ -277,7 +277,8 @@ test.describe('Payroll Run Wizard', () => {
         // Verify tax categories are shown
         await expect(page.locator('text=Federal Income Tax')).toBeVisible();
         await expect(page.locator('text=State Income Tax')).toBeVisible();
-        await expect(page.locator('text=FICA')).toBeVisible();
+        await expect(page.locator('text=FICA — Social Security')).toBeVisible();
+        await expect(page.locator('text=FICA — Medicare')).toBeVisible();
       } finally {
         await page.close();
       }

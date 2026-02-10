@@ -306,7 +306,7 @@ export function Wizard({
           <button
             type="button"
             onClick={goToNext}
-            disabled={isSubmitting || submitDisabled}
+            disabled={isSubmitting || (isLastStep && submitDisabled)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors
                       inline-flex items-center gap-2 ${
                         isLastStep

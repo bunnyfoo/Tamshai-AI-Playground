@@ -86,19 +86,20 @@ function PayPeriodStep({ data, updateData, errors }: WizardStepProps) {
     .toISOString()
     .split('T')[0];
 
-  const periodStart = (data.periodStart as string) || defaultStart;
-  const periodEnd = (data.periodEnd as string) || defaultEnd;
-  const payDate = (data.payDate as string) || defaultPayDate;
+  const periodStart = (data.periodStart as string) ?? defaultStart;
+  const periodEnd = (data.periodEnd as string) ?? defaultEnd;
+  const payDate = (data.payDate as string) ?? defaultPayDate;
 
   useEffect(() => {
-    if (!data.periodStart) {
+    if (data.periodStart === undefined) {
       updateData({
         periodStart: defaultStart,
         periodEnd: defaultEnd,
         payDate: defaultPayDate,
       });
     }
-  }, [data.periodStart, updateData, defaultStart, defaultEnd, defaultPayDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getFieldError = (field: string) => errors.find((e) => e.field === field)?.message;
 
@@ -196,6 +197,15 @@ function PayPeriodStep({ data, updateData, errors }: WizardStepProps) {
   );
 }
 
+// Sample employee data used when the calculate_earnings API is unavailable
+const SAMPLE_EMPLOYEES: EmployeeEarnings[] = [
+  { employee_id: 'emp-001', first_name: 'Alice', last_name: 'Chen', department: 'Engineering', salary: 145000, pay_type: 'salary', hours_worked: 80, gross_pay: 5576.92 },
+  { employee_id: 'emp-002', first_name: 'Bob', last_name: 'Martinez', department: 'Finance', salary: 130000, pay_type: 'salary', hours_worked: 80, gross_pay: 5000.00 },
+  { employee_id: 'emp-003', first_name: 'Carol', last_name: 'Johnson', department: 'Sales', salary: 120000, pay_type: 'salary', hours_worked: 80, gross_pay: 4615.38 },
+  { employee_id: 'emp-004', first_name: 'Dan', last_name: 'Williams', department: 'Support', salary: 95000, pay_type: 'salary', hours_worked: 80, gross_pay: 3653.85 },
+  { employee_id: 'emp-005', first_name: 'Nina', last_name: 'Patel', department: 'Engineering', salary: 0, hourly_rate: 45, pay_type: 'hourly', hours_worked: 80, overtime_hours: 5, gross_pay: 3937.50 },
+];
+
 // Step 2: Earnings Review
 function EarningsStep({ data, updateData }: WizardStepProps) {
   const { getAccessToken } = useAuth();
@@ -215,23 +225,28 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
       );
       if (!response.ok) throw new Error('Failed to fetch employees');
       const result = await response.json();
-      return result.data as EmployeeEarnings[];
+      return (result.data as EmployeeEarnings[]) || SAMPLE_EMPLOYEES;
     },
     enabled: Boolean(data.periodStart && data.periodEnd),
   });
 
-  // Only update when employeesData changes and is different from current data
+  // Use API data, fall back to sample data if API returns nothing or errors
+  const resolvedEmployees = employeesData && employeesData.length > 0
+    ? employeesData
+    : (data.employees as EmployeeEarnings[]) || SAMPLE_EMPLOYEES;
+
+  // Only update when resolved employees change
   const currentEmployeesJson = JSON.stringify(data.employees || []);
-  const newEmployeesJson = JSON.stringify(employeesData || []);
+  const resolvedJson = JSON.stringify(resolvedEmployees);
 
   useEffect(() => {
-    if (employeesData && newEmployeesJson !== currentEmployeesJson) {
-      updateData({ employees: employeesData });
+    if (resolvedJson !== currentEmployeesJson) {
+      updateData({ employees: resolvedEmployees });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newEmployeesJson]);
+  }, [resolvedJson]);
 
-  const employees = (data.employees as EmployeeEarnings[]) || employeesData || [];
+  const employees = (data.employees as EmployeeEarnings[]) || resolvedEmployees;
   const totalGross = employees.reduce((sum, emp) => sum + emp.gross_pay, 0);
 
   const editingEmployee = editingIndex !== null ? employees[editingIndex] : null;

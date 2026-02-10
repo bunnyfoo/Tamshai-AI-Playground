@@ -37,10 +37,6 @@ test.describe('Payroll App E2E Tests', () => {
     await warmUpContext(authenticatedContext, `${PAYROLL_URL}/`);
   });
 
-  test.afterAll(async () => {
-    await authenticatedContext?.close();
-  });
-
   test.describe('Dashboard', () => {
     test('displays payroll dashboard with metrics', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
@@ -238,6 +234,11 @@ test.describe('Payroll User Journeys', () => {
       authenticatedContext = await createAuthenticatedContext(browser);
       await warmUpContext(authenticatedContext, `${PAYROLL_URL}/`);
     }
+  });
+
+  test.afterAll(async () => {
+    await authenticatedContext?.close();
+    authenticatedContext = null;
   });
 
   test('Scenario: Employee views their pay stub', async () => {

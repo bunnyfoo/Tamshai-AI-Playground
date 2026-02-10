@@ -10,7 +10,7 @@ export default function Layout() {
   const { userContext, signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-secondary-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="page-container">
