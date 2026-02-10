@@ -13,6 +13,7 @@
 
 import { Client, Pool } from 'pg';
 import axios from 'axios';
+import crypto from 'crypto';
 
 // Test environment configuration
 process.env.NODE_ENV = 'test';
@@ -512,6 +513,176 @@ async function restoreTestUsers(): Promise<void> {
   console.log('\n   ✅ TOTP requirement restored for all users');
 }
 
+// ============================================================================
+// T2: Ephemeral Test Users for Integration Tests
+// ============================================================================
+// Creates temporary users via Keycloak Admin API at test start, removes them
+// at test end. Each test run gets its own password — no shared credentials.
+// RLS tests are unaffected (they set session variables directly).
+
+/** Random password for this test run */
+const EPHEMERAL_TEST_PASSWORD = crypto.randomBytes(16).toString('hex');
+
+/** Track ephemeral user IDs for cleanup */
+const ephemeralUserIds: string[] = [];
+
+/**
+ * Ephemeral user definitions matching the roles needed by integration tests.
+ * These mirror the pre-seeded users but use test-run-scoped credentials.
+ */
+const EPHEMERAL_USERS = [
+  { username: 'test-exec', firstName: 'Test', lastName: 'Executive', email: 'test-exec@test.local', groups: ['/C-Suite'] },
+  { username: 'test-hr', firstName: 'Test', lastName: 'HR', email: 'test-hr@test.local', groups: ['/HR-Team'] },
+  { username: 'test-finance', firstName: 'Test', lastName: 'Finance', email: 'test-finance@test.local', groups: ['/Finance-Team'] },
+  { username: 'test-sales', firstName: 'Test', lastName: 'Sales', email: 'test-sales@test.local', groups: ['/Sales-Team'] },
+  { username: 'test-support', firstName: 'Test', lastName: 'Support', email: 'test-support@test.local', groups: ['/Support-Team'] },
+];
+
+/**
+ * Create a single ephemeral user in Keycloak
+ */
+async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<string | null> {
+  try {
+    // Create user
+    const response = await axios.post(
+      `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
+      {
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        enabled: true,
+        emailVerified: true,
+        groups: user.groups,
+        credentials: [{
+          type: 'password',
+          value: EPHEMERAL_TEST_PASSWORD,
+          temporary: false,
+        }],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${keycloakAdminToken}`,
+          'Content-Type': 'application/json',
+        },
+        validateStatus: (status) => status === 201 || status === 409,
+      }
+    );
+
+    if (response.status === 409) {
+      // User already exists (from a previous failed cleanup) — look up and reuse
+      const existingId = await getUserId(user.username);
+      if (existingId) {
+        // Reset password for the existing user
+        await axios.put(
+          `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${existingId}/reset-password`,
+          { type: 'password', value: EPHEMERAL_TEST_PASSWORD, temporary: false },
+          { headers: { Authorization: `Bearer ${keycloakAdminToken}`, 'Content-Type': 'application/json' } }
+        );
+        return existingId;
+      }
+      return null;
+    }
+
+    // Extract user ID from Location header
+    const location = response.headers.location || '';
+    const userId = location.split('/').pop() || null;
+    return userId;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`  ⚠️  Failed to create ephemeral user ${user.username}: ${message}`);
+    return null;
+  }
+}
+
+/**
+ * Delete a single ephemeral user from Keycloak
+ */
+async function deleteEphemeralUser(userId: string): Promise<void> {
+  try {
+    await axios.delete(
+      `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
+      { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
+    );
+  } catch {
+    // Ignore delete failures (user may already be gone)
+  }
+}
+
+/**
+ * Create all ephemeral test users
+ */
+async function createEphemeralTestUsers(): Promise<void> {
+  console.log('\n🔑 Creating ephemeral test users...');
+
+  const results = await Promise.all(
+    EPHEMERAL_USERS.map(async (user) => {
+      const userId = await createEphemeralUser(user);
+      if (userId) {
+        ephemeralUserIds.push(userId);
+        return `  ✅ ${user.username} (${user.groups.join(', ')})`;
+      }
+      return `  ⚠️  ${user.username} — failed to create`;
+    })
+  );
+
+  results.forEach((r) => console.log(r));
+  console.log(`  Password for this run: [${EPHEMERAL_TEST_PASSWORD.substring(0, 4)}...]`);
+}
+
+/**
+ * Delete all ephemeral test users
+ */
+async function deleteEphemeralTestUsers(): Promise<void> {
+  console.log('\n🗑️  Deleting ephemeral test users...');
+
+  // Refresh admin token in case it expired
+  try {
+    keycloakAdminToken = await getKeycloakAdminToken();
+  } catch {
+    console.warn('  ⚠️  Could not refresh admin token for cleanup');
+    return;
+  }
+
+  await Promise.all(ephemeralUserIds.map(deleteEphemeralUser));
+
+  // Also clean up by username in case IDs were lost
+  for (const user of EPHEMERAL_USERS) {
+    const userId = await getUserId(user.username);
+    if (userId) {
+      await deleteEphemeralUser(userId);
+    }
+  }
+
+  console.log(`  ✅ Cleaned up ${ephemeralUserIds.length} ephemeral users`);
+}
+
+/**
+ * Get the ephemeral test password for this run.
+ * Used by integration tests that need to obtain tokens.
+ */
+export function getEphemeralTestPassword(): string {
+  return EPHEMERAL_TEST_PASSWORD;
+}
+
+/**
+ * Get ephemeral test user credentials by role.
+ * Returns { username, password } for use in token acquisition.
+ */
+export function getEphemeralUser(role: 'executive' | 'hr' | 'finance' | 'sales' | 'support'): { username: string; password: string } {
+  const mapping: Record<string, string> = {
+    executive: 'test-exec',
+    hr: 'test-hr',
+    finance: 'test-finance',
+    sales: 'test-sales',
+    support: 'test-support',
+  };
+  return {
+    username: mapping[role],
+    password: EPHEMERAL_TEST_PASSWORD,
+  };
+}
+
 // Increase timeout for slow database operations
 jest.setTimeout(30000);
 
@@ -605,7 +776,7 @@ export async function resetBudgetTestFixtures(): Promise<void> {
   console.log('   ✅ Budget test fixtures reset to initial states');
 }
 
-// Global setup - prepare test users (remove CONFIGURE_TOTP)
+// Global setup - prepare test users (remove CONFIGURE_TOTP) + create ephemeral users
 beforeAll(async () => {
   const isCI = process.env.CI === 'true';
 
@@ -618,6 +789,8 @@ beforeAll(async () => {
   try {
     keycloakAdminToken = await getKeycloakAdminToken();
     await prepareTestUsers();
+    // T2: Create ephemeral users for token-based integration tests
+    await createEphemeralTestUsers();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`\n⚠️  Could not prepare test users (Keycloak may not be available): ${message}`);
@@ -625,13 +798,15 @@ beforeAll(async () => {
   }
 }, 60000);
 
-// Global cleanup - restore test users and close database connections
+// Global cleanup - restore test users, delete ephemeral users, close database connections
 afterAll(async () => {
   const isCI = process.env.CI === 'true';
 
-  // Restore TOTP for test users (local dev only)
   if (!isCI && keycloakAdminToken) {
+    // Restore TOTP for pre-seeded test users (local dev only)
     await restoreTestUsers();
+    // T2: Clean up ephemeral users
+    await deleteEphemeralTestUsers();
   }
 
   // Close database pools

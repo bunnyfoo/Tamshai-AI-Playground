@@ -475,7 +475,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
-        
+
         "profile",
         "email",
         "roles"
@@ -500,7 +500,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
-        
+
         "profile",
         "email",
         "roles"
@@ -527,7 +527,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
-        
+
         "profile",
         "email",
         "roles"
@@ -554,7 +554,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
-        
+
         "profile",
         "email",
         "roles"
@@ -581,7 +581,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
-        
+
         "profile",
         "email",
         "roles"
@@ -608,7 +608,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": [
-        
+
         "profile",
         "email",
         "roles"
@@ -621,7 +621,7 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "protocol": "openid-connect",
       "redirectUris": [

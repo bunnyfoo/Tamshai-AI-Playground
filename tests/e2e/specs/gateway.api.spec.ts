@@ -12,15 +12,21 @@ const KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://localhost:${KEYCLOAK_PO
 const MCP_GATEWAY_PORT = process.env.PORT_MCP_GATEWAY || '3110';
 const GATEWAY_URL = process.env.MCP_GATEWAY_URL || `http://localhost:${MCP_GATEWAY_PORT}`;
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
-const MCP_GATEWAY_CLIENT_SECRET = process.env.MCP_GATEWAY_CLIENT_SECRET || '';
+// T1: Use dedicated integration-runner client (falls back to mcp-gateway for backwards compat)
+const INTEGRATION_CLIENT_ID = process.env.MCP_INTEGRATION_RUNNER_SECRET
+  ? 'mcp-integration-runner'
+  : 'mcp-gateway';
+const INTEGRATION_CLIENT_SECRET = process.env.MCP_INTEGRATION_RUNNER_SECRET
+  || process.env.MCP_GATEWAY_CLIENT_SECRET
+  || '';
 
 // Test user password from environment variable
 const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
 if (!TEST_PASSWORD) {
   console.warn('WARNING: DEV_USER_PASSWORD not set - authenticated tests will be skipped');
 }
-if (!MCP_GATEWAY_CLIENT_SECRET) {
-  console.warn('WARNING: MCP_GATEWAY_CLIENT_SECRET not set - authenticated tests will be skipped');
+if (!INTEGRATION_CLIENT_SECRET) {
+  console.warn('WARNING: MCP_INTEGRATION_RUNNER_SECRET (or MCP_GATEWAY_CLIENT_SECRET) not set - authenticated tests will be skipped');
 }
 
 // Test user credentials (from Keycloak setup)
@@ -57,8 +63,8 @@ async function getAccessToken(
 
     const params = new URLSearchParams({
       grant_type: 'password',
-      client_id: 'mcp-gateway',
-      client_secret: MCP_GATEWAY_CLIENT_SECRET,
+      client_id: INTEGRATION_CLIENT_ID,
+      client_secret: INTEGRATION_CLIENT_SECRET,
       username,
       password,
       scope: 'openid',

@@ -18,6 +18,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import { getEphemeralUser } from './setup';
 
 // CI Environment Check
 // Skip all tests in CI - proxy routes require full Docker network setup
@@ -76,42 +77,52 @@ const CONFIG = {
   mcpGatewayUrl: process.env.MCP_GATEWAY_URL!,
   keycloakUrl: process.env.KEYCLOAK_URL!,
   keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  clientId: 'mcp-gateway',
-  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET || '',
+  // T1: Use dedicated integration-runner client (falls back to mcp-gateway for backwards compat)
+  clientId: process.env.MCP_INTEGRATION_RUNNER_SECRET ? 'mcp-integration-runner' : 'mcp-gateway',
+  clientSecret: process.env.MCP_INTEGRATION_RUNNER_SECRET || process.env.MCP_GATEWAY_CLIENT_SECRET || '',
 };
 
+// T2: Prefer ephemeral test users (per-run credentials, no shared password).
+// Falls back to pre-seeded users with DEV_USER_PASSWORD for backwards compat.
 const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
 
 if (!TEST_PASSWORD) {
-  console.warn('WARNING: DEV_USER_PASSWORD not set - tests may fail');
+  console.warn('WARNING: DEV_USER_PASSWORD not set - falling back to ephemeral users');
 }
 
 if (!CONFIG.clientSecret) {
-  console.warn('WARNING: MCP_GATEWAY_CLIENT_SECRET not set - authentication tests will fail');
+  console.warn('WARNING: MCP_INTEGRATION_RUNNER_SECRET (or MCP_GATEWAY_CLIENT_SECRET) not set - authentication tests will fail');
 }
 
-// Test users matching frontend role requirements
+// Test users — ephemeral users have per-run random passwords (T2)
+const ephemeral = {
+  executive: getEphemeralUser('executive'),
+  hr: getEphemeralUser('hr'),
+  finance: getEphemeralUser('finance'),
+  sales: getEphemeralUser('sales'),
+  support: getEphemeralUser('support'),
+};
+
 const TEST_USERS = {
   executive: {
-    username: 'eve.thompson',
-    password: TEST_PASSWORD,
-    // Executive has composite role that includes all read roles
+    username: ephemeral.executive.username,
+    password: ephemeral.executive.password,
   },
   hrUser: {
-    username: 'alice.chen',
-    password: TEST_PASSWORD,
+    username: ephemeral.hr.username,
+    password: ephemeral.hr.password,
   },
   financeUser: {
-    username: 'bob.martinez',
-    password: TEST_PASSWORD,
+    username: ephemeral.finance.username,
+    password: ephemeral.finance.password,
   },
   salesUser: {
-    username: 'carol.johnson',
-    password: TEST_PASSWORD,
+    username: ephemeral.sales.username,
+    password: ephemeral.sales.password,
   },
   supportUser: {
-    username: 'dan.williams',
-    password: TEST_PASSWORD,
+    username: ephemeral.support.username,
+    password: ephemeral.support.password,
   },
 };
 

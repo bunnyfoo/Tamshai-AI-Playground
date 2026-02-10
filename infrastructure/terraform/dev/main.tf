@@ -357,7 +357,8 @@ resource "local_file" "docker_env" {
     e2e_admin_api_key            = try(data.external.github_secrets.result.e2e_admin_api_key, "")
     elastic_password             = try(data.external.github_secrets.result.elastic_password, "")
     mcp_ui_client_secret         = try(data.external.github_secrets.result.mcp_ui_client_secret, "")
-    mcp_hr_service_client_secret = try(data.external.github_secrets.result.mcp_hr_service_client_secret, "")
+    mcp_hr_service_client_secret   = try(data.external.github_secrets.result.mcp_hr_service_client_secret, "")
+    mcp_integration_runner_secret  = try(data.external.github_secrets.result.mcp_integration_runner_secret, "")
 
     # MCP Journey (Project History Agent)
     # Use fetched key from GitHub secrets, fallback to variable

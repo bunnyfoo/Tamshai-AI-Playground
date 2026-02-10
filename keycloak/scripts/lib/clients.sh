@@ -123,12 +123,16 @@ EOF
 }
 
 # Generate JSON for mcp-gateway client (confidential, service account)
+# P1: directAccessGrantsEnabled is only true in dev (for integration tests).
+# In stage/prod, password grant is disabled — use PKCE or service account flows.
 get_mcp_gateway_client_json() {
     # Determine domain based on environment
     local domain
+    local direct_access="false"
     case "${ENV:-dev}" in
         dev)
             domain="tamshai-playground.local"
+            direct_access="true"
             ;;
         stage)
             domain="www.tamshai.com"
@@ -149,7 +153,7 @@ get_mcp_gateway_client_json() {
     "enabled": true,
     "publicClient": false,
     "standardFlowEnabled": true,
-    "directAccessGrantsEnabled": true,
+    "directAccessGrantsEnabled": $direct_access,
     "serviceAccountsEnabled": true,
     "protocol": "openid-connect",
     "redirectUris": [
@@ -166,6 +170,7 @@ EOF
 
 # Generate JSON for Flutter client (public, PKCE, custom scheme)
 # Note: Desktop OAuth uses fixed ports 18765-18769 for reliable redirect matching
+# P2: directAccessGrantsEnabled disabled globally — public clients must use PKCE (OAuth 2.1)
 get_flutter_client_json() {
     cat <<EOF
 {
@@ -175,7 +180,7 @@ get_flutter_client_json() {
     "enabled": true,
     "publicClient": true,
     "standardFlowEnabled": true,
-    "directAccessGrantsEnabled": true,
+    "directAccessGrantsEnabled": false,
     "serviceAccountsEnabled": false,
     "protocol": "openid-connect",
     "redirectUris": [
@@ -324,7 +329,14 @@ sync_mcp_gateway_client() {
 }
 
 # Sync mcp-hr-service client with service account roles
+# P3: Blocked in production — service account with manage-users/manage-realm
+# roles must not be auto-provisioned in prod (security policy).
 sync_mcp_hr_service_client() {
+    if [ "${ENV:-dev}" = "prod" ]; then
+        log_warn "Skipping mcp-hr-service client in production (security policy)"
+        return 0
+    fi
+
     log_info "Syncing mcp-hr-service client (identity sync)..."
 
     # Get client secret from environment (fail if not set)
@@ -484,4 +496,64 @@ sync_sample_app_clients() {
 
        create_or_update_client "$app" "$client_json"
     done
+}
+
+# =============================================================================
+# Integration Test Client (T1/T3 — Security Audit Remediation)
+# =============================================================================
+
+# Generate JSON for mcp-integration-runner client (confidential, dev-only)
+# T1: Dedicated test client for integration tests — replaces mcp-gateway usage in tests.
+# T3: Network-gated to localhost only (never internet-accessible).
+get_integration_runner_client_json() {
+    cat <<EOF
+{
+    "clientId": "mcp-integration-runner",
+    "name": "MCP Integration Test Runner",
+    "description": "Confidential client for automated integration tests (dev only)",
+    "enabled": true,
+    "publicClient": false,
+    "standardFlowEnabled": false,
+    "directAccessGrantsEnabled": true,
+    "serviceAccountsEnabled": true,
+    "protocol": "openid-connect",
+    "redirectUris": ["http://localhost/*", "http://127.0.0.1/*"],
+    "webOrigins": ["http://localhost", "http://127.0.0.1"],
+    "fullScopeAllowed": true,
+    "defaultClientScopes": ["openid", "profile", "email", "roles"]
+}
+EOF
+}
+
+# Sync mcp-integration-runner client (dev-only)
+# T1: Creates/updates a dedicated test client so integration tests don't use mcp-gateway.
+# T3: Guarded to dev only — returns early in prod/stage.
+sync_integration_runner_client() {
+    if [ "${ENV:-dev}" != "dev" ]; then
+        log_info "Skipping mcp-integration-runner client (dev-only)"
+        return 0
+    fi
+
+    log_info "Syncing mcp-integration-runner client (integration tests)..."
+
+    local client_json=$(get_integration_runner_client_json)
+    create_or_update_client "mcp-integration-runner" "$client_json"
+
+    # Set client secret from environment or generate one
+    local client_secret="${MCP_INTEGRATION_RUNNER_SECRET:-}"
+    local uuid=$(get_client_uuid "mcp-integration-runner")
+
+    if [ -n "$uuid" ]; then
+        if [ -n "$client_secret" ]; then
+            log_info "  Setting client secret from MCP_INTEGRATION_RUNNER_SECRET..."
+            _kcadm update "clients/$uuid" -r "$REALM" -s "secret=$client_secret" 2>/dev/null || {
+                log_warn "  Failed to set client secret via update"
+            }
+        else
+            log_info "  No MCP_INTEGRATION_RUNNER_SECRET set — using Keycloak-generated secret"
+            log_info "  To set a specific secret: export MCP_INTEGRATION_RUNNER_SECRET=<secret>"
+        fi
+    fi
+
+    log_info "  mcp-integration-runner client configured"
 }
