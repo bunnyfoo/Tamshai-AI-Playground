@@ -24,7 +24,6 @@
 import { test, expect, Page, BrowserContext } from '@playwright/test';
 import {
   createAuthenticatedContext,
-  authenticateUser,
   warmUpContext,
   BASE_URLS,
   ENV,
@@ -400,19 +399,19 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
 test.describe('Cross-App Navigation', () => {
   test('can navigate between apps via portal', async ({ browser }) => {
-    const context = await browser.newContext({
-      ignoreHTTPSErrors: ENV === 'dev',
-    });
+    // Skip if no credentials
+    if (!TEST_USER.password) {
+      test.skip(true, 'No test credentials configured');
+    }
+
+    // Use createAuthenticatedContext to ensure TOTP window guard
+    const context = await createAuthenticatedContext(browser);
+    await warmUpContext(context, `${BASE_URLS[ENV]}/app/`);
     const page = await context.newPage();
 
     try {
-      // Skip if no credentials
-      if (!TEST_USER.password) {
-        test.skip(true, 'No test credentials configured');
-      }
-
-      // Authenticate
-      await authenticateUser(page);
+      // Navigate to portal
+      await page.goto(`${BASE_URLS[ENV]}/app/`);
 
       // Verify we're on the portal
       await expect(page.locator('text=Available Applications')).toBeVisible({ timeout: 30000 });
