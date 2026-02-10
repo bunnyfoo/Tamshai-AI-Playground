@@ -344,9 +344,44 @@ db.tickets.createIndex({ resolution_deadline: 1 });
 db.tickets.createIndex({ first_response_at: 1 });
 db.tickets.createIndex({ closed_at: -1 });
 
+// =============================================================================
+// ESCALATION TARGETS COLLECTION
+// =============================================================================
+db.escalation_targets.drop();
+db.escalation_targets.insertMany([
+  {
+    _id: ObjectId("670000000000000000000101"),
+    agent_id: "agent-001",
+    name: "Sarah Mitchell",
+    role: "Senior Support Engineer",
+    current_workload: 4,
+    availability: "available"
+  },
+  {
+    _id: ObjectId("670000000000000000000102"),
+    agent_id: "agent-002",
+    name: "James Rodriguez",
+    role: "Support Team Lead",
+    current_workload: 6,
+    availability: "available"
+  },
+  {
+    _id: ObjectId("670000000000000000000103"),
+    agent_id: "agent-003",
+    name: "Emily Watson",
+    role: "Technical Specialist",
+    current_workload: 8,
+    availability: "busy"
+  }
+]);
+
+db.escalation_targets.createIndex({ agent_id: 1 }, { unique: true });
+db.escalation_targets.createIndex({ availability: 1 });
+
 // Print summary
 print("=== Support Data Loaded ===");
 print("Tickets: " + db.tickets.countDocuments());
+print("Escalation targets: " + db.escalation_targets.countDocuments());
 print("Summary records: " + db.ticket_summary.countDocuments());
 print("");
 print("Status breakdown:");

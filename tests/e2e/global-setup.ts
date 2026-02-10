@@ -325,9 +325,10 @@ export default async function globalSetup(): Promise<void> {
     return;
   }
 
-  const keycloakUrl = KEYCLOAK_URLS[ENV];
+  // Allow CI or custom environments to override the Keycloak URL via env var
+  const keycloakUrl = process.env.KEYCLOAK_URL || KEYCLOAK_URLS[ENV];
   if (!keycloakUrl) {
-    console.log(`[globalSetup] Unknown environment: ${ENV} — skipping`);
+    console.log(`[globalSetup] Unknown environment: ${ENV} and no KEYCLOAK_URL set — skipping`);
     return;
   }
 

@@ -47,3 +47,16 @@ export {
   GetPayrollSummaryInputSchema,
   PayrollSummary,
 } from './get-payroll-summary';
+export {
+  calculateEarnings,
+  CalculateEarningsInput,
+  CalculateEarningsInputSchema,
+  EmployeeEarnings,
+} from './calculate-earnings';
+export {
+  createPayRun,
+  executeCreatePayRun,
+  CreatePayRunInput,
+  CreatePayRunInputSchema,
+  CreatePayRunResult,
+} from './create-pay-run';

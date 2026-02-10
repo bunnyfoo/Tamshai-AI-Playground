@@ -684,6 +684,212 @@ async function listLeads(input: any, userContext: UserContext): Promise<MCPToolR
 }
 
 // =============================================================================
+// TOOL: get_lead
+// =============================================================================
+
+const GetLeadInputSchema = z.object({
+  leadId: z.string(),
+});
+
+async function getLead(input: any, userContext: UserContext): Promise<MCPToolResponse<any>> {
+  return withErrorHandling('get_lead', async () => {
+    const { leadId } = GetLeadInputSchema.parse(input);
+
+    const collection = await getCollection('leads');
+    const roleFilter = buildRoleFilter(userContext);
+
+    const lead = await collection.findOne({ ...roleFilter, _id: new ObjectId(leadId) });
+
+    if (!lead) {
+      return createErrorResponse(
+        'LEAD_NOT_FOUND',
+        `Lead with ID ${leadId} not found.`,
+        'Use list_leads tool to find valid lead IDs, or verify the ID format is correct (ObjectId expected).'
+      );
+    }
+
+    const leadData = {
+      ...lead,
+      _id: lead._id.toString(),
+      id: lead._id.toString(),
+      converted_deal_id: lead.converted_deal_id?.toString(),
+    };
+
+    return createSuccessResponse(leadData);
+  }) as Promise<MCPToolResponse<any>>;
+}
+
+// =============================================================================
+// TOOL: convert_lead (v1.5 with confirmation)
+// =============================================================================
+
+const ConvertLeadInputSchema = z.object({
+  leadId: z.string(),
+  opportunity: z.object({
+    title: z.string(),
+    value: z.number(),
+    stage: z.string().default('QUALIFICATION'),
+    expectedCloseDate: z.string(),
+    probability: z.number().min(0).max(100).default(50),
+  }),
+  customer: z.object({
+    action: z.enum(['create', 'link']),
+    companyName: z.string().optional(),
+    industry: z.string().optional(),
+    customerId: z.string().optional(),
+  }),
+});
+
+function hasWritePermission(roles: string[]): boolean {
+  return roles.includes('sales-write') || roles.includes('executive');
+}
+
+async function convertLead(input: any, userContext: UserContext): Promise<MCPToolResponse<any>> {
+  return withErrorHandling('convert_lead', async () => {
+    if (!hasWritePermission(userContext.roles)) {
+      return handleInsufficientPermissions('sales-write or executive', userContext.roles);
+    }
+
+    const { leadId, opportunity, customer } = ConvertLeadInputSchema.parse(input);
+
+    const collection = await getCollection('leads');
+    const roleFilter = buildRoleFilter(userContext);
+
+    const lead = await collection.findOne({ ...roleFilter, _id: new ObjectId(leadId) });
+
+    if (!lead) {
+      return createErrorResponse(
+        'LEAD_NOT_FOUND',
+        `Lead with ID ${leadId} not found.`,
+        'Use list_leads tool to find valid lead IDs.'
+      );
+    }
+
+    if (lead.status !== 'QUALIFIED') {
+      return createErrorResponse(
+        'INVALID_LEAD_STATUS',
+        `Lead status is "${lead.status}" but must be "QUALIFIED" to convert.`,
+        'Only leads with status QUALIFIED can be converted. Use list_leads with status=QUALIFIED to find convertible leads.'
+      );
+    }
+
+    const confirmationId = uuidv4();
+    const confirmationData = {
+      action: 'convert_lead',
+      mcpServer: 'sales',
+      userId: userContext.userId,
+      timestamp: Date.now(),
+      leadId,
+      leadCompany: lead.company,
+      leadContact: lead.contact?.name,
+      opportunity,
+      customer,
+    };
+
+    await storePendingConfirmation(confirmationId, confirmationData, 300);
+
+    const message = `⚠️ Convert lead "${lead.company}" to opportunity?
+
+Lead: ${lead.company} (${lead.contact?.name || 'Unknown contact'})
+Score: ${lead.score?.total || 'N/A'}
+
+New Opportunity: ${opportunity.title}
+Value: $${opportunity.value.toLocaleString()}
+Stage: ${opportunity.stage}
+
+Customer: ${customer.action === 'create' ? `Create new (${customer.companyName || lead.company})` : `Link to existing (${customer.customerId})`}
+
+This will update the lead status to CONVERTED and create the associated records.`;
+
+    return createPendingConfirmationResponse(confirmationId, message, confirmationData);
+  }) as Promise<MCPToolResponse<any>>;
+}
+
+async function executeConvertLead(confirmationData: Record<string, unknown>, userContext: UserContext): Promise<MCPToolResponse<any>> {
+  return withErrorHandling('execute_convert_lead', async () => {
+    const leadId = confirmationData.leadId as string;
+    const opportunityInput = confirmationData.opportunity as any;
+    const customerInput = confirmationData.customer as any;
+
+    const leadsCollection = await getCollection('leads');
+    const dealsCollection = await getCollection('deals');
+    const customersCollection = await getCollection('customers');
+    const roleFilter = buildRoleFilter(userContext);
+
+    // Verify lead still exists and is QUALIFIED
+    const lead = await leadsCollection.findOne({ ...roleFilter, _id: new ObjectId(leadId) });
+    if (!lead || lead.status !== 'QUALIFIED') {
+      return createErrorResponse(
+        'LEAD_NOT_FOUND',
+        'Lead no longer available or status changed.',
+        'The lead may have been modified since confirmation was requested.'
+      );
+    }
+
+    // Handle customer (create or link)
+    let customerId: ObjectId;
+    if (customerInput.action === 'create') {
+      const newCustomer = {
+        company_name: customerInput.companyName || lead.company,
+        industry: customerInput.industry || lead.industry || 'Unknown',
+        status: 'ACTIVE',
+        contacts: lead.contact ? [{
+          _id: new ObjectId(),
+          name: lead.contact.name,
+          email: lead.contact.email,
+          phone: lead.contact.phone,
+          title: lead.contact.title,
+        }] : [],
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      const insertResult = await customersCollection.insertOne(newCustomer);
+      customerId = insertResult.insertedId;
+    } else {
+      customerId = new ObjectId(customerInput.customerId);
+    }
+
+    // Create opportunity
+    const newDeal = {
+      deal_name: opportunityInput.title,
+      customer_id: customerId,
+      stage: opportunityInput.stage,
+      value: opportunityInput.value,
+      currency: 'USD',
+      probability: opportunityInput.probability,
+      expected_close_date: new Date(opportunityInput.expectedCloseDate),
+      deal_type: 'new_business',
+      owner: userContext.username,
+      created_at: new Date(),
+      updated_at: new Date(),
+      source_lead_id: new ObjectId(leadId),
+    };
+    const dealResult = await dealsCollection.insertOne(newDeal);
+
+    // Update lead status to CONVERTED
+    await leadsCollection.updateOne(
+      { _id: new ObjectId(leadId) },
+      {
+        $set: {
+          status: 'CONVERTED',
+          converted_deal_id: dealResult.insertedId,
+          converted_at: new Date(),
+          updated_at: new Date(),
+        },
+      }
+    );
+
+    return createSuccessResponse({
+      success: true,
+      message: 'Lead converted successfully',
+      leadId,
+      opportunityId: dealResult.insertedId.toString(),
+      customerId: customerId.toString(),
+    });
+  }) as Promise<MCPToolResponse<any>>;
+}
+
+// =============================================================================
 // TOOL: get_forecast (sales forecasting by period)
 // =============================================================================
 
@@ -905,7 +1111,7 @@ app.post('/query', async (req: Request, res: Response) => {
     return;
   }
 
-  res.json({ status: 'success', message: 'MCP Sales Server ready', availableTools: ['list_opportunities', 'list_customers', 'get_customer', 'delete_opportunity'], userRoles: userContext.roles });
+  res.json({ status: 'success', message: 'MCP Sales Server ready', availableTools: ['list_opportunities', 'list_customers', 'get_customer', 'delete_opportunity', 'list_leads', 'get_lead', 'convert_lead', 'get_forecast'], userRoles: userContext.roles });
 });
 
 app.post('/tools/list_opportunities', async (req: Request, res: Response) => {
@@ -1062,6 +1268,48 @@ app.post('/tools/list_leads', async (req: Request, res: Response) => {
   res.json(result);
 });
 
+app.post('/tools/get_lead', async (req: Request, res: Response) => {
+  const { userContext, leadId } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  if (!hasSalesAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Sales access (sales-read, sales-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Sales access permissions.',
+    });
+    return;
+  }
+
+  const result = await getLead({ leadId }, userContext);
+  res.json(result);
+});
+
+app.post('/tools/convert_lead', async (req: Request, res: Response) => {
+  const { userContext, leadId, opportunity, customer } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  if (!hasSalesAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Sales access (sales-read, sales-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Sales access permissions.',
+    });
+    return;
+  }
+
+  const result = await convertLead({ leadId, opportunity, customer }, userContext);
+  res.json(result);
+});
+
 app.post('/tools/get_forecast', async (req: Request, res: Response) => {
   const { userContext, period, owner } = req.body;
   if (!userContext?.userId) {
@@ -1101,6 +1349,9 @@ app.post('/execute', async (req: Request, res: Response) => {
       break;
     case 'delete_customer':
       result = await executeDeleteCustomer(data, userContext);
+      break;
+    case 'convert_lead':
+      result = await executeConvertLead(data, userContext);
       break;
     default:
       result = createErrorResponse('UNKNOWN_ACTION', `Unknown action: ${action}`, 'Check the action name and try again');

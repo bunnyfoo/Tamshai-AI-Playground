@@ -73,7 +73,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
 
         // Wait for wizard to load
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
@@ -90,7 +90,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Lead conversion has 4 steps
@@ -104,7 +104,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await expectPreviousButtonHidden(page);
@@ -117,7 +117,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await expectNextButtonShowsStep(page, 'Account Creation');
@@ -132,7 +132,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001?showBreadcrumbs=true`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001?showBreadcrumbs=true`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await expectBreadcrumbsVisible(page);
@@ -145,7 +145,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001?showBreadcrumbs=true`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001?showBreadcrumbs=true`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         const currentStep = page.locator('[aria-current="step"]');
@@ -159,7 +159,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001?showBreadcrumbs=true`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001?showBreadcrumbs=true`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await expectStepDisabled(page, 'Account Creation');
@@ -173,7 +173,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001?showBreadcrumbs=true`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001?showBreadcrumbs=true`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Complete step 1
@@ -197,7 +197,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await goToNextStep(page);
@@ -213,7 +213,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to step 2
@@ -232,7 +232,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to Account Creation step
@@ -259,7 +259,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to Account Creation (step 2) where company name is required
@@ -285,7 +285,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to Account Creation step
@@ -310,7 +310,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to Account Creation step
@@ -333,7 +333,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to final step (step 4: Review)
@@ -352,7 +352,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to final step
@@ -374,7 +374,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate through all steps
@@ -402,7 +402,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         const cancelButton = page.locator('button:has-text("Cancel")');
@@ -420,7 +420,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to step 2 and enter data
@@ -444,7 +444,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         const wizard = page.locator('[role="dialog"].wizard');
@@ -458,7 +458,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         const main = page.locator('main[role="main"]');
@@ -472,7 +472,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001?showBreadcrumbs=true`);
+        await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/690000000000000000000001?showBreadcrumbs=true`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         const nav = page.locator('nav[aria-label="Wizard progress"]');

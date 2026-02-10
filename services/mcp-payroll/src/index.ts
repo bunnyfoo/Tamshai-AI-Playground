@@ -28,7 +28,13 @@ import {
   GetDirectDepositInput,
   getPayrollSummary,
   GetPayrollSummaryInput,
+  calculateEarnings,
+  CalculateEarningsInput,
+  createPayRun,
+  executeCreatePayRun,
+  CreatePayRunInput,
 } from './tools';
+import { getPendingConfirmation } from './utils/redis';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3106', 10);
@@ -230,6 +236,84 @@ app.post('/tools/get_payroll_summary', async (req: Request, res: Response) => {
   }
 
   const result = await getPayrollSummary(input, userContext);
+  res.json(result);
+});
+
+// Calculate Earnings
+app.post('/tools/calculate_earnings', async (req: Request, res: Response) => {
+  const { userContext, ...input } = req.body as { userContext: UserContext } & CalculateEarningsInput;
+
+  if (!hasPayrollReadAccess(userContext.roles)) {
+    res.json(
+      handleInsufficientPermissions('calculate_earnings', [
+        'payroll-read',
+        'payroll-write',
+        'executive',
+      ])
+    );
+    return;
+  }
+
+  const result = await calculateEarnings(input, userContext);
+  res.json(result);
+});
+
+// Create Pay Run
+app.post('/tools/create_pay_run', async (req: Request, res: Response) => {
+  const { userContext, ...input } = req.body as { userContext: UserContext } & CreatePayRunInput;
+
+  if (!hasPayrollWriteAccess(userContext.roles)) {
+    res.json(
+      handleInsufficientPermissions('create_pay_run', ['payroll-write', 'executive'])
+    );
+    return;
+  }
+
+  const result = await createPayRun(input, userContext);
+  res.json(result);
+});
+
+// Execute confirmed actions
+app.post('/execute', async (req: Request, res: Response) => {
+  const { confirmationId, userContext } = req.body;
+
+  if (!userContext?.userId) {
+    res.status(400).json({
+      status: 'error',
+      code: 'MISSING_USER_CONTEXT',
+      message: 'User context is required',
+      suggestedAction: 'Provide userContext with userId and roles.',
+    });
+    return;
+  }
+
+  const confirmationData = await getPendingConfirmation(confirmationId);
+  if (!confirmationData) {
+    res.status(404).json({
+      status: 'error',
+      code: 'CONFIRMATION_NOT_FOUND',
+      message: 'Confirmation expired or not found',
+      suggestedAction: 'The confirmation has expired (5-minute TTL). Please initiate the action again.',
+    });
+    return;
+  }
+
+  const action = confirmationData.action as string;
+  let result;
+
+  switch (action) {
+    case 'create_pay_run':
+      result = await executeCreatePayRun(confirmationData, userContext);
+      break;
+    default:
+      result = {
+        status: 'error' as const,
+        code: 'UNKNOWN_ACTION',
+        message: `Unknown action: ${action}`,
+        suggestedAction: 'Check the action name and try again.',
+      };
+  }
+
   res.json(result);
 });
 

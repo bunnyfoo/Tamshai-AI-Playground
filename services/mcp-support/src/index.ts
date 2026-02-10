@@ -740,6 +740,209 @@ async function getAgentMetrics(input: any, userContext: UserContext): Promise<MC
 }
 
 // =============================================================================
+// TOOL: get_escalation_targets (available agents for ticket escalation)
+// =============================================================================
+
+interface EscalationTarget {
+  id: string;
+  name: string;
+  role: string;
+  current_workload: number;
+  availability: 'available' | 'busy' | 'offline';
+}
+
+async function getEscalationTargets(userContext: UserContext): Promise<MCPToolResponse<EscalationTarget[]>> {
+  try {
+    const collection = await getCollection('escalation_targets');
+
+    const targets = await collection
+      .find({})
+      .sort({ current_workload: 1 })
+      .toArray();
+
+    const results: EscalationTarget[] = targets.map((t: any) => ({
+      id: t.agent_id || t._id.toString(),
+      name: t.name,
+      role: t.role,
+      current_workload: t.current_workload,
+      availability: t.availability,
+    }));
+
+    return createSuccessResponse(results);
+  } catch (error: any) {
+    logger.error('get_escalation_targets error:', error);
+    return createErrorResponse(
+      'DATABASE_ERROR',
+      'Failed to get escalation targets',
+      'Please try again or contact support',
+      { errorMessage: error.message }
+    );
+  }
+}
+
+// =============================================================================
+// TOOL: escalate_ticket (v1.5 with confirmation)
+// =============================================================================
+
+const EscalateTicketInputSchema = z.object({
+  ticketId: z.string(),
+  escalation_level: z.enum(['tier2', 'management']),
+  target_id: z.string().optional(),
+  reason: z.string(),
+  notes: z.string().optional(),
+});
+
+function hasEscalatePermission(roles: string[]): boolean {
+  return roles.includes('support-write') || roles.includes('executive');
+}
+
+async function escalateTicket(input: any, userContext: UserContext): Promise<MCPToolResponse<any>> {
+  try {
+    if (!hasEscalatePermission(userContext.roles)) {
+      return createErrorResponse(
+        'INSUFFICIENT_PERMISSIONS',
+        `This operation requires "support-write or executive" role. You have: ${userContext.roles.join(', ')}`,
+        'Please contact your administrator if you need additional permissions.',
+        { requiredRole: 'support-write or executive', userRoles: userContext.roles }
+      );
+    }
+
+    const { ticketId, escalation_level, target_id, reason, notes } = EscalateTicketInputSchema.parse(input);
+
+    if (escalation_level === 'tier2' && !target_id) {
+      return createErrorResponse(
+        'MISSING_TARGET',
+        'target_id is required for tier2 escalation.',
+        'Use get_escalation_targets to find available agents, then provide the target agent ID.'
+      );
+    }
+
+    // Fetch ticket from backend
+    const ticket = await backend.getTicketById(ticketId);
+
+    if (!ticket) {
+      return createErrorResponse(
+        'TICKET_NOT_FOUND',
+        `Ticket with ID "${ticketId}" was not found`,
+        'Please verify the ticket ID using search_tickets tool to find valid ticket IDs.',
+        { ticketId }
+      );
+    }
+
+    // Build escalation summary
+    let targetName = 'Management Team';
+    if (escalation_level === 'tier2' && target_id) {
+      const targetsCollection = await getCollection('escalation_targets');
+      const target = await targetsCollection.findOne({ agent_id: target_id });
+      targetName = target?.name || target_id;
+    }
+
+    const confirmationId = uuidv4();
+    const confirmationData = {
+      action: 'escalate_ticket',
+      mcpServer: 'support',
+      userId: userContext.userId,
+      timestamp: Date.now(),
+      ticketId,
+      ticketTitle: ticket.title,
+      currentPriority: ticket.priority,
+      currentAssignee: ticket.assigned_to,
+      escalation_level,
+      target_id: target_id || null,
+      targetName,
+      reason,
+      notes: notes || null,
+    };
+
+    await storePendingConfirmation(confirmationId, confirmationData, 300);
+
+    const newPriority = escalation_level === 'management' ? 'critical' : 'high';
+    const message = `⚠️ Escalate ticket "${ticket.title}"?
+
+Ticket: ${ticketId}
+Current Priority: ${ticket.priority} → ${newPriority}
+Current Assignee: ${ticket.assigned_to || 'Unassigned'}
+Escalation Level: ${escalation_level}
+Reassign To: ${targetName}
+Reason: ${reason}
+${notes ? `Notes: ${notes}` : ''}
+
+This will update the ticket priority and reassign it to the escalation target.`;
+
+    return createPendingConfirmationResponse(confirmationId, message, confirmationData);
+  } catch (error: any) {
+    logger.error('escalate_ticket error:', error);
+    return createErrorResponse(
+      'DATABASE_ERROR',
+      'Failed to escalate ticket',
+      'Please try again or contact support',
+      { errorMessage: error.message }
+    );
+  }
+}
+
+async function executeEscalateTicket(
+  confirmationData: Record<string, unknown>,
+  userContext: UserContext
+): Promise<MCPToolResponse<any>> {
+  try {
+    const ticketId = confirmationData.ticketId as string;
+    const escalation_level = confirmationData.escalation_level as string;
+    const target_id = confirmationData.target_id as string | null;
+    const targetName = confirmationData.targetName as string;
+    const reason = confirmationData.reason as string;
+    const notes = confirmationData.notes as string | null;
+
+    const newPriority = escalation_level === 'management' ? 'critical' : 'high';
+
+    const updateData: Record<string, any> = {
+      priority: newPriority,
+      escalated_at: new Date().toISOString(),
+      escalated_by: userContext.userId,
+      escalation_level,
+      escalation_reason: reason,
+    };
+
+    if (target_id) {
+      updateData.assigned_to = targetName;
+    }
+
+    if (notes) {
+      updateData.escalation_notes = notes;
+    }
+
+    const updated = await backend.updateTicket(ticketId, updateData);
+
+    if (!updated) {
+      return createErrorResponse(
+        'TICKET_NOT_FOUND',
+        `Ticket with ID "${ticketId}" was not found`,
+        'The ticket may have been deleted.',
+        { ticketId }
+      );
+    }
+
+    return createSuccessResponse({
+      success: true,
+      message: `Ticket has been escalated to ${escalation_level}`,
+      ticketId,
+      escalation_level,
+      new_priority: newPriority,
+      assigned_to: targetName,
+      escalated_at: updateData.escalated_at,
+    });
+  } catch (error: any) {
+    logger.error('execute_escalate_ticket error:', error);
+    return createErrorResponse(
+      'DATABASE_ERROR',
+      'Failed to execute escalate ticket',
+      'Please try again or contact support',
+      { errorMessage: error.message }
+    );
+  }
+}
+
+// =============================================================================
 // ENDPOINTS
 // =============================================================================
 
@@ -810,7 +1013,7 @@ app.post('/query', async (req: Request, res: Response) => {
     return;
   }
 
-  res.json({ status: 'success', message: 'MCP Support Server ready', availableTools: ['search_tickets', 'search_knowledge_base', 'close_ticket'], userRoles: userContext.roles });
+  res.json({ status: 'success', message: 'MCP Support Server ready', availableTools: ['search_tickets', 'search_knowledge_base', 'close_ticket', 'get_escalation_targets', 'escalate_ticket', 'get_sla_summary', 'get_sla_tickets', 'get_agent_metrics'], userRoles: userContext.roles });
 });
 
 app.post('/tools/search_tickets', async (req: Request, res: Response) => {
@@ -967,6 +1170,48 @@ app.post('/tools/get_agent_metrics', async (req: Request, res: Response) => {
   res.json(result);
 });
 
+app.post('/tools/get_escalation_targets', async (req: Request, res: Response) => {
+  const { userContext } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  if (!hasSupportAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Support access (support-read, support-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Support access permissions.',
+    });
+    return;
+  }
+
+  const result = await getEscalationTargets(userContext);
+  res.json(result);
+});
+
+app.post('/tools/escalate_ticket', async (req: Request, res: Response) => {
+  const { userContext, ticketId, escalation_level, target_id, reason, notes } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  if (!hasSupportAccess(userContext.roles)) {
+    res.status(403).json({
+      status: 'error',
+      code: 'INSUFFICIENT_PERMISSIONS',
+      message: `Access denied. This operation requires Support access (support-read, support-write, or executive role). You have: ${userContext.roles.join(', ')}`,
+      suggestedAction: 'Contact your administrator to request Support access permissions.',
+    });
+    return;
+  }
+
+  const result = await escalateTicket({ ticketId, escalation_level, target_id, reason, notes }, userContext);
+  res.json(result);
+});
+
 app.post('/execute', async (req: Request, res: Response) => {
   const { action, data, userContext } = req.body;
   if (!userContext?.userId) {
@@ -978,6 +1223,9 @@ app.post('/execute', async (req: Request, res: Response) => {
   switch (action) {
     case 'close_ticket':
       result = await executeCloseTicket(data, userContext);
+      break;
+    case 'escalate_ticket':
+      result = await executeEscalateTicket(data, userContext);
       break;
     // Customer actions (require customer context)
     case 'invite_contact': {
