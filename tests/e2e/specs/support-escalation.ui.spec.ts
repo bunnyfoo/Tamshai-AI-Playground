@@ -35,11 +35,7 @@ test.describe('Support Ticket Escalation Flow', () => {
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
-    await warmUpContext(
-      authenticatedContext,
-      SLA_PAGE_URL,
-      '[data-testid="sla-tickets-table"], [data-testid="empty-state"], [data-testid="error-state"], [data-testid="sla-loading"]',
-    );
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/support/`);
     snapshotId = await createDatabaseSnapshot();
   });
 

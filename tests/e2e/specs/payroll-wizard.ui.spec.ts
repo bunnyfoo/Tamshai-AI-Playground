@@ -51,7 +51,7 @@ test.describe('Payroll Run Wizard', () => {
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
-    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/payroll/pay-runs/new`);
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/payroll/`);
     snapshotId = await createDatabaseSnapshot();
   });
 

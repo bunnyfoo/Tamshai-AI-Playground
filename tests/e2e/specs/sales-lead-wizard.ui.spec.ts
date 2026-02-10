@@ -56,7 +56,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
-    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/sales/`);
     snapshotId = await createDatabaseSnapshot();
   });
 

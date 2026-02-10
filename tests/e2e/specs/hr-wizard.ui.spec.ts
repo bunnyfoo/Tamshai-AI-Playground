@@ -49,7 +49,7 @@ test.describe('HR Time-Off Request Wizard', () => {
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
-    await warmUpContext(authenticatedContext, HR_TIME_OFF_URL);
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/hr/`);
     snapshotId = await createDatabaseSnapshot();
   });
 

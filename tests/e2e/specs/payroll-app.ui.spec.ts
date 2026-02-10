@@ -232,21 +232,17 @@ test.describe('Payroll App E2E Tests', () => {
 });
 
 test.describe('Payroll User Journeys', () => {
-  let journeyContext: BrowserContext | null = null;
-
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
-    journeyContext = await createAuthenticatedContext(browser);
-    await warmUpContext(journeyContext, `${PAYROLL_URL}/`);
-  });
-
-  test.afterAll(async () => {
-    await journeyContext?.close();
+    if (!authenticatedContext) {
+      authenticatedContext = await createAuthenticatedContext(browser);
+      await warmUpContext(authenticatedContext, `${PAYROLL_URL}/`);
+    }
   });
 
   test('Scenario: Employee views their pay stub', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!authenticatedContext, 'No test credentials configured');
+    const page = await authenticatedContext!.newPage();
 
     try {
       // Navigate to pay stubs
@@ -269,8 +265,8 @@ test.describe('Payroll User Journeys', () => {
   });
 
   test('Scenario: Admin creates a new pay run', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!authenticatedContext, 'No test credentials configured');
+    const page = await authenticatedContext!.newPage();
 
     try {
       // Navigate to pay runs

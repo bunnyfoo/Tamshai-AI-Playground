@@ -528,24 +528,26 @@ test.describe('Tax App E2E Tests', () => {
   });
 });
 
-// --- Block 2: User Journeys (separate auth context, >30s after Block 1) ---
+// --- Block 2: User Journeys (reuses shared auth context) ---
+
+let sharedJourneyContext: BrowserContext | null = null;
 
 test.describe('Tax User Journeys', () => {
-  let journeyContext: BrowserContext | null = null;
-
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
-    journeyContext = await createAuthenticatedContext(browser);
-    await warmUpContext(journeyContext, `${TAX_URL}/`);
+    if (!sharedJourneyContext) {
+      sharedJourneyContext = await createAuthenticatedContext(browser);
+      await warmUpContext(sharedJourneyContext, `${TAX_URL}/`);
+    }
   });
 
   test.afterAll(async () => {
-    await journeyContext?.close();
+    await sharedJourneyContext?.close();
   });
 
   test('Scenario: Finance user reviews quarterly tax estimates', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!sharedJourneyContext, 'No test credentials configured');
+    const page = await sharedJourneyContext!.newPage();
 
     try {
       await page.goto(`${TAX_URL}/quarterly`);
@@ -561,8 +563,8 @@ test.describe('Tax User Journeys', () => {
   });
 
   test('Scenario: Tax accountant checks annual filings status', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!sharedJourneyContext, 'No test credentials configured');
+    const page = await sharedJourneyContext!.newPage();
 
     try {
       await page.goto(`${TAX_URL}/filings`);
@@ -581,8 +583,8 @@ test.describe('Tax User Journeys', () => {
   });
 
   test('Scenario: Compliance officer reviews audit log', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!sharedJourneyContext, 'No test credentials configured');
+    const page = await sharedJourneyContext!.newPage();
 
     try {
       await page.goto(`${TAX_URL}/audit-log`);
@@ -598,8 +600,8 @@ test.describe('Tax User Journeys', () => {
   });
 
   test('Scenario: User asks AI about sales tax rates', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!sharedJourneyContext, 'No test credentials configured');
+    const page = await sharedJourneyContext!.newPage();
 
     try {
       await page.goto(`${TAX_URL}/ai-query`);
@@ -619,8 +621,8 @@ test.describe('Tax User Journeys', () => {
   });
 
   test('Scenario: User views state tax registration details', async () => {
-    test.skip(!journeyContext, 'No test credentials configured');
-    const page = await journeyContext!.newPage();
+    test.skip(!sharedJourneyContext, 'No test credentials configured');
+    const page = await sharedJourneyContext!.newPage();
 
     try {
       await page.goto(`${TAX_URL}/registrations`);

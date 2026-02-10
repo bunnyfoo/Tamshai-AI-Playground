@@ -50,7 +50,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
-    await warmUpContext(authenticatedContext, INVOICES_URL);
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/finance/`);
     snapshotId = await createDatabaseSnapshot();
   });
 

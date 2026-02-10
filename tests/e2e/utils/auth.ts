@@ -202,13 +202,19 @@ export async function createAuthenticatedContext(browser: Browser): Promise<Brow
 export async function warmUpContext(
   ctx: BrowserContext,
   url: string,
-  selectors: string = '[data-testid], .page-container',
+  selectors: string = '[data-testid], .page-container, h1, h2',
 ): Promise<void> {
   const warmup = await ctx.newPage();
   try {
     await warmup.goto(url, { timeout: 60000 });
     // Wait for the app to fully render (after potential OIDC redirect cycle)
-    await warmup.waitForSelector(selectors, { timeout: 45000 });
+    try {
+      await warmup.waitForSelector(selectors, { timeout: 45000 });
+    } catch {
+      // Selector wait failed, but OIDC redirect may have completed.
+      // Wait a bit more for tokens to settle in sessionStorage.
+      await warmup.waitForTimeout(3000);
+    }
 
     // Re-capture sessionStorage which now contains app-specific OIDC tokens
     const sessionData = await warmup.evaluate(() => {
