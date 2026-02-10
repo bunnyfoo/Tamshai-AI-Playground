@@ -3,6 +3,7 @@
  *
  * Shows state-by-state sales tax rates.
  */
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
 import { TruncationWarning } from '@tamshai/ui';
@@ -22,6 +23,7 @@ function formatDate(dateString: string): string {
 
 export function SalesTaxPage() {
   const { getAccessToken } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data: response, isLoading, error } = useQuery({
     queryKey: ['sales-tax-rates'],
@@ -38,9 +40,17 @@ export function SalesTaxPage() {
     },
   });
 
-  const rates = response?.data || [];
+  const allRates = response?.data || [];
   const truncated = response?.metadata?.truncated;
   const warning = response?.metadata?.warning;
+
+  const rates = searchTerm
+    ? allRates.filter(
+        (rate) =>
+          rate.state.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          rate.stateCode.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : allRates;
 
   return (
     <div className="space-y-6">
@@ -56,6 +66,21 @@ export function SalesTaxPage() {
       {!isLoading && !error && (
         <>
           {truncated && warning && <TruncationWarning message={warning} />}
+
+          <div className="flex items-center gap-4">
+            <input
+              type="search"
+              placeholder="Search states..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+            {searchTerm && (
+              <span className="text-sm text-gray-500">
+                {rates.length} of {allRates.length} states
+              </span>
+            )}
+          </div>
 
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">

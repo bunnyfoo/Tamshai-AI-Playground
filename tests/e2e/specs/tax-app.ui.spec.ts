@@ -26,11 +26,11 @@ const ENV = process.env.TEST_ENV || 'dev';
 const BASE_URLS: Record<string, { site: string; tax: string }> = {
   dev: {
     site: 'https://www.tamshai-playground.local:8443',
-    tax: 'https://www.tamshai-playground.local:8443/app/tax',
+    tax: 'https://www.tamshai-playground.local:8443/tax',
   },
   stage: {
     site: 'https://www.tamshai.com',
-    tax: 'https://www.tamshai.com/app/tax',
+    tax: 'https://www.tamshai.com/tax',
   },
 };
 

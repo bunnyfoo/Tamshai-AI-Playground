@@ -61,7 +61,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await expectWizardStepActive(page, 'Pay Period');
@@ -75,7 +75,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         expect(await getTotalSteps(page)).toBe(4);
@@ -88,7 +88,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new?showBreadcrumbs=true`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new?showBreadcrumbs=true`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         await expectBreadcrumbsVisible(page);
@@ -106,7 +106,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         const startDate = page.locator('[data-testid="pay-period-start"]');
@@ -123,7 +123,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Clear dates
@@ -145,7 +145,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Fill valid dates
@@ -167,7 +167,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Go to Earnings step
@@ -187,7 +187,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Earnings step
@@ -208,7 +208,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Earnings step
@@ -234,7 +234,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Deductions step
@@ -258,7 +258,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Deductions step
@@ -280,7 +280,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Deductions step
@@ -303,7 +303,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Review step
@@ -328,7 +328,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Review step
@@ -348,7 +348,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Review step
@@ -374,7 +374,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Review step
@@ -402,7 +402,7 @@ test.describe('Payroll Run Wizard', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Review step
@@ -429,7 +429,7 @@ test.describe('Payroll Run Wizard', () => {
       const page = await authenticatedContext!.newPage();
       try {
         // Navigate to a pay run with known issues
-        await page.goto(`${BASE_URLS[ENV]}/app/payroll/pay-runs/new?simulate=missing-ssn`);
+        await page.goto(`${BASE_URLS[ENV]}/payroll/pay-runs/new?simulate=missing-ssn`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to Review step

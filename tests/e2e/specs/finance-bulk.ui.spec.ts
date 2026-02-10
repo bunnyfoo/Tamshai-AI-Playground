@@ -34,7 +34,7 @@ import {
   TEST_USER,
 } from '../utils';
 
-const INVOICES_URL = `${BASE_URLS[ENV]}/app/finance/invoices`;
+const INVOICES_URL = `${BASE_URLS[ENV]}/finance/invoices`;
 
 let authenticatedContext: BrowserContext | null = null;
 

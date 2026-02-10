@@ -211,6 +211,7 @@ function CreateOpportunityStep({ data, updateData, errors }: WizardStepProps) {
         <input
           type="text"
           id="opportunityTitle"
+          data-testid="account-name"
           value={typedData.opportunityTitle || ''}
           onChange={(e) => updateData({ opportunityTitle: e.target.value })}
           className="input"
@@ -561,7 +562,7 @@ export default function LeadConversionWizard({
     () => [
       {
         id: 'verify',
-        title: 'Verify Lead',
+        title: 'Lead Selection',
         description: 'Review and confirm lead information',
         component: (props: WizardStepProps) => (
           <VerifyLeadStep {...props} lead={lead} />
@@ -569,7 +570,7 @@ export default function LeadConversionWizard({
       },
       {
         id: 'opportunity',
-        title: 'Create Opportunity',
+        title: 'Account Creation',
         description: 'Set up the new opportunity',
         component: CreateOpportunityStep,
         validate: (data: Record<string, unknown>): ValidationResult => {
@@ -582,7 +583,7 @@ export default function LeadConversionWizard({
       },
       {
         id: 'customer',
-        title: 'Customer',
+        title: 'Contact Creation',
         description: 'Create or select customer',
         component: CustomerSelectionStep,
         validate: (data: Record<string, unknown>): ValidationResult => {

@@ -24,7 +24,7 @@ import {
   TEST_USER,
 } from '../utils';
 
-const SLA_PAGE_URL = `${BASE_URLS[ENV]}/app/support/sla`;
+const SLA_PAGE_URL = `${BASE_URLS[ENV]}/support/sla`;
 
 let authenticatedContext: BrowserContext | null = null;
 

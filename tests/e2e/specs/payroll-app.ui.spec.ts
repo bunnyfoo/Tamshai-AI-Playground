@@ -24,11 +24,11 @@ const ENV = process.env.TEST_ENV || 'dev';
 const BASE_URLS: Record<string, { site: string; payroll: string }> = {
   dev: {
     site: 'https://www.tamshai-playground.local:8443',
-    payroll: 'https://www.tamshai-playground.local:8443/app/payroll',
+    payroll: 'https://www.tamshai-playground.local:8443/payroll',
   },
   stage: {
     site: 'https://www.tamshai.com',
-    payroll: 'https://www.tamshai.com/app/payroll',
+    payroll: 'https://www.tamshai.com/payroll',
   },
 };
 

@@ -118,6 +118,7 @@ function PayPeriodStep({ data, updateData, errors }: WizardStepProps) {
           </label>
           <input
             id="period-start"
+            data-testid="pay-period-start"
             type="date"
             value={periodStart}
             onChange={(e) => updateData({ periodStart: e.target.value })}
@@ -139,6 +140,7 @@ function PayPeriodStep({ data, updateData, errors }: WizardStepProps) {
           </label>
           <input
             id="period-end"
+            data-testid="pay-period-end"
             type="date"
             value={periodEnd}
             onChange={(e) => updateData({ periodEnd: e.target.value })}
@@ -246,7 +248,7 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
       </p>
 
       <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-        <table className="min-w-full divide-y divide-secondary-200">
+        <table className="min-w-full divide-y divide-secondary-200" data-testid="earnings-table">
           <thead className="bg-secondary-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-secondary-500 uppercase">
@@ -289,7 +291,7 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
             ))}
           </tbody>
           <tfoot className="bg-secondary-100">
-            <tr>
+            <tr data-testid="total-gross-pay">
               <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-secondary-900">
                 Total Gross Pay
               </td>
@@ -361,29 +363,29 @@ function DeductionsStep({ data, updateData }: WizardStepProps) {
       </p>
 
       {/* Tax Withholdings */}
-      <div className="bg-white rounded-lg border border-secondary-200 p-4">
+      <div className="bg-white rounded-lg border border-secondary-200 p-4" data-testid="tax-withholdings-table">
         <h3 className="font-semibold text-secondary-900 mb-4">Tax Withholdings</h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-secondary-100">
-            <span className="text-secondary-700">Federal Tax</span>
+            <span className="text-secondary-700">Federal Income Tax</span>
             <span className="font-medium text-secondary-900">
               {formatCurrency(deductions.federalTax)}
             </span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-secondary-100">
-            <span className="text-secondary-700">State Tax</span>
+            <span className="text-secondary-700">State Income Tax</span>
             <span className="font-medium text-secondary-900">
               {formatCurrency(deductions.stateTax)}
             </span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-secondary-100">
-            <span className="text-secondary-700">Social Security (6.2%)</span>
+            <span className="text-secondary-700">FICA — Social Security (6.2%)</span>
             <span className="font-medium text-secondary-900">
               {formatCurrency(deductions.socialSecurity)}
             </span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <span className="text-secondary-700">Medicare (1.45%)</span>
+            <span className="text-secondary-700">FICA — Medicare (1.45%)</span>
             <span className="font-medium text-secondary-900">
               {formatCurrency(deductions.medicare)}
             </span>
@@ -425,11 +427,17 @@ function DeductionsStep({ data, updateData }: WizardStepProps) {
       </div>
 
       {/* Summary */}
-      <div className="bg-secondary-100 rounded-lg p-4">
+      <div className="bg-secondary-100 rounded-lg p-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="font-semibold text-secondary-900">Total Employee Deductions</span>
           <span className="font-bold text-xl text-secondary-900">
             {formatCurrency(totalDeductions)}
+          </span>
+        </div>
+        <div className="flex justify-between items-center pt-3 border-t border-secondary-300" data-testid="total-net-pay">
+          <span className="font-semibold text-secondary-900">Estimated Net Pay</span>
+          <span className="font-bold text-xl text-primary-900">
+            {formatCurrency(totalGross - totalDeductions)}
           </span>
         </div>
       </div>
@@ -464,7 +472,7 @@ function ReviewStep({ data }: WizardStepProps) {
   const totalNet = totalGross - totalDeductions;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="payroll-summary">
       <p className="text-secondary-600">
         Review the pay run summary before processing. Once submitted, payroll will be processed.
       </p>

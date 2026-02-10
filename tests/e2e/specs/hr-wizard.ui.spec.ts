@@ -37,7 +37,7 @@ import {
   TEST_USER,
 } from '../utils';
 
-const HR_TIME_OFF_URL = `${BASE_URLS[ENV]}/app/hr/time-off`;
+const HR_TIME_OFF_URL = `${BASE_URLS[ENV]}/hr/time-off`;
 
 let authenticatedContext: BrowserContext | null = null;
 
