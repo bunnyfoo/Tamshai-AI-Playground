@@ -94,18 +94,6 @@ updates:
     commit-message:
       prefix: "deps(terraform)"
 
-  # Terraform - VPS
-  - package-ecosystem: "terraform"
-    directory: "/infrastructure/terraform/vps"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "infrastructure"
-    commit-message:
-      prefix: "deps(terraform-vps)"
-
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"

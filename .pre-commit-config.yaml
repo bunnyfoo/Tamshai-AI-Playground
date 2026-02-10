@@ -26,6 +26,7 @@ repos:
         # Exclude files with non-secret high-entropy strings (hashes, build artifacts)
         exclude: |
           (?x)^(
+            \.secrets\.baseline|
             package-lock\.json|
             pubspec\.lock|
             .*\.turbo/cache/.*|
@@ -71,6 +72,9 @@ repos:
     rev: v1.35.1
     hooks:
       - id: yamllint
+        # Use -X utf8 to fix Python 3.14+ cp1252 encoding crash on Windows
+        # when YAML files contain UTF-8 emoji characters (e.g., ✅ ❌)
+        entry: python -X utf8 -m yamllint
         args: ['-d', '{extends: relaxed, rules: {line-length: {max: 150}}}']
         exclude: 'keycloak/realm-export.*\.json'
 

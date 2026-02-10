@@ -36,11 +36,12 @@ env:
   # Port 8210 is the playground port mapping (8210:8200)
   VAULT_ADDR: http://localhost:8210
   VAULT_TOKEN: dev-root-token
-  CLAUDE_API_KEY: sk-ant-test-key-for-ci
+  CLAUDE_API_KEY: sk-ant-test-key-for-ci  # pragma: allowlist secret
 
 jobs:
   test-vault:
     name: Test Vault Integration
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -63,7 +64,7 @@ jobs:
           DEV_POSTGRES_PASSWORD: ${{ secrets.DEV_POSTGRES_PASSWORD }}
           DEV_KEYCLOAK_DB_PASSWORD: ${{ secrets.DEV_KEYCLOAK_DB_PASSWORD }}
           DEV_MCP_GATEWAY_CLIENT_SECRET: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
-        run: |
+        run: |  # pragma: allowlist secret
           cat > .env << EOF
           # CI Environment - Vault Integration Test
           # All secrets loaded from GitHub Secrets with DEV_ prefix
