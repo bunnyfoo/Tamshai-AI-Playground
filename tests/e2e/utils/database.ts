@@ -144,14 +144,6 @@ export async function createDatabaseSnapshot(
 
     return snapshotId;
   } catch (error) {
-    // If admin API is not available, fall back to mock implementation
-    if (error instanceof Error && error.message.includes('fetch')) {
-      console.warn(`[DB Snapshot] Admin API not available, using mock snapshot`);
-      const mockSnapshotId = `mock-snapshot-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-      console.log(`[DB Snapshot] Created mock snapshot: ${mockSnapshotId} at ${timestamp}`);
-      return mockSnapshotId;
-    }
-
     console.error(`[DB Snapshot] Failed to create snapshot:`, error);
     throw error;
   }
@@ -173,14 +165,6 @@ export async function createDatabaseSnapshot(
  * ```
  */
 export async function rollbackToSnapshot(snapshotId: string): Promise<void> {
-  const timestamp = new Date().toISOString();
-
-  // Skip rollback for mock snapshots
-  if (snapshotId.startsWith('mock-snapshot-')) {
-    console.log(`[DB Rollback] Skipping mock snapshot rollback: ${snapshotId} at ${timestamp}`);
-    return;
-  }
-
   try {
     const response = await adminRequest<RollbackResponse>(
       `/snapshots/${snapshotId}/rollback`,
@@ -194,12 +178,6 @@ export async function rollbackToSnapshot(snapshotId: string): Promise<void> {
     console.log(`[DB Rollback] Restored: ${snapshotId}`);
     console.log(`  Databases: ${response.data?.restoredDatabases?.join(', ')}`);
   } catch (error) {
-    // If admin API is not available, log warning but don't fail
-    if (error instanceof Error && error.message.includes('fetch')) {
-      console.warn(`[DB Rollback] Admin API not available, skipping rollback`);
-      return;
-    }
-
     console.error(`[DB Rollback] Failed to rollback:`, error);
     throw error;
   }
@@ -227,8 +205,8 @@ export async function seedTestData(scenario: string): Promise<void> {
     await adminRequest(`/seed/${scenario}`, { method: 'POST' });
     console.log(`[DB Seed] Completed: ${scenario}`);
   } catch (error) {
-    console.warn(`[DB Seed] Failed to seed data for ${scenario}:`, error);
-    // Don't throw - seeding failure shouldn't block tests
+    console.error(`[DB Seed] Failed to seed data for ${scenario}:`, error);
+    throw error;
   }
 }
 
@@ -254,8 +232,8 @@ export async function clearTestData(domain: string): Promise<void> {
     await adminRequest(`/clear/${domain}`, { method: 'POST' });
     console.log(`[DB Clear] Completed: ${domain}`);
   } catch (error) {
-    console.warn(`[DB Clear] Failed to clear data for ${domain}:`, error);
-    // Don't throw - clearing failure shouldn't block tests
+    console.error(`[DB Clear] Failed to clear data for ${domain}:`, error);
+    throw error;
   }
 }
 
@@ -276,9 +254,8 @@ export async function clearTestData(domain: string): Promise<void> {
  * expect(hashBefore).not.toBe(hashAfter); // Data changed
  * ```
  */
-export async function getDatabaseStateHash(domain: string): Promise<string> {
-  // TODO: Implement actual hash endpoint when needed
-  return `hash-${domain}-${Date.now()}`;
+export async function getDatabaseStateHash(_domain: string): Promise<string> {
+  throw new Error('getDatabaseStateHash() is not implemented. Implement the /hash admin API endpoint first.');
 }
 
 /**
@@ -314,7 +291,7 @@ export async function waitForDatabaseReady(timeout: number = 30000): Promise<voi
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  console.warn(`[DB Health] Timeout after ${timeout}ms - proceeding anyway`);
+  throw new Error(`[DB Health] Database not ready after ${timeout}ms`);
 }
 
 /**
@@ -333,12 +310,6 @@ export async function waitForDatabaseReady(timeout: number = 30000): Promise<voi
  * ```
  */
 export async function deleteSnapshot(snapshotId: string): Promise<void> {
-  // Skip deletion for mock snapshots
-  if (snapshotId.startsWith('mock-snapshot-')) {
-    console.log(`[DB Snapshot] Skipping mock snapshot deletion: ${snapshotId}`);
-    return;
-  }
-
   try {
     await adminRequest(`/snapshots/${snapshotId}`, { method: 'DELETE' });
     console.log(`[DB Snapshot] Deleted: ${snapshotId}`);

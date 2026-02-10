@@ -197,15 +197,6 @@ function PayPeriodStep({ data, updateData, errors }: WizardStepProps) {
   );
 }
 
-// Sample employee data used when the calculate_earnings API is unavailable
-const SAMPLE_EMPLOYEES: EmployeeEarnings[] = [
-  { employee_id: 'emp-001', first_name: 'Alice', last_name: 'Chen', department: 'Engineering', salary: 145000, pay_type: 'salary', hours_worked: 80, gross_pay: 5576.92 },
-  { employee_id: 'emp-002', first_name: 'Bob', last_name: 'Martinez', department: 'Finance', salary: 130000, pay_type: 'salary', hours_worked: 80, gross_pay: 5000.00 },
-  { employee_id: 'emp-003', first_name: 'Carol', last_name: 'Johnson', department: 'Sales', salary: 120000, pay_type: 'salary', hours_worked: 80, gross_pay: 4615.38 },
-  { employee_id: 'emp-004', first_name: 'Dan', last_name: 'Williams', department: 'Support', salary: 95000, pay_type: 'salary', hours_worked: 80, gross_pay: 3653.85 },
-  { employee_id: 'emp-005', first_name: 'Nina', last_name: 'Patel', department: 'Engineering', salary: 0, hourly_rate: 45, pay_type: 'hourly', hours_worked: 80, overtime_hours: 5, gross_pay: 3937.50 },
-];
-
 // Step 2: Earnings Review
 function EarningsStep({ data, updateData }: WizardStepProps) {
   const { getAccessToken } = useAuth();
@@ -225,15 +216,14 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
       );
       if (!response.ok) throw new Error('Failed to fetch employees');
       const result = await response.json();
-      return (result.data as EmployeeEarnings[]) || SAMPLE_EMPLOYEES;
+      return (result.data as EmployeeEarnings[]) || [];
     },
     enabled: Boolean(data.periodStart && data.periodEnd),
   });
 
-  // Use API data, fall back to sample data if API returns nothing or errors
   const resolvedEmployees = employeesData && employeesData.length > 0
     ? employeesData
-    : (data.employees as EmployeeEarnings[]) || SAMPLE_EMPLOYEES;
+    : (data.employees as EmployeeEarnings[]) || [];
 
   // Only update when resolved employees change
   const currentEmployeesJson = JSON.stringify(data.employees || []);
@@ -255,6 +245,19 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-secondary-500">Loading employee earnings...</p>
+      </div>
+    );
+  }
+
+  if (employees.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-warning-50 border border-warning-200 rounded-lg p-4 text-center" data-testid="no-earnings-data">
+          <p className="font-medium text-warning-800">No employee earnings data available</p>
+          <p className="text-sm text-warning-700 mt-1">
+            Ensure the payroll service is running and employee data has been loaded for this pay period.
+          </p>
+        </div>
       </div>
     );
   }
@@ -556,6 +559,15 @@ function ReviewStep({ data }: WizardStepProps) {
       <p className="text-secondary-600">
         Review the pay run summary before processing. Once submitted, payroll will be processed.
       </p>
+
+      {employees.length === 0 && (
+        <div className="bg-warning-50 border border-warning-200 rounded-lg p-4" data-testid="no-employees-warning">
+          <p className="font-medium text-warning-800">No employee earnings data available</p>
+          <p className="text-sm text-warning-700">
+            Ensure the payroll service is running and employee data has been loaded.
+          </p>
+        </div>
+      )}
 
       {/* Pay Period Info */}
       <div className="bg-white rounded-lg border border-secondary-200 p-4">

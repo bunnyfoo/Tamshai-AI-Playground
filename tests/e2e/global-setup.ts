@@ -349,8 +349,12 @@ export default async function globalSetup(): Promise<void> {
     saveTotpSecretToCache(username, ENV, base32ForOtplib);
     console.log(`[globalSetup] Base32 bridge: ${totpSecret.substring(0, 4)}**** → ${base32ForOtplib.substring(0, 8)}****`);
   } catch (error: any) {
-    // Non-fatal: tests fall back to auto-capture if TOTP not provisioned
-    console.log(`[globalSetup] TOTP provisioning failed: ${error.message}`);
-    console.log('[globalSetup] Tests will fall back to auto-capture if needed');
+    // Credentials were explicitly provided — provisioning MUST succeed
+    console.error(`[globalSetup] TOTP provisioning failed: ${error.message}`);
+    throw new Error(
+      `TOTP provisioning failed for test-user.journey. ` +
+      `Keycloak may be unreachable at ${keycloakUrl}. ` +
+      `Original error: ${error.message}`
+    );
   }
 }

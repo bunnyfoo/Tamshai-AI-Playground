@@ -6,15 +6,6 @@ import { ApprovalCard, TruncationWarning, DataTable, ConfirmDialog } from '@tams
 import type { ColumnDef, BulkAction } from '@tamshai/ui';
 import type { Invoice } from '../types';
 
-// Fallback invoice data when API is unavailable
-const SAMPLE_INVOICES: Invoice[] = [
-  { id: 'inv-001', invoice_number: 'INV-2026-001', vendor_name: 'AWS', amount: 12500.00, currency: 'USD', invoice_date: '2026-01-05', due_date: '2026-02-05', paid_date: null, status: 'PENDING', department_code: 'ENG', description: 'Cloud hosting Jan 2026', approved_by: null, approved_at: null, created_at: '2026-01-05T00:00:00Z' },
-  { id: 'inv-002', invoice_number: 'INV-2026-002', vendor_name: 'Google Workspace', amount: 3200.00, currency: 'USD', invoice_date: '2026-01-10', due_date: '2026-02-10', paid_date: null, status: 'PENDING', department_code: 'IT', description: 'Workspace licenses Feb 2026', approved_by: null, approved_at: null, created_at: '2026-01-10T00:00:00Z' },
-  { id: 'inv-003', invoice_number: 'INV-2026-003', vendor_name: 'Stripe', amount: 890.50, currency: 'USD', invoice_date: '2026-01-15', due_date: '2026-02-15', paid_date: null, status: 'PENDING', department_code: 'FIN', description: 'Payment processing fees', approved_by: null, approved_at: null, created_at: '2026-01-15T00:00:00Z' },
-  { id: 'inv-004', invoice_number: 'INV-2026-004', vendor_name: 'WeWork', amount: 8500.00, currency: 'USD', invoice_date: '2026-01-01', due_date: '2026-01-31', paid_date: '2026-01-20', status: 'PAID', department_code: 'OPS', description: 'Office space Jan 2026', approved_by: 'bob.martinez', approved_at: '2026-01-18T00:00:00Z', created_at: '2026-01-01T00:00:00Z' },
-  { id: 'inv-005', invoice_number: 'INV-2026-005', vendor_name: 'Datadog', amount: 4200.00, currency: 'USD', invoice_date: '2026-01-08', due_date: '2026-02-08', paid_date: null, status: 'APPROVED', department_code: 'ENG', description: 'Monitoring platform', approved_by: 'bob.martinez', approved_at: '2026-01-12T00:00:00Z', created_at: '2026-01-08T00:00:00Z' },
-];
-
 /**
  * Invoices Page
  *
@@ -267,9 +258,7 @@ export function InvoicesPage() {
     },
   });
 
-  const invoices = (invoicesResponse?.data && invoicesResponse.data.length > 0)
-    ? invoicesResponse.data
-    : SAMPLE_INVOICES;
+  const invoices = invoicesResponse?.data || [];
   const isTruncated = invoicesResponse?.metadata?.truncated;
 
   // Bulk approve mutation
