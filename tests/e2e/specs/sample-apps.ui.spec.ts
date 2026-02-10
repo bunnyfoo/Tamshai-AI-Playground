@@ -21,269 +21,41 @@
  * See docs/testing/TEST_USER_JOURNEY.md for credential management.
  */
 
-import { test, expect, Page, BrowserContext, Browser } from '@playwright/test';
-import { execSync } from 'child_process';
-import { authenticator } from 'otplib';
-import * as fs from 'fs';
-import * as path from 'path';
-
-// Environment configuration
-const ENV = process.env.TEST_ENV || 'dev';
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
-
-const BASE_URLS: Record<string, { site: string; apps: Record<string, string>; keycloak: string }> = {
-  dev: {
-    site: 'https://www.tamshai-playground.local:8443',
-    apps: {
-      hr: 'https://www.tamshai-playground.local:8443/hr',
-      finance: 'https://www.tamshai-playground.local:8443/finance',
-      sales: 'https://www.tamshai-playground.local:8443/sales',
-      support: 'https://www.tamshai-playground.local:8443/support',
-    },
-    keycloak: 'https://www.tamshai-playground.local:8443/auth',
-  },
-  stage: {
-    site: 'https://www.tamshai.com',
-    apps: {
-      hr: 'https://www.tamshai.com/hr',
-      finance: 'https://www.tamshai.com/finance',
-      sales: 'https://www.tamshai.com/sales',
-      support: 'https://www.tamshai.com/support',
-    },
-    keycloak: 'https://www.tamshai.com/auth',
-  },
-};
-
-// Directory for persisting TOTP secrets per environment
-const TOTP_SECRETS_DIR = path.join(__dirname, '..', '.totp-secrets');
-
-// Test credentials
-const TEST_USER = {
-  username: process.env.TEST_USERNAME || 'test-user.journey',
-  password: process.env.TEST_USER_PASSWORD || '',
-  totpSecret: process.env.TEST_USER_TOTP_SECRET || '',
-};
+import { test, expect, Page, BrowserContext } from '@playwright/test';
+import {
+  createAuthenticatedContext,
+  authenticateUser,
+  BASE_URLS,
+  ENV,
+  TEST_USER,
+} from '../utils';
 
 /**
- * Load previously saved TOTP secret from file
+ * Warm up an authenticated context by visiting the app URL once.
+ * This primes PrivateRoute OIDC checks so subsequent pages render immediately.
  */
-function loadTotpSecret(username: string, environment: string): string | null {
+async function warmUpContext(ctx: BrowserContext, url: string): Promise<void> {
+  const warmup = await ctx.newPage();
   try {
-    const secretFile = path.join(TOTP_SECRETS_DIR, `${username}-${environment}.secret`);
-    if (fs.existsSync(secretFile)) {
-      return fs.readFileSync(secretFile, 'utf-8').trim();
-    }
+    await warmup.goto(url, { timeout: 30000 });
+    await warmup.waitForSelector('h1, h2', { timeout: 30000 });
   } catch {
-    // Ignore errors
+    // Warm-up failure is non-fatal; tests will retry
   }
-  return null;
-}
-
-/**
- * Check if oathtool is available
- */
-function isOathtoolAvailable(): boolean {
-  try {
-    execSync('oathtool --version', { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// Track last used TOTP code to avoid reuse
-let lastUsedTotpCode: string | null = null;
-
-/**
- * Wait for TOTP to rotate to a new code (if current code was already used)
- */
-async function waitForFreshTotp(secret: string): Promise<string> {
-  const currentCode = generateTotpCodeInternal(secret);
-
-  if (currentCode === lastUsedTotpCode) {
-    // Current code was already used, wait for rotation
-    console.log('Waiting for TOTP rotation (30s window)...');
-    const startTime = Date.now();
-    let newCode = currentCode;
-
-    // Poll every 2 seconds until we get a new code (max 35 seconds)
-    while (newCode === lastUsedTotpCode && Date.now() - startTime < 35000) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      newCode = generateTotpCodeInternal(secret);
-    }
-
-    if (newCode === lastUsedTotpCode) {
-      throw new Error('TOTP code did not rotate after 35 seconds');
-    }
-
-    console.log(`TOTP rotated after ${Math.round((Date.now() - startTime) / 1000)}s`);
-    return newCode;
-  }
-
-  return currentCode;
-}
-
-/**
- * Internal TOTP generation (without tracking)
- */
-function generateTotpCodeInternal(secret: string): string {
-  if (!secret) {
-    throw new Error('TOTP secret is required');
-  }
-
-  if (isOathtoolAvailable()) {
-    try {
-      return execSync('oathtool "$TOTP_SECRET"', {
-        encoding: 'utf-8',
-        env: { ...process.env, TOTP_SECRET: secret },
-        shell: '/bin/bash',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      }).trim();
-    } catch {
-      // Fall through to otplib
-    }
-  }
-
-  authenticator.options = { digits: 6, step: 30, algorithm: 'sha1' };
-  return authenticator.generate(secret);
-}
-
-/**
- * Generate TOTP code (and mark as used)
- */
-function generateTotpCode(secret: string): string {
-  const code = generateTotpCodeInternal(secret);
-  lastUsedTotpCode = code;
-  return code;
-}
-
-/**
- * Complete Keycloak authentication flow
- */
-async function authenticateUser(page: Page): Promise<void> {
-  const urls = BASE_URLS[ENV];
-
-  // Throw if no credentials - caller should handle
-  if (!TEST_USER.password) {
-    throw new Error('No test credentials configured');
-  }
-
-  // Navigate to portal — auto-redirects to Keycloak SSO
-  await page.goto(`${urls.site}/app/`);
-
-  // Wait for Keycloak login page
-  await page.waitForSelector('#username, input[name="username"]', {
-    state: 'visible',
-    timeout: 30000,
-  });
-
-  // Enter credentials
-  await page.fill('#username, input[name="username"]', TEST_USER.username);
-  await page.fill('#password, input[name="password"]', TEST_USER.password);
-  await page.click('#kc-login, button[type="submit"]');
-
-  // Handle TOTP if required
-  try {
-    const otpInput = await page.waitForSelector('#otp, input[name="otp"]', {
-      state: 'visible',
-      timeout: 5000,
-    });
-
-    if (otpInput) {
-      // Cache file first (globalSetup writes Base32-encoded bridge value),
-      // then fall back to raw env var
-      const totpSecret = loadTotpSecret(TEST_USER.username, ENV) || TEST_USER.totpSecret || '';
-      if (!totpSecret) {
-        throw new Error('TOTP required but no secret available');
-      }
-      // Wait for fresh TOTP code if current one was already used
-      const totpCode = await waitForFreshTotp(totpSecret);
-      lastUsedTotpCode = totpCode; // Mark as used
-      await page.fill('#otp, input[name="otp"]', totpCode);
-      await page.click('#kc-login, button[type="submit"]');
-    }
-  } catch {
-    // TOTP not required - continue
-  }
-
-  // Wait for portal to fully load with authentication tokens
-  await page.waitForLoadState('networkidle', { timeout: 30000 });
-
-  // Verify we're on the portal by checking for portal-specific content
-  // This ensures the OAuth callback completed and tokens are stored in localStorage
-  const portalHeading = page.locator('h2:has-text("Available Applications")');
-  await expect(portalHeading).toBeVisible({ timeout: 30000 });
-
-  console.log(`Authentication completed for ${TEST_USER.username}`);
-}
-
-/**
- * Helper to authenticate and navigate to an app page
- * Each app has its own OAuth flow, so we authenticate via SSO redirect
- */
-async function authenticateAndNavigateToApp(page: Page, appUrl: string): Promise<void> {
-  // Skip if no credentials
-  if (!TEST_USER.password) {
-    throw new Error('No test credentials configured');
-  }
-
-  // Navigate to app - it will redirect to Keycloak for auth
-  await page.goto(appUrl);
-  await page.waitForLoadState('networkidle');
-
-  // Check if we're on Keycloak login page
-  const usernameInput = page.locator('#username, input[name="username"]');
-  const isOnKeycloak = await usernameInput.isVisible({ timeout: 10000 }).catch(() => false);
-
-  if (isOnKeycloak) {
-    // Wait for form to be ready
-    await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
-
-    // Need to authenticate
-    await page.fill('#username', TEST_USER.username);
-    await page.fill('#password', TEST_USER.password);
-    await page.click('#kc-login');
-
-    // Handle TOTP if required
-    try {
-      const otpInput = await page.waitForSelector('#otp, input[name="otp"]', {
-        state: 'visible',
-        timeout: 5000,
-      });
-
-      if (otpInput) {
-        // Cache file first (globalSetup writes Base32-encoded bridge value),
-        // then fall back to raw env var
-        const totpSecret = loadTotpSecret(TEST_USER.username, ENV) || TEST_USER.totpSecret || '';
-        if (!totpSecret) {
-          throw new Error('TOTP required but no secret available');
-        }
-        const totpCode = generateTotpCode(totpSecret);
-        await page.fill('#otp, input[name="otp"]', totpCode);
-        await page.click('#kc-login, button[type="submit"]');
-      }
-    } catch {
-      // TOTP not required
-    }
-  }
-
-  // Wait for app to load
-  await page.waitForLoadState('networkidle', { timeout: 30000 });
+  await warmup.close();
 }
 
 test.describe('Sample Apps - Phase 2 Pages', () => {
 
   test.describe('HR App', () => {
-    // Share a single authenticated context across all tests in this describe block
-    // This avoids TOTP reuse issues
     let sharedContext: BrowserContext;
     let sharedPage: Page;
 
     test.beforeAll(async ({ browser }) => {
       if (!TEST_USER.password) return;
-      sharedContext = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
+      sharedContext = await createAuthenticatedContext(browser);
+      await warmUpContext(sharedContext, `${BASE_URLS[ENV]}/hr/`);
       sharedPage = await sharedContext.newPage();
-      await authenticateUser(sharedPage);
     });
 
     test.afterAll(async () => {
@@ -292,10 +64,9 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('OrgChartPage - displays organization chart', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
       // Navigate directly to HR app
-      await sharedPage.goto(`${urls.apps.hr}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/hr/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Should be on HR app now - click Org Chart nav link
@@ -315,9 +86,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('TimeOffPage - displays time off management', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.hr}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/hr/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Time Off nav link
@@ -333,9 +103,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('TimeOffPage - can open request modal', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.hr}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/hr/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Time Off nav link
@@ -351,10 +120,9 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('EmployeeProfilePage - displays employee profile', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
       // Navigate to Employee Directory (the default HR page)
-      await sharedPage.goto(`${urls.apps.hr}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/hr/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Wait for employee data to load (requires MCP HR server + sample data)
@@ -393,9 +161,9 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test.beforeAll(async ({ browser }) => {
       if (!TEST_USER.password) return;
-      sharedContext = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
+      sharedContext = await createAuthenticatedContext(browser);
+      await warmUpContext(sharedContext, `${BASE_URLS[ENV]}/finance/`);
       sharedPage = await sharedContext.newPage();
-      await authenticateUser(sharedPage);
     });
 
     test.afterAll(async () => {
@@ -404,9 +172,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('ARRDashboardPage - displays ARR metrics', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.finance}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/finance/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on ARR nav link (labeled "ARR" in navigation)
@@ -423,9 +190,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('ARRDashboardPage - displays movement table', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.finance}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/finance/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on ARR nav link
@@ -438,9 +204,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('ARRDashboardPage - displays cohort analysis', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.finance}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/finance/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on ARR nav link
@@ -458,9 +223,9 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test.beforeAll(async ({ browser }) => {
       if (!TEST_USER.password) return;
-      sharedContext = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
+      sharedContext = await createAuthenticatedContext(browser);
+      await warmUpContext(sharedContext, `${BASE_URLS[ENV]}/sales/`);
       sharedPage = await sharedContext.newPage();
-      await authenticateUser(sharedPage);
     });
 
     test.afterAll(async () => {
@@ -469,9 +234,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('LeadsPage - displays lead list', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.sales}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/sales/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Leads nav link
@@ -487,9 +251,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('LeadsPage - has filtering controls', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.sales}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/sales/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Leads nav link
@@ -503,9 +266,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('ForecastingPage - displays forecast summary', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.sales}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/sales/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Forecast nav link
@@ -521,9 +283,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('ForecastingPage - has period selector', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.sales}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/sales/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Forecast nav link
@@ -541,9 +302,9 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test.beforeAll(async ({ browser }) => {
       if (!TEST_USER.password) return;
-      sharedContext = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
+      sharedContext = await createAuthenticatedContext(browser);
+      await warmUpContext(sharedContext, `${BASE_URLS[ENV]}/support/`);
       sharedPage = await sharedContext.newPage();
-      await authenticateUser(sharedPage);
     });
 
     test.afterAll(async () => {
@@ -552,9 +313,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('SLAPage - displays SLA compliance', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.support}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on SLA nav link
@@ -570,9 +330,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('SLAPage - displays tier breakdown', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.support}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on SLA nav link
@@ -587,9 +346,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('SLAPage - displays at-risk tickets', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.support}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on SLA nav link
@@ -604,9 +362,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('AgentMetricsPage - displays agent performance', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.support}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Performance nav link
@@ -622,9 +379,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('AgentMetricsPage - displays agent leaderboard', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.support}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Performance nav link
@@ -637,9 +393,8 @@ test.describe('Sample Apps - Phase 2 Pages', () => {
 
     test('AgentMetricsPage - has period selector', async () => {
       if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
-      const urls = BASE_URLS[ENV];
 
-      await sharedPage.goto(`${urls.apps.support}/`);
+      await sharedPage.goto(`${BASE_URLS[ENV]}/support/`);
       await sharedPage.waitForLoadState('networkidle');
 
       // Click on Performance nav link
@@ -658,7 +413,6 @@ test.describe('Cross-App Navigation', () => {
       ignoreHTTPSErrors: ENV === 'dev',
     });
     const page = await context.newPage();
-    const urls = BASE_URLS[ENV];
 
     try {
       // Skip if no credentials

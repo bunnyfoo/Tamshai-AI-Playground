@@ -4,8 +4,8 @@
  * Multi-step wizard for creating and processing pay runs.
  * Steps: Pay Period -> Earnings -> Deductions -> Review & Submit
  */
-import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth, apiConfig } from '@tamshai/auth';
 import { Wizard, type WizardStep, type WizardStepProps, type ValidationResult } from '@tamshai/ui';
@@ -199,6 +199,7 @@ function PayPeriodStep({ data, updateData, errors }: WizardStepProps) {
 // Step 2: Earnings Review
 function EarningsStep({ data, updateData }: WizardStepProps) {
   const { getAccessToken } = useAuth();
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const { data: employeesData, isLoading } = useQuery({
     queryKey: ['payroll-employees', data.periodStart, data.periodEnd],
@@ -233,6 +234,8 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
   const employees = (data.employees as EmployeeEarnings[]) || employeesData || [];
   const totalGross = employees.reduce((sum, emp) => sum + emp.gross_pay, 0);
 
+  const editingEmployee = editingIndex !== null ? employees[editingIndex] : null;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -266,10 +269,13 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
               <th className="px-4 py-3 text-right text-xs font-medium text-secondary-500 uppercase">
                 Gross Pay
               </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-secondary-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-secondary-200">
-            {employees.map((emp) => (
+            {employees.map((emp, index) => (
               <tr key={emp.employee_id} className="hover:bg-secondary-50">
                 <td className="px-4 py-3 text-sm text-secondary-900">
                   {emp.first_name} {emp.last_name}
@@ -287,12 +293,21 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
                 <td className="px-4 py-3 text-sm font-medium text-secondary-900 text-right">
                   {formatCurrency(emp.gross_pay)}
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    data-testid={`edit-earnings-${index}`}
+                    onClick={() => setEditingIndex(index)}
+                    className="text-sm text-primary-600 hover:text-primary-800"
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
           <tfoot className="bg-secondary-100">
             <tr data-testid="total-gross-pay">
-              <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-secondary-900">
+              <td colSpan={5} className="px-4 py-3 text-sm font-semibold text-secondary-900">
                 Total Gross Pay
               </td>
               <td className="px-4 py-3 text-sm font-bold text-secondary-900 text-right">
@@ -321,6 +336,56 @@ function EarningsStep({ data, updateData }: WizardStepProps) {
           </p>
         </div>
       </div>
+
+      {/* Edit Earnings Dialog */}
+      {editingEmployee && (
+        <div
+          data-testid="edit-earnings-dialog"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-4">
+              Edit Earnings — {editingEmployee.first_name} {editingEmployee.last_name}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
+                  Hours Worked
+                </label>
+                <input
+                  type="number"
+                  defaultValue={editingEmployee.hours_worked}
+                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-1">
+                  Overtime Hours
+                </label>
+                <input
+                  type="number"
+                  defaultValue={editingEmployee.overtime_hours || 0}
+                  className="w-full px-3 py-2 border border-secondary-300 rounded-lg"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setEditingIndex(null)}
+                className="px-4 py-2 text-secondary-600 hover:bg-secondary-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setEditingIndex(null)}
+                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -563,7 +628,7 @@ function ReviewStep({ data }: WizardStepProps) {
         <div>
           <p className="font-medium text-warning-800">Confirm before processing</p>
           <p className="text-sm text-warning-700">
-            Once you click "Run Payroll", the pay run will be submitted for processing. Direct
+            Once you click "Submit Payroll", the pay run will be submitted for processing. Direct
             deposits will be initiated on the pay date.
           </p>
         </div>
@@ -577,10 +642,10 @@ function validatePayPeriod(data: Record<string, unknown>): ValidationResult {
   const errors: { field: string; message: string }[] = [];
 
   if (!data.periodStart) {
-    errors.push({ field: 'periodStart', message: 'Period start date is required' });
+    errors.push({ field: 'periodStart', message: 'Pay period start date is required' });
   }
   if (!data.periodEnd) {
-    errors.push({ field: 'periodEnd', message: 'Period end date is required' });
+    errors.push({ field: 'periodEnd', message: 'Pay period end date is required' });
   }
   if (!data.payDate) {
     errors.push({ field: 'payDate', message: 'Pay date is required' });
@@ -601,6 +666,11 @@ function validatePayPeriod(data: Record<string, unknown>): ValidationResult {
 export default function PayRunWizard() {
   const navigate = useNavigate();
   const { getAccessToken } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const confirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
+
+  const simulateMissingSsn = searchParams.get('simulate') === 'missing-ssn';
 
   const steps: WizardStep[] = [
     {
@@ -632,6 +702,18 @@ export default function PayRunWizard() {
 
   const handleComplete = useCallback(
     async (data: Record<string, unknown>) => {
+      // Show confirmation dialog and wait for user response
+      setShowConfirmation(true);
+
+      const confirmed = await new Promise<boolean>((resolve) => {
+        confirmResolveRef.current = resolve;
+      });
+
+      setShowConfirmation(false);
+
+      if (!confirmed) return;
+
+      // User confirmed — submit the pay run
       const token = await getAccessToken();
 
       const response = await fetch(
@@ -665,15 +747,60 @@ export default function PayRunWizard() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Critical error for simulation */}
+      {simulateMissingSsn && (
+        <div
+          data-testid="critical-error"
+          className="mb-4 p-4 bg-danger-50 border border-danger-200 rounded-lg"
+        >
+          <p className="font-medium text-danger-800">Missing SSN</p>
+          <p className="text-sm text-danger-700">
+            Some employees are missing Social Security numbers. Resolve before processing payroll.
+          </p>
+        </div>
+      )}
+
       <Wizard
         steps={steps}
         title="New Pay Run"
         showBreadcrumbs
         onComplete={handleComplete}
         onCancel={handleCancel}
-        submitLabel="Run Payroll"
+        submitLabel="Submit Payroll"
         submittingLabel="Processing..."
+        submitDisabled={simulateMissingSsn}
       />
+
+      {/* Confirmation Dialog */}
+      {showConfirmation && (
+        <div
+          data-testid="confirm-payroll-dialog"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        >
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-2">Confirm Payroll</h3>
+            <p className="text-secondary-600 mb-6">
+              Are you sure you want to process this payroll? Direct deposits will be initiated
+              on the scheduled pay date.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => confirmResolveRef.current?.(false)}
+                className="px-4 py-2 text-secondary-600 hover:bg-secondary-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="confirm-submit"
+                onClick={() => confirmResolveRef.current?.(true)}
+                className="px-4 py-2 bg-success-500 text-white rounded-lg hover:bg-success-600"
+              >
+                Confirm &amp; Process
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

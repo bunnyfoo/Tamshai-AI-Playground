@@ -39,12 +39,28 @@ import {
 
 let authenticatedContext: BrowserContext | null = null;
 
+/**
+ * Warm up an authenticated context by visiting the app URL once.
+ * This primes PrivateRoute OIDC checks so subsequent pages render immediately.
+ */
+async function warmUpContext(ctx: BrowserContext, url: string): Promise<void> {
+  const warmup = await ctx.newPage();
+  try {
+    await warmup.goto(url, { timeout: 30000 });
+    await warmup.waitForSelector('h1, h2, [role="dialog"]', { timeout: 30000 });
+  } catch {
+    // Warm-up failure is non-fatal; tests will retry
+  }
+  await warmup.close();
+}
+
 test.describe('Payroll Run Wizard', () => {
   let snapshotId: string;
 
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/payroll/pay-runs/new`);
     snapshotId = await createDatabaseSnapshot();
   });
 

@@ -178,8 +178,10 @@ export function DataTable<T extends Record<string, unknown>>({
   // Render empty state
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-secondary-500">
-        {emptyState || <span>No data available</span>}
+      <div className="overflow-x-auto" data-testid="data-table">
+        <div className="flex flex-col items-center justify-center py-12 text-secondary-500">
+          {emptyState || <span>No data available</span>}
+        </div>
       </div>
     );
   }

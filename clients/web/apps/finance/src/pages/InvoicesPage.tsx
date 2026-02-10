@@ -507,7 +507,7 @@ export function InvoicesPage() {
   // Apply filters
   const filteredInvoices = useMemo(() => {
     return invoices.filter((invoice) => {
-      if (statusFilter && invoice.status !== statusFilter) return false;
+      if (statusFilter && invoice.status.toUpperCase() !== statusFilter.toUpperCase()) return false;
       if (vendorFilter && !invoice.vendor_name.toLowerCase().includes(vendorFilter.toLowerCase())) return false;
       if (departmentFilter && invoice.department_code !== departmentFilter) return false;
       if (startDate && new Date(invoice.due_date) < new Date(startDate)) return false;

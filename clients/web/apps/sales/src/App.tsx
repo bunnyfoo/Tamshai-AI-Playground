@@ -4,6 +4,7 @@ import DashboardPage from './pages/DashboardPage';
 import OpportunitiesPage from './pages/OpportunitiesPage';
 import CustomersPage from './pages/CustomersPage';
 import LeadsPage from './pages/LeadsPage';
+import LeadConversionPage from './pages/LeadConversionPage';
 import ForecastingPage from './pages/ForecastingPage';
 import AIQueryPage from './pages/AIQueryPage';
 import CallbackPage from './pages/CallbackPage';
@@ -24,6 +25,7 @@ function App() {
         <Route path="opportunities" element={<OpportunitiesPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="leads" element={<LeadsPage />} />
+        <Route path="leads/convert/:leadId" element={<LeadConversionPage />} />
         <Route path="forecast" element={<ForecastingPage />} />
         <Route path="ai-query" element={<AIQueryPage />} />
       </Route>

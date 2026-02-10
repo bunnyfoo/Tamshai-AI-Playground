@@ -116,9 +116,34 @@ export async function authenticateUser(page: Page): Promise<void> {
 }
 
 /**
+ * Track the last TOTP 30-second window used for authentication.
+ * Keycloak rejects reused TOTP codes within the same window, so we must
+ * wait for the next window before creating a new auth context.
+ */
+let lastTotpWindow = 0;
+
+async function ensureFreshTotpWindow(): Promise<void> {
+  const currentWindow = Math.floor(Date.now() / 1000 / 30);
+  if (lastTotpWindow > 0 && currentWindow <= lastTotpWindow) {
+    const secondsUntilNextWindow = 30 - (Math.floor(Date.now() / 1000) % 30);
+    await new Promise(resolve => setTimeout(resolve, (secondsUntilNextWindow + 1) * 1000));
+  }
+  lastTotpWindow = Math.floor(Date.now() / 1000 / 30);
+}
+
+/**
  * Create an authenticated browser context.
  * Authenticates once via Keycloak SSO, then returns a context
- * whose cookies are valid for all subsequent page navigations.
+ * whose session is available to all subsequent pages.
+ *
+ * IMPORTANT: The @tamshai/auth library stores OIDC tokens in sessionStorage
+ * (per-tab). Playwright's context.newPage() creates new tabs with empty
+ * sessionStorage. We capture the sessionStorage after auth and inject it
+ * into all future pages via context.addInitScript() so every new page
+ * starts with valid tokens.
+ *
+ * TOTP WINDOW GUARD: Each call waits for a fresh 30-second TOTP window
+ * to prevent Keycloak from rejecting a reused code.
  *
  * Usage in specs:
  *   let ctx: BrowserContext;
@@ -127,9 +152,33 @@ export async function authenticateUser(page: Page): Promise<void> {
  *   test('...', async () => { const page = await ctx.newPage(); ... await page.close(); });
  */
 export async function createAuthenticatedContext(browser: Browser): Promise<BrowserContext> {
+  await ensureFreshTotpWindow();
   const context = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
   const page = await context.newPage();
   await authenticateUser(page);
+
+  // Capture sessionStorage (contains OIDC tokens) from the authenticated page
+  const sessionData = await page.evaluate(() => {
+    const data: Record<string, string> = {};
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)!;
+      data[key] = sessionStorage.getItem(key)!;
+    }
+    return data;
+  });
+
   await page.close();
+
+  // Inject captured sessionStorage into every new page created in this context.
+  // This runs before the app's scripts, so the auth provider finds valid tokens
+  // immediately and skips the Keycloak redirect.
+  if (Object.keys(sessionData).length > 0) {
+    await context.addInitScript((data: Record<string, string>) => {
+      for (const [key, value] of Object.entries(data)) {
+        sessionStorage.setItem(key, value);
+      }
+    }, sessionData);
+  }
+
   return context;
 }

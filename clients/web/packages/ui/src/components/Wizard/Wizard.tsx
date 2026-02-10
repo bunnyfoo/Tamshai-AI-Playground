@@ -40,6 +40,7 @@ export interface WizardProps {
   showBreadcrumbs?: boolean;
   submitLabel?: string;
   submittingLabel?: string;
+  submitDisabled?: boolean;
 }
 
 export function Wizard({
@@ -52,6 +53,7 @@ export function Wizard({
   showBreadcrumbs = false,
   submitLabel = 'Submit',
   submittingLabel = 'Processing...',
+  submitDisabled = false,
 }: WizardProps) {
   const wizardId = useId();
   const titleId = `${wizardId}-title`;
@@ -304,7 +306,7 @@ export function Wizard({
           <button
             type="button"
             onClick={goToNext}
-            disabled={isSubmitting}
+            disabled={isSubmitting || submitDisabled}
             className={`px-4 py-2 rounded-lg font-medium transition-colors
                       inline-flex items-center gap-2 ${
                         isLastStep

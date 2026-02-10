@@ -38,12 +38,28 @@ const INVOICES_URL = `${BASE_URLS[ENV]}/finance/invoices`;
 
 let authenticatedContext: BrowserContext | null = null;
 
+/**
+ * Warm up an authenticated context by visiting the app URL once.
+ * This primes PrivateRoute OIDC checks so subsequent pages render immediately.
+ */
+async function warmUpContext(ctx: BrowserContext, url: string): Promise<void> {
+  const warmup = await ctx.newPage();
+  try {
+    await warmup.goto(url, { timeout: 30000 });
+    await warmup.waitForSelector('h1, h2, [data-testid="data-table"]', { timeout: 30000 });
+  } catch {
+    // Warm-up failure is non-fatal; tests will retry
+  }
+  await warmup.close();
+}
+
 test.describe('Finance Invoice Bulk Operations', () => {
   let snapshotId: string;
 
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
+    await warmUpContext(authenticatedContext, INVOICES_URL);
     snapshotId = await createDatabaseSnapshot();
   });
 

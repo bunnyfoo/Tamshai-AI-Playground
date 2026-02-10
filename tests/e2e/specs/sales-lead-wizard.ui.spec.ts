@@ -44,12 +44,28 @@ import {
 
 let authenticatedContext: BrowserContext | null = null;
 
+/**
+ * Warm up an authenticated context by visiting the app URL once.
+ * This primes PrivateRoute OIDC checks so subsequent pages render immediately.
+ */
+async function warmUpContext(ctx: BrowserContext, url: string): Promise<void> {
+  const warmup = await ctx.newPage();
+  try {
+    await warmup.goto(url, { timeout: 30000 });
+    await warmup.waitForSelector('[role="dialog"].wizard', { timeout: 30000 });
+  } catch {
+    // Warm-up failure is non-fatal; tests will retry
+  }
+  await warmup.close();
+}
+
 test.describe('Sales Lead Conversion Wizard', () => {
   let snapshotId: string;
 
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
+    await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
     snapshotId = await createDatabaseSnapshot();
   });
 
@@ -329,12 +345,12 @@ test.describe('Sales Lead Conversion Wizard', () => {
         await page.goto(`${BASE_URLS[ENV]}/sales/leads/convert/lead-001`);
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
-        // Navigate to final step (step 5: Review & Convert)
-        for (let i = 0; i < 4; i++) {
+        // Navigate to final step (step 4: Review)
+        for (let i = 0; i < 3; i++) {
           await goToNextStep(page);
         }
 
-        expect(await getCurrentStepNumber(page)).toBe(5);
+        expect(await getCurrentStepNumber(page)).toBe(4);
         await expectSubmitButtonVisible(page);
       } finally {
         await page.close();
@@ -349,7 +365,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate to final step
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
           await goToNextStep(page);
         }
 
@@ -371,7 +387,7 @@ test.describe('Sales Lead Conversion Wizard', () => {
         await page.waitForSelector('[role="dialog"].wizard', { timeout: 10000 });
 
         // Navigate through all steps
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
           await goToNextStep(page);
         }
 
