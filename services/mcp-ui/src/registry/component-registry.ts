@@ -28,11 +28,14 @@ const componentRegistry: Record<string, ComponentDefinition> = {
       const nodes = (data as Array<any>) || [];
       const rootNode = nodes.find(n => n.level === 0) || null;
 
+      // Map employee_id → id for component compatibility
+      const mapEmployee = (emp: any) => emp ? { ...emp, id: emp.employee_id } : null;
+
       return {
         manager: null,  // get_org_chart doesn't return manager info (TODO: enhance tool)
-        self: rootNode,
+        self: mapEmployee(rootNode),
         peers: [],  // get_org_chart doesn't return peers (TODO: enhance tool)
-        directReports: rootNode?.direct_reports || [],
+        directReports: (rootNode?.direct_reports || []).map(mapEmployee),
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
