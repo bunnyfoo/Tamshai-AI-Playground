@@ -25,7 +25,8 @@ const API_BASE_URLS: Record<string, string> = {
 };
 
 // Admin API key (matches MCP Gateway configuration)
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'e2e-test-admin-key';
+// GitHub secret: DEV_E2E_ADMIN_API_KEY — no fallback, must be set via read-github-secrets.sh
+const ADMIN_API_KEY = process.env.DEV_E2E_ADMIN_API_KEY || '';
 
 // API timeout for database operations (snapshots can take time)
 const API_TIMEOUT = 60000; // 60 seconds

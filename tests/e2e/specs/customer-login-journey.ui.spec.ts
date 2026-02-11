@@ -42,7 +42,8 @@ const BASE_URLS: Record<string, {
 };
 
 // Customer test password from environment variable (GitHub Secret: CUSTOMER_USER_PASSWORD)
-const CUSTOMER_PASSWORD = process.env.CUSTOMER_USER_PASSWORD || '***REDACTED_PASSWORD***';
+// No fallback — must be set via read-github-secrets.sh --e2e
+const CUSTOMER_PASSWORD = process.env.CUSTOMER_USER_PASSWORD || '';
 
 // Test customer credentials from realm-export-customers-dev.json
 // Lead customer from Acme Corporation
