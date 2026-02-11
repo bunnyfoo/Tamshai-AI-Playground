@@ -39,20 +39,21 @@ describe('get-employee tool', () => {
   };
 
   const mockEmployee: Employee = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
     employee_id: '123e4567-e89b-12d3-a456-426614174000',
     first_name: 'John',
     last_name: 'Doe',
-    email: 'john.doe@test.com',
+    work_email: 'john.doe@test.com',
     phone: '555-0001',
     hire_date: '2020-01-15',
-    title: 'Software Engineer',
+    job_title: 'Software Engineer',
     department: 'Engineering',
     department_id: '823e4567-e89b-12d3-a456-426614174000',
     manager_id: '923e4567-e89b-12d3-a456-426614174000',
     manager_name: 'Bob Manager',
     salary: null, // Masked for non-privileged users
     location: 'San Francisco',
-    status: 'ACTIVE',
+    employment_status: 'ACTIVE',
   };
 
   beforeEach(() => {
@@ -277,20 +278,21 @@ describe('get-employee tool', () => {
 
       expect(result.status).toBe('success');
       if (result.status === 'success') {
+        expect(result.data).toHaveProperty('id');
         expect(result.data).toHaveProperty('employee_id');
         expect(result.data).toHaveProperty('first_name');
         expect(result.data).toHaveProperty('last_name');
-        expect(result.data).toHaveProperty('email');
+        expect(result.data).toHaveProperty('work_email');
         expect(result.data).toHaveProperty('phone');
         expect(result.data).toHaveProperty('hire_date');
-        expect(result.data).toHaveProperty('title');
+        expect(result.data).toHaveProperty('job_title');
         expect(result.data).toHaveProperty('department');
         expect(result.data).toHaveProperty('department_id');
         expect(result.data).toHaveProperty('manager_id');
         expect(result.data).toHaveProperty('manager_name');
         expect(result.data).toHaveProperty('salary');
         expect(result.data).toHaveProperty('location');
-        expect(result.data).toHaveProperty('status');
+        expect(result.data).toHaveProperty('employment_status');
       }
     });
 

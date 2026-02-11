@@ -178,22 +178,14 @@ export async function createAuthenticatedContext(browser: Browser): Promise<Brow
   await ensureFreshTotpWindow();
   const context = await browser.newContext({
     ignoreHTTPSErrors: ENV === 'dev',
-    // Incognito mode: clear all cache and storage
+    // Incognito mode: block service workers to prevent caching
     serviceWorkers: 'block',
-    // Disable HTTP cache to force fresh API responses
-    extraHTTPHeaders: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-    },
   });
-  const page = await context.newPage();
 
-  // Clear any cached storage before authentication
-  await page.context().clearCookies();
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  // Clear cookies at context level before creating page
+  await context.clearCookies();
+
+  const page = await context.newPage();
   await authenticateUser(page);
 
   // Capture sessionStorage (contains OIDC tokens) from the authenticated page
