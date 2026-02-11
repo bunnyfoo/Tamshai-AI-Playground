@@ -585,12 +585,13 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/hr/Dockerfile
+      args:
+        VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
+        VITE_KEYCLOAK_CLIENT_ID: web-portal
+        VITE_API_GATEWAY_URL: http://127.0.0.1:${PORT_KONG}
+        VITE_MCP_GATEWAY_URL: http://127.0.0.1:${PORT_MCP_GATEWAY}
+        VITE_MCP_UI_URL: http://127.0.0.1:${PORT_MCP_UI}
     container_name: tamshai-pg-web-hr
-    environment:
-      VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
-      VITE_KEYCLOAK_CLIENT_ID: web-portal
-      VITE_API_GATEWAY_URL: http://kong:8000
-      VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
     ports:
       - "${PORT_WEB_HR:?PORT_WEB_HR is required}:80"
     depends_on:

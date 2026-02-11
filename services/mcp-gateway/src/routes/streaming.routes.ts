@@ -190,6 +190,87 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
       hasCursor: !!cursor,
     });
 
+    // DISPLAY DIRECTIVE PRE-PROCESSING CHECK
+    // Check for display directive triggers BEFORE calling Claude (more reliable + saves API cost)
+    const queryLower = query.toLowerCase();
+    let displayDirective: string | null = null;
+
+    // Check each directive's trigger keywords
+    if (
+      queryLower.includes('org chart') ||
+      queryLower.includes('team structure') ||
+      queryLower.includes('show my team') ||
+      queryLower.includes('who reports') ||
+      queryLower.includes('direct reports') ||
+      queryLower.includes('organizational chart') ||
+      queryLower.includes('show me my org chart')
+    ) {
+      displayDirective = 'display:hr:org_chart:userId=me,depth=1';
+    } else if (
+      queryLower.includes('approvals') ||
+      queryLower.includes('pending approvals') ||
+      queryLower.includes('things to approve') ||
+      queryLower.includes('time off requests') ||
+      queryLower.includes('show pending approvals')
+    ) {
+      displayDirective = 'display:hr:approvals:userId=me';
+    } else if (
+      queryLower.includes('leads') ||
+      queryLower.includes('pipeline') ||
+      queryLower.includes('prospects') ||
+      queryLower.includes('show leads')
+    ) {
+      displayDirective = 'display:sales:leads:status=NEW,limit=10';
+    } else if (
+      queryLower.includes('forecast') ||
+      queryLower.includes('quota') ||
+      queryLower.includes('sales targets') ||
+      queryLower.includes('revenue forecast')
+    ) {
+      displayDirective = 'display:sales:forecast:period=current';
+    } else if (
+      queryLower.includes('budget') ||
+      queryLower.includes('spending') ||
+      queryLower.includes('department budget') ||
+      queryLower.includes('show budget')
+    ) {
+      displayDirective = 'display:finance:budget:department=all,year=2026';
+    } else if (
+      queryLower.includes('quarterly financials') ||
+      queryLower.includes('q1 report') ||
+      queryLower.includes('q2 report') ||
+      queryLower.includes('q3 report') ||
+      queryLower.includes('q4 report') ||
+      queryLower.includes('quarterly report')
+    ) {
+      displayDirective = 'display:finance:quarterly_report:quarter=Q4,year=2025';
+    }
+
+    // If directive matched, send it immediately and skip Claude API call
+    if (displayDirective) {
+      logger.info('Display directive matched - bypassing Claude', {
+        requestId,
+        directive: displayDirective,
+      });
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
+
+      // Send directive as a text chunk
+      res.write(`data: ${JSON.stringify({ text: displayDirective })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+
+      logger.info('Display directive sent', {
+        requestId,
+        duration: Date.now() - startTime,
+      });
+      return;
+    }
+
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
