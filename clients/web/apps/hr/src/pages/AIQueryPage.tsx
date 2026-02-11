@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { SSEQueryClient, ComponentRenderer, useVoiceInput, useVoiceOutput } from '@tamshai/ui';
 import { useAuth, apiConfig } from '@tamshai/auth';
-import type { ComponentResponse } from '@tamshai/ui/dist/components/generative/types';
+import type { ComponentResponse } from '@tamshai/ui';
 
 /**
  * AI Query Page with Generative UI Support

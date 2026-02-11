@@ -33,20 +33,21 @@ export type GetEmployeeInput = z.infer<typeof GetEmployeeInputSchema>;
  * but we expose user-friendly names in the interface.
  */
 export interface Employee {
-  employee_id: string;           // Aliased from id column (UUID)
+  id: string;                    // UUID primary key
+  employee_id: string;           // String employee number (may be empty)
   first_name: string;
   last_name: string;
-  email: string;
+  work_email: string;            // Frontend expects work_email
   phone: string | null;
   hire_date: string;
-  title: string;                 // Actual column: title (not job_title)
+  job_title: string;             // Frontend expects job_title
   department: string | null;      // Computed from JOIN with departments (d.name)
   department_id: string | null;  // Actual column: department_id (UUID FK)
   manager_id: string | null;
   manager_name: string | null;
   salary: number | null;          // May be masked based on permissions
   location: string | null;
-  status: string;                 // Actual column: status (not employment_status)
+  employment_status: string;     // Frontend expects employment_status
 }
 
 /**
@@ -73,13 +74,14 @@ export async function getEmployee(
         userContext,
         `
         SELECT
-          e.id as employee_id,
+          e.id,
+          e.employee_id,
           e.first_name,
           e.last_name,
-          e.email,
+          COALESCE(e.work_email, e.email) as work_email,
           e.phone,
           e.hire_date::text as hire_date,
-          e.title,
+          e.title as job_title,
           d.name as department,
           e.department_id,
           e.manager_id,
@@ -91,7 +93,7 @@ export async function getEmployee(
             ELSE NULL
           END as salary,
           e.location,
-          e.status
+          e.status as employment_status
         FROM hr.employees e
         LEFT JOIN hr.employees m ON e.manager_id = m.id
         LEFT JOIN hr.departments d ON e.department_id = d.id

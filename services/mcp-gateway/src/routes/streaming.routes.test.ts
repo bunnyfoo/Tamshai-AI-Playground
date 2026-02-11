@@ -884,7 +884,8 @@ describe('Streaming Routes', () => {
       await handler(req, res, next);
 
       const allData = res._writtenData.join('');
-      expect(allData).toContain('Finance data');
+      // Query "show budget" triggers directive pre-processing
+      expect(allData).toContain('display:finance:budget');
       expect(mockLogger.info).toHaveBeenCalledWith(
         'SSE Query received',
         expect.objectContaining({

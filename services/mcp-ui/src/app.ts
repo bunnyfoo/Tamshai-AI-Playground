@@ -25,7 +25,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-MCP-Internal-Token');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   // Handle preflight requests
@@ -43,7 +43,6 @@ app.use(express.json());
 // NOTE: Gateway authentication is NOT required for MCP UI because:
 // - The /api/display endpoint is called directly from the browser with user JWT tokens
 // - JWT validation is handled in the display router
-// - Internal MCP-to-MCP calls use service authentication via the auth service
 
 // Health endpoint
 app.get('/health', (_req: Request, res: Response) => {

@@ -176,8 +176,24 @@ async function ensureFreshTotpWindow(): Promise<void> {
  */
 export async function createAuthenticatedContext(browser: Browser): Promise<BrowserContext> {
   await ensureFreshTotpWindow();
-  const context = await browser.newContext({ ignoreHTTPSErrors: ENV === 'dev' });
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: ENV === 'dev',
+    // Incognito mode: clear all cache and storage
+    serviceWorkers: 'block',
+    // Disable HTTP cache to force fresh API responses
+    extraHTTPHeaders: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    },
+  });
   const page = await context.newPage();
+
+  // Clear any cached storage before authentication
+  await page.context().clearCookies();
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
   await authenticateUser(page);
 
   // Capture sessionStorage (contains OIDC tokens) from the authenticated page
@@ -234,7 +250,11 @@ export async function warmUpContext(
 ): Promise<void> {
   const warmup = await ctx.newPage();
   try {
-    await warmup.goto(url, { timeout: 60000 });
+    // Hard reload to bypass cache
+    await warmup.goto(url, {
+      timeout: 60000,
+      waitUntil: 'networkidle',
+    });
     // Wait for the app to fully render (after potential OIDC redirect cycle)
     try {
       await warmup.waitForSelector(selectors, { timeout: 45000 });

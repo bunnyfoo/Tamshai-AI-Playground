@@ -15,6 +15,15 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
+interface AuthenticatedRequest extends Request {
+  userContext?: {
+    userId: string;
+    roles: string[];
+    username?: string;
+    email?: string;
+  };
+}
+
 interface DisplayRequest {
   directive: string;
   userContext?: {
@@ -25,18 +34,9 @@ interface DisplayRequest {
   };
 }
 
-interface AuthenticatedRequest extends Request {
-  userContext?: {
-    userId: string;
-    roles: string[];
-    username?: string;
-    email?: string;
-  };
-}
-
 /**
- * Simple JWT validation middleware for display endpoint
- * Extracts user context from JWT token in Authorization header
+ * JWT validation middleware
+ * Extracts user context from JWT Authorization header
  */
 function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
@@ -51,8 +51,6 @@ function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunctio
 
   try {
     const token = authHeader.substring(7);
-    // Decode JWT (without verification for now - just extract payload)
-    // In production, this should verify the signature against Keycloak JWKS
     const parts = token.split('.');
     if (parts.length !== 3) {
       throw new Error('Invalid JWT format');
@@ -60,7 +58,6 @@ function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunctio
 
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
 
-    // Extract user context from JWT claims
     req.userContext = {
       userId: payload.sub || 'unknown',
       username: payload.preferred_username || payload.name || 'unknown',

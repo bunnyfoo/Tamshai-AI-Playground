@@ -50,9 +50,67 @@ test.describe('Generative UI - Display Directives', () => {
   test('OrgChartComponent renders on "Show me my org chart" query', async () => {
     if (!TEST_USER.password) test.skip(true, 'No test credentials configured');
 
+    // Comprehensive error logging to diagnose blank page
+    const consoleMessages: Array<{type: string, text: string}> = [];
+    const pageErrors: string[] = [];
+    const requestFailures: Array<{url: string, failure: string}> = [];
+
+    // Capture ALL console messages (error, warn, log)
+    sharedPage.on('console', msg => {
+      consoleMessages.push({
+        type: msg.type(),
+        text: msg.text(),
+      });
+      if (msg.type() === 'error') {
+        console.log(`[BROWSER ERROR] ${msg.text()}`);
+      }
+    });
+
+    // Capture page errors (uncaught exceptions)
+    sharedPage.on('pageerror', error => {
+      const errorMsg = `${error.name}: ${error.message}\n${error.stack}`;
+      pageErrors.push(errorMsg);
+      console.log(`[PAGE ERROR] ${errorMsg}`);
+    });
+
+    // Capture network request failures
+    sharedPage.on('requestfailed', request => {
+      const failure = request.failure()?.errorText || 'Unknown error';
+      requestFailures.push({
+        url: request.url(),
+        failure,
+      });
+      console.log(`[REQUEST FAILED] ${request.url()} - ${failure}`);
+    });
+
     // Navigate to HR app
+    console.log('Navigating to /hr/...');
     await sharedPage.goto(`${BASE_URLS[ENV]}/hr/`);
     await sharedPage.waitForLoadState('networkidle');
+
+    // Log all captured errors
+    console.log('\n=== ERROR SUMMARY ===');
+    console.log(`Console errors: ${consoleMessages.filter(m => m.type === 'error').length}`);
+    console.log(`Page errors: ${pageErrors.length}`);
+    console.log(`Request failures: ${requestFailures.length}`);
+
+    if (pageErrors.length > 0) {
+      console.log('\nPage Errors:');
+      pageErrors.forEach(err => console.log(err));
+    }
+
+    if (requestFailures.length > 0) {
+      console.log('\nFailed Requests:');
+      requestFailures.forEach(req => console.log(`  ${req.url}: ${req.failure}`));
+    }
+
+    // Get page title and HTML to verify page loaded
+    const title = await sharedPage.title();
+    const html = await sharedPage.content();
+    console.log(`\nPage title: ${title}`);
+    console.log(`HTML length: ${html.length} characters`);
+    console.log(`HTML contains "root": ${html.includes('id="root"')}`);
+    console.log(`HTML contains script tags: ${(html.match(/<script/g) || []).length}`);
 
     // Click AI Query link
     await sharedPage.click('a:has-text("AI Query")');
