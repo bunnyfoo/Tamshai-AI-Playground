@@ -119,16 +119,39 @@ export async function authenticateUser(page: Page): Promise<void> {
  * Track the last TOTP 30-second window used for authentication.
  * Keycloak rejects reused TOTP codes within the same window, so we must
  * wait for the next window before creating a new auth context.
+ *
+ * IMPORTANT: Playwright may restart worker processes after test failures.
+ * A module-level variable resets to 0 in new workers, losing the TOTP
+ * window tracking. We persist the last window to a temp file so new
+ * workers know which TOTP window was already consumed.
  */
-let lastTotpWindow = 0;
+const TOTP_WINDOW_FILE = path.join(__dirname, '..', '.totp-secrets', 'last-totp-window');
+
+function readPersistedTotpWindow(): number {
+  try {
+    if (fs.existsSync(TOTP_WINDOW_FILE)) {
+      return parseInt(fs.readFileSync(TOTP_WINDOW_FILE, 'utf-8').trim(), 10) || 0;
+    }
+  } catch { /* ignore */ }
+  return 0;
+}
+
+function persistTotpWindow(window: number): void {
+  try {
+    const dir = path.dirname(TOTP_WINDOW_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(TOTP_WINDOW_FILE, String(window));
+  } catch { /* ignore */ }
+}
 
 async function ensureFreshTotpWindow(): Promise<void> {
   const currentWindow = Math.floor(Date.now() / 1000 / 30);
+  const lastTotpWindow = readPersistedTotpWindow();
   if (lastTotpWindow > 0 && currentWindow <= lastTotpWindow) {
     const secondsUntilNextWindow = 30 - (Math.floor(Date.now() / 1000) % 30);
     await new Promise(resolve => setTimeout(resolve, (secondsUntilNextWindow + 1) * 1000));
   }
-  lastTotpWindow = Math.floor(Date.now() / 1000 / 30);
+  persistTotpWindow(Math.floor(Date.now() / 1000 / 30));
 }
 
 /**
