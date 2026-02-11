@@ -219,7 +219,11 @@ export async function getOrgChart(
       }
 
       // Build hierarchical tree
-      const rootManagerId = rootEmployeeId || null;
+      // If rootEmployeeId was provided, use the actual employee_id from the found root employee
+      // (since rootEmployeeId might be a keycloak_user_id, but buildOrgTree needs employee_id)
+      const rootManagerId = rootEmployeeId
+        ? (result.rows.find(r => r.level === 0)?.employee_id || null)
+        : null;
       const orgTree = buildOrgTree(result.rows, rootManagerId);
 
       return createSuccessResponse(orgTree, {
