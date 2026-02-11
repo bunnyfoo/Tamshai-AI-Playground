@@ -111,7 +111,7 @@ export async function getOrgChart(
       let queryParams: any[];
 
       if (rootEmployeeId) {
-        // Start from a specific employee
+        // Start from a specific employee (supports both employee_id and keycloak_user_id)
         sqlQuery = `
           WITH RECURSIVE org_hierarchy AS (
             -- Base case: the root employee
@@ -127,7 +127,7 @@ export async function getOrgChart(
               0 as level
             FROM hr.employees e
             LEFT JOIN hr.departments d ON e.department_id = d.id
-            WHERE e.id = $1
+            WHERE (e.id = $1 OR e.keycloak_user_id = $1)
               AND e.status = 'ACTIVE'
 
             UNION ALL

@@ -119,7 +119,12 @@ export async function callMCPTool(
   const toolParams: Record<string, string> = {};
   for (const [toolParam, directiveParam] of Object.entries(call.paramMap)) {
     if (params[directiveParam] !== undefined) {
-      toolParams[toolParam] = params[directiveParam];
+      let value = params[directiveParam];
+      // Special case: resolve "me" to the actual user ID
+      if (value === 'me' && toolParam === 'userId') {
+        value = userContext.userId;
+      }
+      toolParams[toolParam] = value;
     }
   }
 
