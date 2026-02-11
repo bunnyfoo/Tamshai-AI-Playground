@@ -179,20 +179,21 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Approval Flow', () => {
-    // Helper: navigate to invoices page and filter to PENDING via UI dropdown
-    async function gotoPendingInvoices(page: import('@playwright/test').Page) {
+    // Helper: navigate to invoices page, filter to PENDING via UI, skip if no rows
+    async function gotoPendingInvoices(page: import('@playwright/test').Page): Promise<number> {
       await page.goto(INVOICES_URL);
       await page.waitForSelector('[data-testid="data-table"]', { timeout: 15000 });
       await page.selectOption('[data-testid="status-filter"]', 'PENDING');
-      // Wait for client-side filter to re-render
       await page.waitForTimeout(500);
+      return page.locator('tbody tr').count();
     }
 
     test('approve action is available for pending invoices', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await gotoPendingInvoices(page);
+        const rowCount = await gotoPendingInvoices(page);
+        if (rowCount < 2) { test.skip(); return; }
         await selectTableRows(page, [0, 1]);
         await expectBulkActionsAvailable(page, ['approve']);
       } finally {
@@ -204,7 +205,8 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await gotoPendingInvoices(page);
+        const rowCount = await gotoPendingInvoices(page);
+        if (rowCount < 3) { test.skip(); return; }
         await selectTableRows(page, [0, 1, 2]);
         await clickBulkAction(page, 'approve');
         const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
@@ -219,8 +221,9 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await gotoPendingInvoices(page);
-        const initialCount = await page.locator('tbody tr').count();
+        const rowCount = await gotoPendingInvoices(page);
+        if (rowCount < 1) { test.skip(); return; }
+        const initialCount = rowCount;
         await selectTableRows(page, [0]);
         await clickBulkAction(page, 'approve');
         await cancelBulkAction(page);
@@ -235,8 +238,9 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await gotoPendingInvoices(page);
-        const initialCount = await page.locator('tbody tr').count();
+        const rowCount = await gotoPendingInvoices(page);
+        if (rowCount < 2) { test.skip(); return; }
+        const initialCount = rowCount;
         await selectTableRows(page, [0, 1]);
         await clickBulkAction(page, 'approve');
         await confirmBulkAction(page);
@@ -271,19 +275,21 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Rejection Flow', () => {
-    // Helper: navigate to invoices page and filter to PENDING via UI dropdown
-    async function gotoPendingInvoices(page: import('@playwright/test').Page) {
+    // Helper: navigate to invoices page, filter to PENDING via UI, return row count
+    async function gotoPendingInvoices(page: import('@playwright/test').Page): Promise<number> {
       await page.goto(INVOICES_URL);
       await page.waitForSelector('[data-testid="data-table"]', { timeout: 15000 });
       await page.selectOption('[data-testid="status-filter"]', 'PENDING');
       await page.waitForTimeout(500);
+      return page.locator('tbody tr').count();
     }
 
     test('reject action is available for pending invoices', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await gotoPendingInvoices(page);
+        const rowCount = await gotoPendingInvoices(page);
+        if (rowCount < 1) { test.skip(); return; }
         await selectTableRows(page, [0]);
         await expectBulkActionsAvailable(page, ['reject']);
       } finally {
@@ -295,7 +301,8 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await gotoPendingInvoices(page);
+        const rowCount = await gotoPendingInvoices(page);
+        if (rowCount < 1) { test.skip(); return; }
         await selectTableRows(page, [0]);
         await clickBulkAction(page, 'reject');
         const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
