@@ -69,7 +69,10 @@ export async function bulkApproveInvoices(
 
     try {
       // 2. Verify invoices exist and get details
-      const placeholders = invoiceIds.map((_, i) => `$${i + 1}`).join(', ');
+      // Use separate placeholder sets for UUID id and varchar invoice_number
+      // to avoid PostgreSQL type inference conflict
+      const idPlaceholders = invoiceIds.map((_, i) => `$${i + 1}::uuid`).join(', ');
+      const numPlaceholders = invoiceIds.map((_, i) => `$${invoiceIds.length + i + 1}`).join(', ');
       const invoiceResult = await queryWithRLS(
         userContext,
         `
@@ -82,7 +85,7 @@ export async function bulkApproveInvoices(
           i.department_code,
           i.status
         FROM finance.invoices i
-        WHERE i.id IN (${placeholders}) OR i.invoice_number IN (${placeholders})
+        WHERE i.id IN (${idPlaceholders}) OR i.invoice_number IN (${numPlaceholders})
         `,
         [...invoiceIds, ...invoiceIds]
       );
@@ -178,8 +181,7 @@ export async function executeBulkApproveInvoices(
         UPDATE finance.invoices
         SET status = 'APPROVED',
             approved_by = $1,
-            approved_at = NOW(),
-            updated_at = NOW()
+            approved_at = NOW()
         WHERE id IN (${placeholders})
           AND status = 'PENDING'
         RETURNING id, invoice_number, vendor_name, amount, currency

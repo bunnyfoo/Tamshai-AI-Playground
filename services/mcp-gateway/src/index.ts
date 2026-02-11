@@ -312,14 +312,16 @@ app.use(helmet({
 }));
 app.use(cors({
   origin: (origin, callback) => {
+    const caddyHttpsPort = process.env.CADDY_HTTPS_PORT;
     const allowedOrigins = [
       // Local development
       'http://localhost:3100',     // MCP Gateway itself
       'http://localhost:4000',     // Portal app
       'http://localhost:4001',     // HR app
       'http://localhost:4002',     // Finance app
-      // Dev environment
+      // Dev environment (port from DEV_PG_CADDY_HTTPS GitHub variable)
       'https://www.tamshai-playground.local',
+      ...(caddyHttpsPort ? [`https://www.tamshai-playground.local:${caddyHttpsPort}`] : []),
       // Stage environment
       'https://www.tamshai.com',
       // Production environment
@@ -537,6 +539,7 @@ app.use('/api', authMiddleware, streamingRouter);
 const confirmationRouter = createConfirmationRoutes({
   logger,
   mcpServerUrls: config.mcpServers,
+  internalSecret: process.env.MCP_INTERNAL_SECRET,
 });
 
 // Mount confirmation routes at /api with auth

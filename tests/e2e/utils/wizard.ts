@@ -26,8 +26,8 @@ const SELECTORS = {
 
   // Navigation buttons
   previousButton: 'button:has-text("Previous")',
-  nextButton: 'button:has-text("Next")',
-  submitButton: 'button:has-text("Submit")',
+  nextButton: '[data-testid="wizard-next-button"]',
+  submitButton: '[data-testid="wizard-submit-button"]',
   cancelButton: 'button:has-text("Cancel")',
 
   // Step content

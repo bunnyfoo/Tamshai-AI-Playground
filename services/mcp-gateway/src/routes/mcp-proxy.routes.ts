@@ -255,9 +255,21 @@ export function createMCPProxyRoutes(deps: MCPProxyRoutesDependencies): Router {
         ? generateInternalToken(internalSecret, userContext.userId, userContext.roles)
         : undefined;
 
+      // Inject userContext into body so MCP servers can authorize requests
+      // MCP servers read userContext from req.body (same pattern as GET handler)
+      const enrichedBody = {
+        ...body,
+        userContext: {
+          userId: userContext.userId,
+          username: userContext.username,
+          email: userContext.email,
+          roles: userContext.roles,
+        },
+      };
+
       const mcpResponse = await axios.post(
         targetUrl,
-        body,
+        enrichedBody,
         {
           timeout,
           headers: {

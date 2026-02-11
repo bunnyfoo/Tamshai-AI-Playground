@@ -245,6 +245,8 @@ services:
       MCP_PAYROLL_URL: http://mcp-payroll:${PORT_MCP_PAYROLL}
       MCP_TAX_URL: http://mcp-tax:${PORT_MCP_TAX}
       LOG_LEVEL: info
+      # CORS: Caddy HTTPS port for dev environment origin (from DEV_PG_CADDY_HTTPS GitHub variable)
+      CADDY_HTTPS_PORT: ${PORT_CADDY_HTTPS}
       # v1.4: Admin API key for E2E snapshot/restore
       ADMIN_API_KEY: ${E2E_ADMIN_API_KEY:?E2E_ADMIN_API_KEY is required}
       # v1.5: Internal HMAC secret for MCP server authentication

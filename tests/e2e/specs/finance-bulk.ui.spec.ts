@@ -223,7 +223,28 @@ test.describe('Finance Invoice Bulk Operations', () => {
         await selectTableRows(page, [0, 1]);
         await clickBulkAction(page, 'approve');
         await confirmBulkAction(page);
-        await page.waitForLoadState('networkidle');
+
+        // After local confirm dialog, the MCP tool returns pending_confirmation
+        // which renders an ApprovalCard for human-in-the-loop confirmation
+        const apiConfirmation = page.locator('[data-testid="api-confirmation"]');
+        await expect(apiConfirmation).toBeVisible({ timeout: 5000 });
+
+        // Click "Approve" in the ApprovalCard and wait for confirmation API response
+        const [confirmResponse] = await Promise.all([
+          page.waitForResponse((res) => res.url().includes('/api/confirm/'), { timeout: 10000 }),
+          apiConfirmation.locator('.btn-success').click(),
+        ]);
+        expect(confirmResponse.status()).toBe(200);
+
+        // Wait for ApprovalCard to disappear and data to refresh
+        await expect(apiConfirmation).not.toBeVisible({ timeout: 10000 });
+        await page.waitForResponse(
+          (res) => res.url().includes('list_invoices') && res.status() === 200,
+          { timeout: 10000 }
+        );
+
+        // Allow React to re-render with new data
+        await page.waitForTimeout(500);
         const finalCount = await page.locator('tbody tr').count();
         expect(finalCount).toBe(initialCount - 2);
       } finally {

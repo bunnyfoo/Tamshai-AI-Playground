@@ -307,6 +307,7 @@ export function Wizard({
             type="button"
             onClick={goToNext}
             disabled={isSubmitting || (isLastStep && submitDisabled)}
+            data-testid={isLastStep ? 'wizard-submit-button' : 'wizard-next-button'}
             className={`px-4 py-2 rounded-lg font-medium transition-colors
                       inline-flex items-center gap-2 ${
                         isLastStep
