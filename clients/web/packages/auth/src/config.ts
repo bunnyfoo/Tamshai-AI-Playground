@@ -202,4 +202,5 @@ export const oidcConfig = new Proxy({} as ReturnType<typeof getOidcConfig>, {
 export const apiConfig = {
   gatewayUrl: import.meta.env.VITE_API_GATEWAY_URL || '',  // Same origin (proxied by Nginx)
   mcpGatewayUrl: import.meta.env.VITE_MCP_GATEWAY_URL || '',  // Same origin (proxied by Nginx)
+  mcpUiUrl: import.meta.env.VITE_MCP_UI_URL || '',  // MCP UI Service (Generative UI)
 };

@@ -1,0 +1,341 @@
+# Generative UI Implementation - HR Org Chart
+
+**Date**: 2026-02-10
+**Status**: Phase C.1 - Directive Detection (HR Org Chart) - COMPLETE
+**Branch**: main
+
+## What Was Implemented
+
+### 1. Directive Detection in HR AIQueryPage
+
+**File**: `clients/web/apps/hr/src/pages/AIQueryPage.tsx`
+
+**Changes**:
+- Added `ComponentRenderer` import from `@tamshai/ui`
+- Added state for `componentResponse` and `directiveError`
+- Implemented `detectDirective()` function to scan SSE responses for `display:hr:<component>:...` patterns
+- Implemented `fetchComponentResponse()` to call MCP UI Service `/api/display` endpoint
+- Implemented `handleQueryComplete()` callback to process SSE responses and detect directives
+- Added ComponentRenderer rendering when directive detected
+- Added error handling UI for directive fetch failures
+
+**Pattern**:
+
+```typescript
+// Detect directive in SSE response
+const directive = detectDirective(response); // "display:hr:org_chart:userId=me"
+
+// Call MCP UI Service
+const componentData = await fetch('/api/mcp-ui/display', {
+  method: 'POST',
+  body: JSON.stringify({ directive }),
+});
+
+// Render ComponentRenderer
+<ComponentRenderer
+  component={componentData}
+  onAction={handleComponentAction}
+  voiceEnabled={false}
+/>
+```
+
+### 2. Configuration Updates
+
+**File**: `clients/web/packages/auth/src/config.ts`
+
+**Changes**:
+- Added `mcpUiUrl` to `apiConfig`
+- Uses `VITE_MCP_UI_URL` environment variable
+
+**File**: `clients/web/apps/hr/.env.example`
+
+**Changes**:
+- Added `VITE_MCP_UI_URL=http://localhost:3118` for dev environment
+- Documented stage URL: `https://vps.tamshai.com/mcp-ui`
+
+## How It Works
+
+### Flow Diagram
+
+```text
+User Query: "Show me my org chart"
+     │
+     ▼
+SSEQueryClient (SSE streaming)
+     │
+     ▼
+Claude Response (contains directive)
+     │
+     ▼
+handleQueryComplete() callback
+     │
+     ▼
+detectDirective() → "display:hr:org_chart:userId=me"
+     │
+     ▼
+fetchComponentResponse() → POST /api/mcp-ui/display
+     │
+     ▼
+MCP UI Service (port 3118)
+     │
+     ▼
+ComponentResponse { type: "OrgChartComponent", props: {...} }
+     │
+     ▼
+ComponentRenderer → renders OrgChartComponent
+```
+
+### Directive Format
+
+```text
+display:<domain>:<component>:<params>
+
+Examples:
+- display:hr:org_chart:userId=me,depth=1
+- display:hr:approvals:userId=me
+- display:finance:budget:department=engineering
+```
+
+### MCP UI Service
+
+**URL**: <http://localhost:3118> (dev)
+**Endpoint**: POST /api/display
+**Body**: `{ "directive": "display:hr:org_chart:userId=me" }`
+**Response**: `ComponentResponse` object
+
+## Test Expectations
+
+From `tests/e2e/specs/generative-ui.ui.spec.ts`:
+
+**Test 1**: OrgChartComponent renders on "Show me my org chart" query
+- Expects: `[data-testid="component-renderer"][data-component-type="OrgChartComponent"]`
+- Expects: `[data-testid="org-chart-self-row"]` (self employee row)
+
+**Test 2**: ApprovalsQueue renders on "Show pending approvals" query
+- Expects: `[data-testid="approvals-queue"]` or empty state
+
+**Test 3**: Invalid directive displays error message
+- Expects: No component rendered for invalid queries
+
+## What's NOW Implemented
+
+### 1. Claude Prompt Engineering (Phase C.5) ✅ COMPLETE
+
+**File**: `services/mcp-gateway/src/ai/claude-client.ts`
+
+Added comprehensive display directive instructions to the system prompt:
+- Instructs Claude when to emit directives vs text responses
+- Lists all 7 available display directives with usage examples
+- Includes trigger phrases ("show", "display", "org chart", etc.)
+- Provides concrete examples of user queries → directives
+
+**System Prompt Addition** (lines 108-125):
+
+```typescript
+DISPLAY DIRECTIVES (Generative UI):
+When the user asks to VIEW or SHOW data that can be visualized as a rich interactive component, emit a display directive instead of text.
+
+Available display directives:
+- display:hr:org_chart:userId=me,depth=1 - "org chart", "team structure", "direct reports"
+- display:hr:approvals:userId=me - "pending approvals", "things to approve"
+- display:sales:customer:customerId={id} - specific customer details
+- display:sales:leads:status=NEW,limit=10 - "leads", "pipeline"
+- display:sales:forecast:period={period} - "forecast", "quota"
+- display:finance:budget:department={dept},year={year} - "budget", "spending"
+- display:finance:quarterly_report:quarter={Q},year={YYYY} - "quarterly financials"
+
+Examples:
+User: "Show me my org chart" → Emit: display:hr:org_chart:userId=me,depth=1
+User: "What approvals do I have?" → Emit: display:hr:approvals:userId=me
+```
+
+**Testing**: Ready for manual testing - query "Show me my org chart" should now emit directive
+
+## What's NOT Yet Implemented
+
+### 2. Voice Toggle Integration (Phase C.3)
+
+Voice features exist but not wired:
+- `useVoiceInput` hook (speech recognition)
+- `useVoiceOutput` hook (speech synthesis)
+- ComponentRenderer supports `voiceEnabled` prop and `narration` field
+
+**TODO**:
+- Add microphone button to AIQueryPage
+- Wire `useVoiceInput.transcript` → query input
+- Wire `ComponentRenderer.narration` → `useVoiceOutput.speak()`
+
+### 3. Kong/Nginx Proxying (Phase C.4)
+
+The `/api/mcp-ui/display` relative URL assumes Nginx proxying is configured.
+
+**TODO**: Add Nginx location block for MCP UI Service:
+
+```nginx
+location /api/mcp-ui/ {
+  proxy_pass http://mcp-ui:3118/api/;
+}
+```
+
+### 4. Other Apps (Finance, Sales, Support, Payroll, Tax)
+
+Only HR app has directive detection implemented.
+
+**TODO**: Replicate this pattern in other AIQueryPages:
+- Finance: `display:finance:budget:...`, `display:finance:approvals:...`
+- Sales: `display:sales:leads:...`, `display:sales:forecast:...`
+- Support: `display:support:tickets:...`
+
+## Testing Checklist
+
+### Manual Testing
+
+1. **Start services**:
+
+   ```bash
+   cd infrastructure/terraform/dev
+   terraform apply -var-file=dev.tfvars
+   ```
+
+2. **Set environment variable** (create `.env.local` from `.env.example`):
+
+   ```bash
+   cd clients/web/apps/hr
+   cp .env.example .env.local
+   # Verify VITE_MCP_UI_URL=http://localhost:3118
+   ```
+
+3. **Start HR app**:
+
+   ```bash
+   npm run dev
+   ```
+
+4. **Test query**:
+   - Navigate to HR → AI Query
+   - Submit: "Show me my org chart"
+   - Expected: Text response (no directive yet - Claude not prompted)
+   - After prompt engineering: ComponentRenderer with OrgChartComponent
+
+### E2E Testing
+
+```bash
+cd tests/e2e
+
+# Load credentials
+eval $(../../scripts/secrets/read-github-secrets.sh --e2e --env)
+export DEV_USER_PASSWORD=$(grep '^DEV_USER_PASSWORD=' ../../infrastructure/docker/.env | cut -d= -f2)
+
+# Run generative UI tests
+npx playwright test specs/generative-ui.ui.spec.ts --reporter=list
+```
+
+**Expected**: Tests will skip or fallback until Claude prompt engineering is complete.
+
+## Dependencies
+
+### Runtime Dependencies
+
+- MCP UI Service (port 3118) - ✅ Running
+- MCP Gateway (port 3100) - ✅ Running
+- ComponentRenderer (@tamshai/ui) - ✅ Built
+- OrgChartComponent (@tamshai/ui) - ✅ Built
+
+### Configuration Dependencies
+
+- VITE_MCP_UI_URL environment variable - ✅ Documented in .env.example
+- User needs to create `.env.local` from `.env.example` - ⏸️ User action required
+
+## Next Steps
+
+### Priority 1: Claude Prompt Engineering
+
+Without this, Claude won't emit directives and the feature won't work.
+
+**File to modify**: `services/mcp-gateway/src/index.ts` (system prompt)
+
+### Priority 2: Test with Mock Directive
+
+Before implementing prompt engineering, test with a hardcoded directive:
+
+```typescript
+// Temporary test code in AIQueryPage
+const handleQueryComplete = useCallback(async (response: string) => {
+  // TEMP: Force directive for testing
+  const testDirective = "display:hr:org_chart:userId=me";
+  await fetchComponentResponse(testDirective);
+}, []);
+```
+
+This validates:
+1. MCP UI Service is accessible
+2. ComponentRenderer works
+3. OrgChartComponent renders
+
+### Priority 3: Nginx Proxying (for stage/prod)
+
+Dev works with direct port access, but stage/prod need proxying.
+
+### Priority 4: Voice Integration
+
+Add microphone button and voice I/O wiring.
+
+### Priority 5: Replicate to Other Apps
+
+Copy this pattern to Finance, Sales, Support, Payroll, Tax AIQueryPages.
+
+## Files Modified
+
+1. `clients/web/apps/hr/src/pages/AIQueryPage.tsx` - Directive detection and ComponentRenderer
+2. `clients/web/packages/auth/src/config.ts` - Added mcpUiUrl to apiConfig
+3. `clients/web/apps/hr/.env.example` - Added VITE_MCP_UI_URL
+
+## Git Status
+
+```bash
+git status
+# Modified:
+#   clients/web/apps/hr/.env.example
+#   clients/web/apps/hr/src/pages/AIQueryPage.tsx
+#   clients/web/packages/auth/src/config.ts
+```
+
+## Commit Message Template
+
+```text
+feat(generative-ui): implement directive detection for HR org chart
+
+Phase C.1 - Directive Detection and ComponentRenderer Integration
+
+Changes:
+- Add directive detection in HR AIQueryPage
+- Scan SSE responses for display:hr:* patterns
+- Call MCP UI Service /api/display endpoint
+- Render ComponentRenderer when directive found
+- Add VITE_MCP_UI_URL configuration
+- Update .env.example with MCP UI Service URL
+
+Implementation Details:
+- detectDirective() regex: /display:hr:(\w+):([^\s]*)/
+- fetchComponentResponse() calls POST /api/mcp-ui/display
+- handleQueryComplete() callback processes SSE completion
+- ComponentRenderer with voiceEnabled=false (voice not wired yet)
+
+Testing:
+- Manual testing pending prompt engineering
+- E2E tests will skip until Claude emits directives
+
+Next Steps:
+- Phase C.5: Claude prompt engineering to emit directives
+- Phase C.3: Voice toggle integration
+- Phase C.4: Nginx proxying for stage/prod
+
+Related:
+- Tests: tests/e2e/specs/generative-ui.ui.spec.ts
+- Docs: .claude/generative-ui-hr-implementation.md
+```
+
+---
+
+**Last Updated**: 2026-02-10
+**Implemented By**: Claude-Dev
