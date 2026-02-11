@@ -123,6 +123,8 @@ services:
       - ${CADDYFILE:-./Caddyfile.dev}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    environment:
+      MCP_UI_PORT: ${PORT_MCP_UI}
     depends_on:
       kong:
         condition: service_healthy
@@ -590,7 +592,8 @@ services:
         VITE_KEYCLOAK_CLIENT_ID: web-portal
         VITE_API_GATEWAY_URL: http://127.0.0.1:${PORT_KONG_PROXY}
         VITE_MCP_GATEWAY_URL: http://127.0.0.1:${PORT_MCP_GATEWAY}
-        VITE_MCP_UI_URL: http://127.0.0.1:${PORT_MCP_UI}
+        # VITE_MCP_UI_URL left empty to use relative URL /mcp-ui/* (proxied by Caddy)
+        VITE_MCP_UI_URL: ""
     container_name: tamshai-pg-web-hr
     ports:
       - "${PORT_WEB_HR:?PORT_WEB_HR is required}:80"
