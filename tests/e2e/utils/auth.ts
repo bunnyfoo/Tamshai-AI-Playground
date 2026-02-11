@@ -178,13 +178,7 @@ export async function createAuthenticatedContext(browser: Browser): Promise<Brow
   await ensureFreshTotpWindow();
   const context = await browser.newContext({
     ignoreHTTPSErrors: ENV === 'dev',
-    // Incognito mode: block service workers to prevent caching
-    serviceWorkers: 'block',
   });
-
-  // Clear cookies at context level before creating page
-  await context.clearCookies();
-
   const page = await context.newPage();
   await authenticateUser(page);
 
