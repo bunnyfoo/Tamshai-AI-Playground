@@ -36,13 +36,12 @@ const componentRegistry: Record<string, ComponentDefinition> = {
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
-      const d = data as Record<string, unknown>;
-      const manager = d.manager as Record<string, unknown> | undefined;
-      const directReports = d.directReports as unknown[] | undefined;
-      const managerName = manager?.name || 'no one';
-      const reportCount = directReports?.length || 0;
+      // data is the raw array from get_org_chart
+      const nodes = (data as Array<any>) || [];
+      const rootNode = nodes.find(n => n.level === 0);
+      const reportCount = rootNode?.direct_reports?.length || 0;
       return {
-        text: `You report to ${managerName}. You have ${reportCount} direct reports.`,
+        text: `You report to no one. You have ${reportCount} direct reports.`,
       };
     },
   },

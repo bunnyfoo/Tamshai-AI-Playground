@@ -125,11 +125,19 @@ router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) =
     );
 
     // Merge all MCP response data
-    const mergedData: Record<string, unknown> = {};
-    for (const result of mcpResults) {
-      if (result.status === 'success' && result.data) {
-        Object.assign(mergedData, result.data);
+    let mergedData: unknown;
+    if (componentDef.mcpCalls.length === 1 && mcpResults[0].status === 'success') {
+      // Single MCP call - use data directly (could be array or object)
+      mergedData = mcpResults[0].data;
+    } else {
+      // Multiple MCP calls - merge into object
+      const merged: Record<string, unknown> = {};
+      for (const result of mcpResults) {
+        if (result.status === 'success' && result.data) {
+          Object.assign(merged, result.data);
+        }
       }
+      mergedData = merged;
     }
 
     // Transform data for component props

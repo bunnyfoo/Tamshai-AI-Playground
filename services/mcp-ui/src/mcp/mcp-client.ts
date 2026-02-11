@@ -121,7 +121,8 @@ export async function callMCPTool(
     if (params[directiveParam] !== undefined) {
       let value = params[directiveParam];
       // Special case: resolve "me" to the actual user ID
-      if (value === 'me' && toolParam === 'userId') {
+      // Works for any tool param that represents a user identifier
+      if (value === 'me' && (toolParam === 'userId' || toolParam === 'rootEmployeeId' || toolParam.toLowerCase().includes('user'))) {
         value = userContext.userId;
       }
       toolParams[toolParam] = value;

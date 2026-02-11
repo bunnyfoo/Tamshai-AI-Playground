@@ -56,7 +56,7 @@ interface OrgChartRow {
  * Input schema for get_org_chart tool
  */
 export const GetOrgChartInputSchema = z.object({
-  rootEmployeeId: z.string().uuid().optional(),
+  rootEmployeeId: z.string().optional(),  // Relaxed: accept any string (UUID validation was too strict)
   maxDepth: z.number().int().min(1).max(10).optional().default(10),
 });
 
@@ -127,7 +127,7 @@ export async function getOrgChart(
               0 as level
             FROM hr.employees e
             LEFT JOIN hr.departments d ON e.department_id = d.id
-            WHERE (e.id = $1 OR e.keycloak_user_id = $1)
+            WHERE (e.id::text = $1 OR e.keycloak_user_id = $1)
               AND e.status = 'ACTIVE'
 
             UNION ALL
@@ -219,11 +219,11 @@ export async function getOrgChart(
       }
 
       // Build hierarchical tree
-      // If rootEmployeeId was provided, use the actual employee_id from the found root employee
-      // (since rootEmployeeId might be a keycloak_user_id, but buildOrgTree needs employee_id)
+      // If rootEmployeeId was provided, use the root employee's MANAGER as the parent filter
+      // This ensures buildOrgTree includes the root employee (at their level) plus their reports
       const rootEmployee = result.rows.find(r => r.level === 0);
       const rootManagerId = rootEmployeeId
-        ? (rootEmployee?.employee_id || null)
+        ? (rootEmployee?.manager_id || null)  // Use manager_id, not employee_id!
         : null;
       const orgTree = buildOrgTree(result.rows, rootManagerId);
 
@@ -248,11 +248,15 @@ export async function getOrgChart(
         })),
       });
 
-      return createSuccessResponse(orgTree, {
+      const response = createSuccessResponse(orgTree, {
         hasMore: false,
         returnedCount: result.rows.length,
         hint: `Showing ${result.rows.length} employees in the org chart hierarchy (tree nodes: ${orgTree.length})`,
       });
+
+      console.log('[get_org_chart] Final response:', JSON.stringify(response, null, 2));
+
+      return response;
     } catch (error) {
       return handleDatabaseError(error as Error, 'get_org_chart');
     }
