@@ -31,16 +31,29 @@ let authenticatedContext: BrowserContext | null = null;
 
 test.describe('Support Ticket Escalation Flow', () => {
   let snapshotId: string;
+  let authCreatedAt: number;
 
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     authenticatedContext = await createAuthenticatedContext(browser);
     await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/support/`);
+    authCreatedAt = Date.now();
     snapshotId = await createDatabaseSnapshot();
   });
 
   test.afterAll(async () => {
     await authenticatedContext?.close();
+  });
+
+  // Proactively refresh auth tokens before they expire.
+  // Access tokens have a 5-minute lifetime; re-warm after 4 minutes
+  // to inject fresh sessionStorage tokens into subsequent pages.
+  test.beforeEach(async () => {
+    if (!authenticatedContext) return;
+    if (Date.now() - authCreatedAt > 4 * 60 * 1000) {
+      await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/support/`);
+      authCreatedAt = Date.now();
+    }
   });
 
   test.afterEach(async () => {

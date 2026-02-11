@@ -41,15 +41,27 @@ const TAX_URL = `${BASE_URLS[ENV]}/tax`;
 
 test.describe('Tax App E2E Tests', () => {
   let ctx: BrowserContext | null = null;
+  let authCreatedAt: number;
 
   test.beforeAll(async ({ browser }) => {
     if (!TEST_USER.password) return;
     ctx = await createAuthenticatedContext(browser);
     await warmUpContext(ctx, `${TAX_URL}/`);
+    authCreatedAt = Date.now();
   });
 
   test.afterAll(async () => {
     await ctx?.close();
+  });
+
+  // Proactively refresh auth tokens before they expire.
+  // Access tokens have a 5-minute lifetime; re-warm after 4 minutes.
+  test.beforeEach(async () => {
+    if (!ctx) return;
+    if (Date.now() - authCreatedAt > 4 * 60 * 1000) {
+      await warmUpContext(ctx, `${TAX_URL}/`);
+      authCreatedAt = Date.now();
+    }
   });
 
   test.describe('Dashboard', () => {

@@ -172,12 +172,17 @@ export async function createAuthenticatedContext(browser: Browser): Promise<Brow
   // Inject captured sessionStorage into every new page created in this context.
   // This runs before the app's scripts, so the auth provider finds valid tokens
   // immediately and skips the Keycloak redirect.
+  //
+  // Each init script includes an expiresAt timestamp so that accumulated scripts
+  // from token refreshes become no-ops once their tokens expire (idempotent).
   if (Object.keys(sessionData).length > 0) {
-    await context.addInitScript((data: Record<string, string>) => {
-      for (const [key, value] of Object.entries(data)) {
-        sessionStorage.setItem(key, value);
+    await context.addInitScript((data: { tokens: Record<string, string>; expiresAt: number }) => {
+      if (Date.now() < data.expiresAt) {
+        for (const [key, value] of Object.entries(data.tokens)) {
+          sessionStorage.setItem(key, value);
+        }
       }
-    }, sessionData);
+    }, { tokens: sessionData, expiresAt: Date.now() + 4.5 * 60 * 1000 });
   }
 
   return context;
@@ -226,14 +231,17 @@ export async function warmUpContext(
       return data;
     });
 
-    // Add new initScript with app-specific tokens (addInitScript accumulates;
-    // the last write to each sessionStorage key wins)
+    // Add new initScript with app-specific tokens. Each script includes an
+    // expiresAt timestamp so accumulated scripts from prior warmups become
+    // no-ops once their tokens expire — keeping the mechanism idempotent.
     if (Object.keys(sessionData).length > 0) {
-      await ctx.addInitScript((data: Record<string, string>) => {
-        for (const [key, value] of Object.entries(data)) {
-          sessionStorage.setItem(key, value);
+      await ctx.addInitScript((data: { tokens: Record<string, string>; expiresAt: number }) => {
+        if (Date.now() < data.expiresAt) {
+          for (const [key, value] of Object.entries(data.tokens)) {
+            sessionStorage.setItem(key, value);
+          }
         }
-      }, sessionData);
+      }, { tokens: sessionData, expiresAt: Date.now() + 4.5 * 60 * 1000 });
     }
   } catch {
     // Warm-up failure is non-fatal; tests may still pass via Keycloak SSO cookies
