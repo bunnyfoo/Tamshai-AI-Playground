@@ -29,6 +29,7 @@ git config user.email "claude-qa@tamshai.com"
 ```
 
 **Verify Configuration**:
+
 ```bash
 git config user.name
 git config user.email
@@ -49,6 +50,7 @@ git config user.email
 | **Token Variable** | `BUNNYFOO_GH_TOKEN` | Never use `GITHUB_TOKEN` |
 
 **Authentication Method**:
+
 ```bash
 # Authenticate via gh CLI (preferred)
 unset GITHUB_TOKEN
@@ -98,7 +100,7 @@ git -c credential.helper= push https://bunnyfoo:${TOKEN}@github.com/bunnyfoo/Tam
 | Audience Mapper | tamshai-website client | Adds `mcp-gateway` to token audience claim |
 | MCP Gateway Client | Created by sync-realm.sh | Confidential client for API gateway |
 | Group Assignments | sync-realm.sh | Maps users to groups for role inheritance |
-| Sample Data | sample-data/*.sql, *.js, *.ndjson | Reloadable via `./scripts/infra/deploy.sh --reseed` |
+| Sample Data | sample-data/*.sql,*.js, *.ndjson | Reloadable via `./scripts/infra/deploy.sh --reseed` |
 
 ### Environment-Specific Files
 
@@ -311,10 +313,12 @@ npm run test:integration
 Architecture v1.4 introduces critical enhancements for AI reliability and user safety:
 
 #### 1. SSE Transport Protocol
+
 **Problem**: HTTP requests timeout during Claude's 30-60 second multi-step reasoning.
 **Solution**: Server-Sent Events (SSE) streaming using EventSource API.
 
 **Gateway Implementation**:
+
 ```typescript
 app.post('/api/query', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -335,6 +339,7 @@ app.post('/api/query', async (req, res) => {
 ```
 
 **Client Implementation**:
+
 ```typescript
 const eventSource = new EventSource('/api/query');
 eventSource.onmessage = (event) => {
@@ -348,10 +353,12 @@ eventSource.onmessage = (event) => {
 ```
 
 #### 2. Truncation Warnings
+
 **Problem**: Users unaware when AI responses are based on incomplete data (50-record limit).
 **Solution**: MCP servers detect truncation and inject AI-visible warnings.
 
 **MCP Server LIMIT+1 Pattern**:
+
 ```typescript
 async function listEmployees(limit = 50): Promise<MCPToolResponse> {
   const result = await db.query(
@@ -376,6 +383,7 @@ async function listEmployees(limit = 50): Promise<MCPToolResponse> {
 ```
 
 #### 3. LLM-Friendly Error Schemas
+
 **Problem**: Raw exceptions don't help Claude self-correct.
 **Solution**: Discriminated union responses with `suggestedAction` fields.
 
@@ -406,10 +414,12 @@ async function getEmployee(employeeId: string): Promise<MCPToolResponse> {
 ```
 
 #### 4. Human-in-the-Loop Confirmations
+
 **Problem**: Accidental destructive operations without user approval.
 **Solution**: Write tools return `pending_confirmation`, user approves via UI.
 
 **MCP Server Write Tool**:
+
 ```typescript
 async function deleteEmployee(employeeId: string): Promise<MCPToolResponse> {
   const confirmationId = crypto.randomUUID();
@@ -434,6 +444,7 @@ async function deleteEmployee(employeeId: string): Promise<MCPToolResponse> {
 ```
 
 **Gateway Confirmation Endpoint**:
+
 ```typescript
 app.post('/api/confirm/:confirmationId', async (req, res) => {
   const { approved } = req.body;
@@ -463,7 +474,7 @@ app.post('/api/confirm/:confirmationId', async (req, res) => {
 **Pattern**: API Gateway + Service Mesh
 **Implementation**: Kong Gateway → MCP Gateway → Domain MCP Servers
 
-```
+```text
              ┌──────────┐
    Clients   │Desktop/  │
       │      │Mobile    │
@@ -511,6 +522,7 @@ app.post('/api/confirm/:confirmationId', async (req, res) => {
 **Flow**: OIDC PKCE → JWT Issuance → Token Validation → Role Extraction
 
 **JWT Validation in MCP Gateway** (services/mcp-gateway/src/index.ts:80-120):
+
 ```typescript
 async function validateToken(authHeader: string) {
   const token = authHeader.replace('Bearer ', '');
@@ -537,7 +549,8 @@ async function validateToken(authHeader: string) {
 ### 3. Authorization: Hierarchical RBAC
 
 **Role Hierarchy**:
-```
+
+```text
 executive (composite role)
   ├─ hr-read → hr-write
   ├─ finance-read → finance-write
@@ -549,6 +562,7 @@ Access Levels:
 ```
 
 **Role-to-MCP Routing** (services/mcp-gateway/src/index.ts:200-250):
+
 ```typescript
 const ROLE_TO_MCP: Record<string, string[]> = {
   'hr-read': ['mcp-hr'],
@@ -673,6 +687,7 @@ Performance and load testing uses [k6](https://k6.io/) with TDD-style threshold 
 | Soak | 4hr | 25 | P95 < 500ms, Error < 0.1% |
 
 **Commands**:
+
 ```bash
 cd tests/performance
 
@@ -707,11 +722,12 @@ Browser-based E2E tests with full authentication flow including TOTP.
 **Test Environments**:
 | Environment | App URL | Keycloak URL | TOTP Secret Source |
 |-------------|---------|--------------|-------------------|
-| dev | https://www.tamshai-playground.local | https://www.tamshai-playground.local/auth | Hardcoded (dev only) |
-| stage | https://www.tamshai.com | https://www.tamshai.com/auth | Environment variable |
-| prod | https://prod.tamshai.com | https://keycloak-fn44nd7wba-uc.a.run.app/auth | Secrets manager |
+| dev | <https://www.tamshai-playground.local> | <https://www.tamshai-playground.local/auth> | Hardcoded (dev only) |
+| stage | <https://www.tamshai.com> | <https://www.tamshai.com/auth> | Environment variable |
+| prod | <https://prod.tamshai.com> | <https://keycloak-fn44nd7wba-uc.a.run.app/auth> | Secrets manager |
 
 **Commands**:
+
 ```bash
 cd tests/e2e
 
@@ -737,6 +753,7 @@ npm run test:report
 ```
 
 **Environment Variables**:
+
 ```bash
 # Test user service account (exists in ALL environments: dev, stage, prod)
 # See docs/testing/TEST_USER_JOURNEY.md for details
@@ -753,6 +770,7 @@ export TEST_USER_TOTP_SECRET="<custom-totp-secret>"
 **Important**: The `test-user.journey` account is a dedicated service account for E2E testing that exists in all environments (dev, stage, prod). It has no data access privileges (safe for testing) and uses the same credentials across all environments.
 
 **Customer Portal Test Users**:
+
 ```bash
 # Customer user password (GitHub Secret: CUSTOMER_USER_PASSWORD)
 export CUSTOMER_USER_PASSWORD="<from-secrets>"  # GitHub Secret: CUSTOMER_USER_PASSWORD
@@ -766,6 +784,7 @@ export CUSTOMER_USER_PASSWORD="<from-secrets>"  # GitHub Secret: CUSTOMER_USER_P
 **Important**: Customer users are provisioned in the `tamshai-customers` realm (separate from employee realm). They do NOT require TOTP - only username/password authentication.
 
 **TOTP Code Generation**:
+
 ```bash
 # Generate TOTP code manually for testing (test-user.journey)
 oathtool --totp --base32 "$TEST_USER_TOTP_SECRET"
@@ -834,6 +853,7 @@ sudo sysctl -w vm.max_map_count=262144
 ```
 
 **Verification**:
+
 ```bash
 sysctl vm.max_map_count
 # Should output: vm.max_map_count = 262144
@@ -1084,6 +1104,7 @@ Keycloak configuration (clients, roles, etc.) is managed through:
 ### Adding a New Keycloak Client
 
 1. **Add to realm export** (`keycloak/realm-export-dev.json`):
+
 ```json
 {
   "clientId": "my-new-app",
@@ -1098,7 +1119,8 @@ Keycloak configuration (clients, roles, etc.) is managed through:
 }
 ```
 
-2. **Add to sync script** (`keycloak/scripts/sync-realm.sh`):
+1. **Add to sync script** (`keycloak/scripts/sync-realm.sh`):
+
 ```bash
 sync_my_new_app_client() {
     local client_json='{...}'
@@ -1106,7 +1128,8 @@ sync_my_new_app_client() {
 }
 ```
 
-3. **Apply locally**:
+1. **Apply locally**:
+
 ```bash
 # Option 1: Run sync script (updates existing Keycloak)
 cd keycloak/scripts
@@ -1119,11 +1142,12 @@ docker volume rm $(docker volume ls -q | grep keycloak) 2>/dev/null
 docker compose up -d keycloak
 ```
 
-4. **Deploy to stage**: Push to main - CI/CD will sync automatically
+1. **Deploy to stage**: Push to main - CI/CD will sync automatically
 
 ### Manual Keycloak Sync
 
 **Local Development:**
+
 ```bash
 cd keycloak/scripts
 ./docker-sync-realm.sh dev tamshai-keycloak
@@ -1132,7 +1156,7 @@ cd keycloak/scripts
 ### Keycloak Admin Access
 
 **Local Dev:**
-- URL: http://localhost:8180/auth/admin
+- URL: <http://localhost:8180/auth/admin>
 - Username: admin
 - Password: admin
 
@@ -1143,6 +1167,7 @@ cd keycloak/scripts
 ### Common Issues
 
 **1. Port Conflicts**
+
 ```bash
 # Check if ports are in use
 lsof -i :3100
@@ -1156,6 +1181,7 @@ KEYCLOAK_PORT=8280
 ```
 
 **2. Docker Compose Fails**
+
 ```bash
 # Check Docker status
 docker info
@@ -1168,6 +1194,7 @@ docker system prune -a
 ```
 
 **3. Keycloak Not Ready**
+
 ```bash
 # Check Keycloak logs
 docker compose logs keycloak
@@ -1179,6 +1206,7 @@ curl http://localhost:8180/health/ready
 ```
 
 **4. JWT Validation Fails**
+
 ```bash
 # Verify Keycloak JWKS is accessible
 docker compose exec mcp-gateway curl http://keycloak:8080/realms/tamshai/protocol/openid-connect/certs
@@ -1190,6 +1218,7 @@ docker compose exec mcp-gateway ping keycloak
 ```
 
 **5. Claude API Errors**
+
 ```bash
 # Verify API key is set
 docker compose exec mcp-gateway printenv CLAUDE_API_KEY
@@ -1198,6 +1227,7 @@ docker compose exec mcp-gateway printenv CLAUDE_API_KEY
 ```
 
 **6. Database Connection Issues**
+
 ```bash
 # Check PostgreSQL
 docker compose exec postgres psql -U tamshai -d tamshai_hr -c "SELECT 1;"
@@ -1209,6 +1239,7 @@ docker compose exec mongodb mongosh --eval "db.adminCommand('ping')"
 ### Debugging Tips
 
 **Enable Verbose Logging**:
+
 ```typescript
 // services/mcp-gateway/src/index.ts
 const logger = winston.createLogger({
@@ -1217,6 +1248,7 @@ const logger = winston.createLogger({
 ```
 
 **Inspect JWT Token**:
+
 ```bash
 # Get token from Keycloak
 TOKEN=$(curl -X POST http://localhost:8180/realms/tamshai/protocol/openid-connect/token \
@@ -1232,6 +1264,7 @@ echo $TOKEN | cut -d. -f2 | base64 -d | jq .
 ```
 
 **Monitor Redis**:
+
 ```bash
 # Watch token revocations
 docker compose exec redis redis-cli MONITOR
@@ -1245,30 +1278,35 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 ## Key Documentation References
 
 ### Architecture & Design
+
 - [Architecture Overview](docs/architecture/overview.md)
 - [Security Model](docs/architecture/security-model.md)
 - [Architecture Specs](.specify/ARCHITECTURE_SPECS.md)
 - [V1.4 Update Status](.specify/V1.4_UPDATE_STATUS.md)
 
 ### Security
+
 - [Terraform State Security](docs/security/TERRAFORM_STATE_SECURITY.md)
 - [VPS Firewall Justification](docs/security/VPS_FIREWALL_JUSTIFICATION.md)
 - [Security Remediation Plan](docs/archived/keycloak-debugging-2025-12/2025-12-31-security-remediation-plan.md)
 - [Phase 5 Security Analysis](docs/archived/keycloak-debugging-2025-12/2025-12-31-phase5-remaining-issues.md)
 
 ### Development
+
 - [Port Allocation](docs/development/PORT_ALLOCATION.md)
 - [Lessons Learned](docs/development/lessons-learned.md)
 - [Test Coverage Strategy](.specify/specs/011-qa-testing/TEST_COVERAGE_STRATEGY.md)
 - [Testing & CI/CD Config](.specify/specs/011-qa-testing/TESTING_CI_CD_CONFIG.md)
 
 ### Refactoring (Active Work)
+
 - [Refactoring Plan](.specify/specs/003-mcp-gateway/REFACTORING_PLAN.md) (3,477 lines)
   - Review #1: Technical Lead feedback (JWKS singleton, StreamingService, integration tests)
   - Review #2: QA Lead feedback (SSE scenarios, mock factories, type coverage)
   - Review #3: Final execution safeguards (disconnect handling, HTTP mocking)
 
 ### Specifications
+
 - [001 - Foundation](.specify/specs/001-foundation/)
 - [002 - Security](.specify/specs/002-security-iam/)
 - [003 - MCP Gateway](.specify/specs/003-mcp-gateway/)
@@ -1277,6 +1315,7 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 - [011 - QA Testing](.specify/specs/011-qa-testing/)
 
 ### External Links
+
 - [Anthropic Claude API Docs](https://docs.anthropic.com/claude/reference/getting-started-with-the-api)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Keycloak Documentation](https://www.keycloak.org/documentation)
@@ -1286,7 +1325,7 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 
 ## Project Repository
 
-**GitHub**: https://github.com/jcornell3/tamshai-enterprise-ai
+**GitHub**: <https://github.com/jcornell3/tamshai-enterprise-ai>
 **Issues**: Use GitHub Issues for bug reports
 **Project Sponsor**: John Cornell
 
@@ -1351,12 +1390,60 @@ docker compose exec redis redis-cli KEYS "revoked:*"
 - ✅ AuditTrail component: 22 passing tests
 - ✅ DataTable component: all tests passing
 
+### Generative UI Replication Complete (Phase C.5)
+
+**Status**: ✅ Complete (2026-02-10)
+**Scope**: Replicate generative UI + voice integration from HR app to all 5 remaining apps
+**Architecture Version**: v1.5 (Generative UI + Voice I/O)
+
+**Apps Updated**:
+1. **Sales** (Commit: cc2340c8)
+   - Directive detection: `display:sales:customer:*`, `display:sales:leads:*`
+   - SSEQueryClient integration with onQueryComplete callback
+   - Voice input/output hooks (useVoiceInput, useVoiceOutput)
+   - VITE_MCP_UI_URL configuration
+
+2. **Support** (Commit: cc2340c8)
+   - Directive detection: `display:support:tickets:*`
+   - SSEQueryClient integration
+   - Voice I/O with toggle control
+   - VITE_MCP_UI_URL configuration
+
+3. **Finance** (Commit: eed467df)
+   - Directive detection: `display:finance:budget:*`, `display:finance:quarterly_report:*`
+   - EventSource integration with currentMessageContentRef tracking
+   - Preserved existing features: message history, markdown, confirmations
+   - Voice I/O with visual indicators
+
+4. **Payroll** (Commit: 6f7bc858)
+   - Directive detection: `display:payroll:pay_stub:*`, `display:payroll:pay_runs:*`
+   - ReadableStream integration with directive detection on completion
+   - Created .env.example with VITE_MCP_UI_URL
+   - Voice I/O with listening indicator
+
+5. **Tax** (Commit: 6f7bc858)
+   - Directive detection: `display:tax:quarterly_estimate:*`, `display:tax:filings:*`
+   - ReadableStream integration
+   - Created .env.example
+   - Voice I/O complete
+
+**Key Patterns Implemented**:
+- **Pattern 1** (HR, Sales, Support): SSEQueryClient callback integration
+- **Pattern 2** (Finance): EventSource with content ref tracking
+- **Pattern 3** (Payroll, Tax): ReadableStream with post-completion detection
+
+**Technical Achievement**: Successfully adapted generative UI pattern to three different streaming architectures while preserving existing functionality.
+
+**Documentation**: `.claude/generative-ui-hr-implementation.md`
+
 ### Technical Debt Log
+
 - Finance app vitest configuration needs workspace package resolution fix
 - Pre-existing test failures in Finance/Budget/Expense pages (module mocking)
 - Budget approval tests require fixture reset for idempotent runs
 
 ### Next Phase: Tax Module
+
 After completing expense reports v1.5, begin Phase 3.2 - Tax Module implementation using TDD:
 1. Write failing tests (RED phase)
 2. Implement minimal code (GREEN phase)
@@ -1365,6 +1452,6 @@ After completing expense reports v1.5, begin Phase 3.2 - Tax Module implementati
 
 ---
 
-*Last Updated: February 6, 2026*
-*Architecture Version: 1.5 (Expense Reports Implementation)*
-*Document Version: 3.2 (Expense Reports v1.5 In Progress)*
+*Last Updated: February 10, 2026*
+*Architecture Version: 1.5 (Generative UI + Expense Reports)*
+*Document Version: 3.3 (Phase C.5 Generative UI Complete)*

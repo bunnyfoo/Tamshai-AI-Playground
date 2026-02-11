@@ -260,40 +260,130 @@ Implemented complete voice I/O integration:
 - Speech synthesis API check: 'speechSynthesis' in window
 ```
 
-## Phase C.5 Status (In Progress)
+## Phase C.5 Status ✅ COMPLETE
+
+All 6 apps now have generative UI and voice integration (Architecture v1.5).
 
 ### ✅ Completed Apps
+
+**HR** (Commit: 07de6d16):
+- Directive detection: `display:hr:org_chart:userId=me`, `display:hr:approvals:userId=me`
+- Voice input/output integration
+- ComponentRenderer with voiceEnabled prop
+- VITE_MCP_UI_URL configuration
+- SSEQueryClient integration
 
 **Sales** (Commit: cc2340c8):
 - Directive detection: `display:sales:customer:customerId={id}`, `display:sales:leads:status=NEW`
 - Voice input/output integration
 - ComponentRenderer with voiceEnabled prop
 - VITE_MCP_UI_URL configuration
+- SSEQueryClient integration
 
 **Support** (Commit: cc2340c8):
 - Directive detection: `display:support:tickets:status=open,priority=high`
 - Voice input/output integration
 - ComponentRenderer with voiceEnabled prop
 - VITE_MCP_UI_URL configuration
+- SSEQueryClient integration
 
-### ⏸️ Remaining Apps (Custom Streaming)
+**Finance** (Commit: eed467df):
+- Directive detection: `display:finance:budget:department={dept}`, `display:finance:quarterly_report:quarter={Q}`
+- Voice input/output integration
+- ComponentRenderer with voiceEnabled prop
+- VITE_MCP_UI_URL configuration
+- Custom EventSource integration with content tracking via currentMessageContentRef
+- Preserved existing features: message history, markdown rendering, confirmation handling
 
-These apps require more complex integration due to custom EventSource/ReadableStream implementations:
+**Payroll** (Commit: 6f7bc858):
+- Directive detection: `display:payroll:pay_stub:employeeId=me`, `display:payroll:pay_runs:period=current`
+- Voice input/output integration
+- ComponentRenderer with voiceEnabled prop
+- VITE_MCP_UI_URL configuration
+- ReadableStream integration with directive detection on stream completion
+- Created .env.example file
 
-**Finance**: Custom EventSource with message history, markdown rendering
-**Payroll**: Custom fetch with ReadableStream decoder
-**Tax**: Custom fetch with ReadableStream decoder
+**Tax** (Commit: 6f7bc858):
+- Directive detection: `display:tax:quarterly_estimate:quarter=Q1`, `display:tax:filings:year=2025`
+- Voice input/output integration
+- ComponentRenderer with voiceEnabled prop
+- VITE_MCP_UI_URL configuration
+- ReadableStream integration with directive detection on stream completion
+- Created .env.example file
 
-## What's NOT Yet Implemented
+## Streaming Integration Patterns
 
-### Finance, Payroll, Tax Apps
+Phase C.5 successfully adapted the generative UI pattern to three different streaming architectures:
 
-Only HR app has directive detection implemented.
+### Pattern 1: SSEQueryClient (HR, Sales, Support)
 
-**TODO**: Replicate this pattern in other AIQueryPages:
-- Finance: `display:finance:budget:...`, `display:finance:approvals:...`
-- Sales: `display:sales:leads:...`, `display:sales:forecast:...`
-- Support: `display:support:tickets:...`
+**Implementation**: Simple callback integration
+
+```typescript
+const handleQueryComplete = useCallback(async (response: string) => {
+  const directive = detectDirective(response);
+  if (directive) {
+    await fetchComponentResponse(directive);
+  }
+}, []);
+
+<SSEQueryClient onQueryComplete={handleQueryComplete} />
+```
+
+### Pattern 2: EventSource (Finance)
+
+**Implementation**: Track content in ref during streaming, detect on '[DONE]'
+
+```typescript
+const currentMessageContentRef = useRef<string>('');
+
+eventSource.onmessage = (event) => {
+  const chunk = JSON.parse(event.data);
+  if (chunk.type === 'text' && chunk.text) {
+    currentMessageContentRef.current += chunk.text;
+    // Update message display
+  }
+
+  if (event.data === '[DONE]') {
+    const completeMessage = currentMessageContentRef.current;
+    const directive = detectDirective(completeMessage);
+    if (directive) {
+      await fetchComponentResponse(directive);
+    }
+    currentMessageContentRef.current = '';
+  }
+};
+```
+
+### Pattern 3: ReadableStream (Payroll, Tax)
+
+**Implementation**: Track content during reader loop, detect after completion
+
+```typescript
+const currentMessageContentRef = useRef<string>('');
+
+while (reader) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value);
+  // Process SSE lines
+  if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+    currentMessageContentRef.current += parsed.delta.text;
+    // Update message display
+  }
+}
+
+// After stream completes
+const completeMessage = currentMessageContentRef.current;
+const directive = detectDirective(completeMessage);
+if (directive) {
+  await fetchComponentResponse(directive);
+}
+currentMessageContentRef.current = '';
+```
+
+**Key Insight**: All three patterns use `currentMessageContentRef` to accumulate the complete message content, then detect directives only when the stream is fully complete. This ensures the directive regex has the complete message to scan.
 
 ## Testing Checklist
 
