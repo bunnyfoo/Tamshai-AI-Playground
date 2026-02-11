@@ -20,15 +20,19 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     component: 'org_chart',
     description: 'Displays organizational hierarchy centered on the current user',
     mcpCalls: [
-      { server: 'hr', tool: 'get_org_chart', paramMap: { userId: 'userId', maxDepth: 'depth' } },
+      { server: 'hr', tool: 'get_org_chart', paramMap: { rootEmployeeId: 'userId', maxDepth: 'depth' } },
     ],
     transform: (data: unknown): Record<string, unknown> => {
-      const d = data as Record<string, unknown>;
+      // get_org_chart returns an array of tree nodes
+      // Find the root node (the employee we're viewing)
+      const nodes = (data as Array<any>) || [];
+      const rootNode = nodes.find(n => n.level === 0) || null;
+
       return {
-        manager: d.manager,
-        self: d.employee,
-        peers: d.peers || [],
-        directReports: d.directReports || [],
+        manager: null,  // get_org_chart doesn't return manager info (TODO: enhance tool)
+        self: rootNode,
+        peers: [],  // get_org_chart doesn't return peers (TODO: enhance tool)
+        directReports: rootNode?.direct_reports || [],
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {

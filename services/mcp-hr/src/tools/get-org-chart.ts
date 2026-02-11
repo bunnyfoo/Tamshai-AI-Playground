@@ -221,15 +221,37 @@ export async function getOrgChart(
       // Build hierarchical tree
       // If rootEmployeeId was provided, use the actual employee_id from the found root employee
       // (since rootEmployeeId might be a keycloak_user_id, but buildOrgTree needs employee_id)
+      const rootEmployee = result.rows.find(r => r.level === 0);
       const rootManagerId = rootEmployeeId
-        ? (result.rows.find(r => r.level === 0)?.employee_id || null)
+        ? (rootEmployee?.employee_id || null)
         : null;
       const orgTree = buildOrgTree(result.rows, rootManagerId);
+
+      // Log diagnostics for debugging
+      console.log('[get_org_chart] Diagnostics:', {
+        inputRootEmployeeId: rootEmployeeId,
+        foundRootEmployee: rootEmployee ? {
+          employee_id: rootEmployee.employee_id,
+          name: `${rootEmployee.first_name} ${rootEmployee.last_name}`,
+          email: rootEmployee.email,
+          manager_id: rootEmployee.manager_id,
+        } : null,
+        resolvedRootManagerId: rootManagerId,
+        totalRowsFromQuery: result.rows.length,
+        allEmployeeIds: result.rows.map(r => ({ id: r.employee_id, level: r.level, manager_id: r.manager_id })),
+        builtTreeSize: orgTree.length,
+        builtTreeStructure: orgTree.map(n => ({
+          id: n.employee_id,
+          name: n.full_name,
+          level: n.level,
+          directReportsCount: n.direct_reports_count,
+        })),
+      });
 
       return createSuccessResponse(orgTree, {
         hasMore: false,
         returnedCount: result.rows.length,
-        hint: `Showing ${result.rows.length} employees in the org chart hierarchy`,
+        hint: `Showing ${result.rows.length} employees in the org chart hierarchy (tree nodes: ${orgTree.length})`,
       });
     } catch (error) {
       return handleDatabaseError(error as Error, 'get_org_chart');
