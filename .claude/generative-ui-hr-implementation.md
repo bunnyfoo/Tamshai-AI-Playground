@@ -260,9 +260,33 @@ Implemented complete voice I/O integration:
 - Speech synthesis API check: 'speechSynthesis' in window
 ```
 
+## Phase C.5 Status (In Progress)
+
+### ✅ Completed Apps
+
+**Sales** (Commit: cc2340c8):
+- Directive detection: `display:sales:customer:customerId={id}`, `display:sales:leads:status=NEW`
+- Voice input/output integration
+- ComponentRenderer with voiceEnabled prop
+- VITE_MCP_UI_URL configuration
+
+**Support** (Commit: cc2340c8):
+- Directive detection: `display:support:tickets:status=open,priority=high`
+- Voice input/output integration
+- ComponentRenderer with voiceEnabled prop
+- VITE_MCP_UI_URL configuration
+
+### ⏸️ Remaining Apps (Custom Streaming)
+
+These apps require more complex integration due to custom EventSource/ReadableStream implementations:
+
+**Finance**: Custom EventSource with message history, markdown rendering
+**Payroll**: Custom fetch with ReadableStream decoder
+**Tax**: Custom fetch with ReadableStream decoder
+
 ## What's NOT Yet Implemented
 
-### Phase C.5: Other Apps (Finance, Sales, Support, Payroll, Tax)
+### Finance, Payroll, Tax Apps
 
 Only HR app has directive detection implemented.
 
