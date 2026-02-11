@@ -76,7 +76,8 @@ function hasHRAccess(roles: string[]): boolean {
     role === 'hr-write' ||
     role === 'executive' ||
     role === 'manager' ||
-    role === 'user'  // Users can see their own data via RLS
+    role === 'user' ||      // Legacy role for self-service
+    role === 'employee'     // Standard employee role (from All-Employees group)
   );
 }
 

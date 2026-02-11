@@ -474,9 +474,22 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
     // Design note: The 'employee' role grants access to finance for self-service features
     // (expense reports, personal budget visibility). RLS policies filter the data.
     const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+
+    // Decode token to see what roles the user has
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    console.log('HR user token roles:', {
+      realm_roles: payload.realm_access?.roles,
+      client_roles: payload.resource_access?.['mcp-gateway']?.roles,
+      groups: payload.groups
+    });
+
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_BUDGETS);
+
+    if (response.status !== 200) {
+      console.log('Finance endpoint response:', response.status, response.data);
+    }
 
     // Employee role grants access, but RLS filters to department or own data
     expect(response.status).toBe(200);

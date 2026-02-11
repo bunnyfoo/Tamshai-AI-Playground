@@ -121,14 +121,15 @@ export function canAccessExpenses(roles: string[]): boolean {
 }
 
 /**
- * TIER 2: Budgets - accessible by managers+ (department-level via RLS)
+ * TIER 2: Budgets - accessible by employees+ (filtered via RLS)
  *
+ * Employees can view budgets (RLS filters to relevant data).
  * Managers can view their department's budget.
  * Finance users can view all budgets.
- * Employees (non-managers) cannot access budgets.
  */
 export function canAccessBudgets(roles: string[]): boolean {
   return roles.some(role =>
+    role === 'employee' ||
     role === 'manager' ||
     role === 'finance-read' ||
     role === 'finance-write' ||
@@ -329,12 +330,12 @@ app.post('/tools/get_budget', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - TIER 2: Managers and above can access budgets
+    // Authorization check - TIER 2: Employees and above can access budgets (RLS filters data)
     if (!canAccessBudgets(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. Budget access requires manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. Budget access requires employee, manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -407,12 +408,12 @@ app.post('/tools/list_budgets', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - TIER 2: Managers and above can access budgets
+    // Authorization check - TIER 2: Employees and above can access budgets (RLS filters data)
     if (!canAccessBudgets(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. Budget access requires manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. Budget access requires employee, manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;
@@ -573,12 +574,12 @@ app.post('/tools/get_pending_budgets', async (req: Request, res: Response) => {
       return;
     }
 
-    // Authorization check - TIER 2: Managers and above can access budgets
+    // Authorization check - TIER 2: Employees and above can access budgets (RLS filters data)
     if (!canAccessBudgets(userContext.roles)) {
       res.status(403).json({
         status: 'error',
         code: 'INSUFFICIENT_PERMISSIONS',
-        message: `Access denied. Budget access requires manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
+        message: `Access denied. Budget access requires employee, manager, finance, or executive role. You have: ${userContext.roles.join(', ')}`,
         suggestedAction: 'Contact your administrator to request Finance access permissions.',
       });
       return;

@@ -529,21 +529,38 @@ const ephemeralUserIds: string[] = [];
 /**
  * Ephemeral user definitions matching the roles needed by integration tests.
  * These mirror the pre-seeded users but use test-run-scoped credentials.
+ * All users are added to /All-Employees for the base 'employee' role (needed for cross-domain self-service).
  */
 const EPHEMERAL_USERS = [
-  { username: 'test-exec', firstName: 'Test', lastName: 'Executive', email: 'test-exec@test.local', groups: ['/C-Suite'] },
-  { username: 'test-hr', firstName: 'Test', lastName: 'HR', email: 'test-hr@test.local', groups: ['/HR-Department'] },
-  { username: 'test-finance', firstName: 'Test', lastName: 'Finance', email: 'test-finance@test.local', groups: ['/Finance-Team'] },
-  { username: 'test-sales', firstName: 'Test', lastName: 'Sales', email: 'test-sales@test.local', groups: ['/Sales-Team'] },
-  { username: 'test-support', firstName: 'Test', lastName: 'Support', email: 'test-support@test.local', groups: ['/Support-Team'] },
+  { username: 'test-exec', firstName: 'Test', lastName: 'Executive', email: 'test-exec@test.local', groups: ['/All-Employees', '/C-Suite'] },
+  { username: 'test-hr', firstName: 'Test', lastName: 'HR', email: 'test-hr@test.local', groups: ['/All-Employees', '/HR-Department'] },
+  { username: 'test-finance', firstName: 'Test', lastName: 'Finance', email: 'test-finance@test.local', groups: ['/All-Employees', '/Finance-Team'] },
+  { username: 'test-sales', firstName: 'Test', lastName: 'Sales', email: 'test-sales@test.local', groups: ['/All-Employees', '/Sales-Team'] },
+  { username: 'test-support', firstName: 'Test', lastName: 'Support', email: 'test-support@test.local', groups: ['/All-Employees', '/Support-Team'] },
 ];
+
+/**
+ * Get group ID by path
+ */
+async function getGroupId(groupPath: string): Promise<string | null> {
+  try {
+    const response = await axios.get(
+      `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/groups`,
+      { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
+    );
+    const group = response.data.find((g: { path: string }) => g.path === groupPath);
+    return group?.id || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Create a single ephemeral user in Keycloak
  */
 async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<string | null> {
   try {
-    // Create user
+    // Create user (without groups - they must be added separately)
     const response = await axios.post(
       `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
       {
@@ -553,7 +570,6 @@ async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<str
         email: user.email,
         enabled: true,
         emailVerified: true,
-        groups: user.groups,
         credentials: [{
           type: 'password',
           value: EPHEMERAL_TEST_PASSWORD,
@@ -569,6 +585,8 @@ async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<str
       }
     );
 
+    let userId: string | null = null;
+
     if (response.status === 409) {
       // User already exists (from a previous failed cleanup) — look up and reuse
       const existingId = await getUserId(user.username);
@@ -579,14 +597,34 @@ async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<str
           { type: 'password', value: EPHEMERAL_TEST_PASSWORD, temporary: false },
           { headers: { Authorization: `Bearer ${keycloakAdminToken}`, 'Content-Type': 'application/json' } }
         );
-        return existingId;
+        userId = existingId;
+      } else {
+        return null;
       }
-      return null;
+    } else {
+      // Extract user ID from Location header
+      const location = response.headers.location || '';
+      userId = location.split('/').pop() || null;
     }
 
-    // Extract user ID from Location header
-    const location = response.headers.location || '';
-    const userId = location.split('/').pop() || null;
+    // Add user to groups (must be done after user creation)
+    if (userId) {
+      for (const groupPath of user.groups) {
+        const groupId = await getGroupId(groupPath);
+        if (groupId) {
+          try {
+            await axios.put(
+              `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}/groups/${groupId}`,
+              {},
+              { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
+            );
+          } catch {
+            // Ignore group join failures (user may already be in group)
+          }
+        }
+      }
+    }
+
     return userId;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -628,6 +666,9 @@ async function createEphemeralTestUsers(): Promise<void> {
 
   results.forEach((r) => console.log(r));
   console.log(`  Password for this run: [${EPHEMERAL_TEST_PASSWORD.substring(0, 4)}...]`);
+
+  // Wait for group memberships to propagate in Keycloak
+  await new Promise(resolve => setTimeout(resolve, 1000));
 }
 
 /**
