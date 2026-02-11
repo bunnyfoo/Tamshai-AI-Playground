@@ -151,19 +151,64 @@ User: "What approvals do I have?" → Emit: display:hr:approvals:userId=me
 
 **Testing**: Ready for manual testing - query "Show me my org chart" should now emit directive
 
+## What's NOW Implemented (Phase C.3) ✅ COMPLETE
+
+### 2. Voice Integration - Input & Output
+
+**File**: `clients/web/apps/hr/src/pages/AIQueryPage.tsx`
+
+Implemented complete voice I/O integration:
+
+**Voice Input (Speech-to-Text)**:
+- Microphone button next to query input
+- Uses `useVoiceInput` hook from `@tamshai/ui`
+- Web Speech API (SpeechRecognition)
+- Listening indicator with pulsing red dot
+- Auto-fills query input with recognized speech
+- Error handling for unsupported browsers
+
+**Voice Output (Text-to-Speech)**:
+- Toggle switch in page header
+- Uses `useVoiceOutput` hook from `@tamshai/ui`
+- Web Speech API (speechSynthesis)
+- Automatically speaks component narration when enabled
+- Speaking indicator (animated speaker icon)
+- Stop speech when toggle disabled
+
+**UI Components**:
+
+```typescript
+// Microphone button (data-testid="voice-input")
+<button onClick={isListening ? stopListening : startListening}>
+  <MicrophoneIcon className={isListening ? 'animate-pulse' : ''} />
+</button>
+
+// Voice output toggle (data-testid="voice-toggle")
+<button onClick={() => setVoiceEnabled(!voiceEnabled)}>
+  <ToggleSwitch enabled={voiceEnabled} />
+</button>
+
+// Listening indicator (data-testid="listening-indicator")
+{isListening && <div>Listening... Speak your query</div>}
+```
+
+**ComponentRenderer Integration**:
+- Passes `voiceEnabled` prop to ComponentRenderer
+- ComponentRenderer automatically speaks narration when voiceEnabled=true
+- Narration text comes from MCP UI Service component response
+
+**Testing**:
+
+```typescript
+// E2E test expectations (generative-ui.ui.spec.ts)
+- Microphone button visible: [data-testid="voice-input"]
+- Voice toggle visible: [data-testid="voice-toggle"]
+- Listening indicator appears when recording: [data-testid="listening-indicator"]
+- Speech recognition API check: 'SpeechRecognition' in window
+- Speech synthesis API check: 'speechSynthesis' in window
+```
+
 ## What's NOT Yet Implemented
-
-### 2. Voice Toggle Integration (Phase C.3)
-
-Voice features exist but not wired:
-- `useVoiceInput` hook (speech recognition)
-- `useVoiceOutput` hook (speech synthesis)
-- ComponentRenderer supports `voiceEnabled` prop and `narration` field
-
-**TODO**:
-- Add microphone button to AIQueryPage
-- Wire `useVoiceInput.transcript` → query input
-- Wire `ComponentRenderer.narration` → `useVoiceOutput.speak()`
 
 ### 3. Kong/Nginx Proxying (Phase C.4)
 
