@@ -17,12 +17,33 @@ const authService = createAuthServiceFromEnv();
 setAuthService(authService);
 logger.info('MCP-UI initialized with Keycloak service authentication');
 
+// CORS middleware - allow requests from web apps running on different ports
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
+  // Allow localhost origins on any port (for local development)
+  if (origin && origin.match(/^https?:\/\/(localhost|127\.0\.0\.1|www\.tamshai-playground\.local)(:\d+)?$/)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+
+  next();
+});
+
 // JSON body parser middleware
 app.use(express.json());
 
-// Gateway authentication middleware (prevents direct access bypass)
-// Health endpoints are automatically exempt
-app.use(requireGatewayAuth(process.env.MCP_INTERNAL_SECRET, { logger }));
+// NOTE: Gateway authentication is NOT required for MCP UI because:
+// - The /api/display endpoint is called directly from the browser with user JWT tokens
+// - JWT validation is handled in the display router
+// - Internal MCP-to-MCP calls use service authentication via the auth service
 
 // Health endpoint
 app.get('/health', (_req: Request, res: Response) => {

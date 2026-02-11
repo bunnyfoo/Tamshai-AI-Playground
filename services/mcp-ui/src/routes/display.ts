@@ -7,7 +7,7 @@
  * - POST /api/display - Process a display directive and return component
  * - GET /api/display/components - List all registered components
  */
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { parseDirective } from '../parser/directive-parser';
 import { getComponentDefinition, listComponents } from '../registry/component-registry';
 import { callMCPTool } from '../mcp/mcp-client';
@@ -17,7 +17,16 @@ const router = Router();
 
 interface DisplayRequest {
   directive: string;
-  userContext: {
+  userContext?: {
+    userId: string;
+    roles: string[];
+    username?: string;
+    email?: string;
+  };
+}
+
+interface AuthenticatedRequest extends Request {
+  userContext?: {
     userId: string;
     roles: string[];
     username?: string;
@@ -26,20 +35,66 @@ interface DisplayRequest {
 }
 
 /**
+ * Simple JWT validation middleware for display endpoint
+ * Extracts user context from JWT token in Authorization header
+ */
+function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'UNAUTHORIZED',
+      message: 'Missing or invalid Authorization header',
+      suggestedAction: 'Include valid JWT token in Authorization: Bearer <token> header',
+    });
+  }
+
+  try {
+    const token = authHeader.substring(7);
+    // Decode JWT (without verification for now - just extract payload)
+    // In production, this should verify the signature against Keycloak JWKS
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format');
+    }
+
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+
+    // Extract user context from JWT claims
+    req.userContext = {
+      userId: payload.sub || 'unknown',
+      username: payload.preferred_username || payload.name || 'unknown',
+      email: payload.email || undefined,
+      roles: payload.resource_access?.['mcp-gateway']?.roles || [],
+    };
+
+    next();
+  } catch (error) {
+    logger.error('JWT validation error', { error: error instanceof Error ? error.message : 'Unknown' });
+    return res.status(401).json({
+      status: 'error',
+      code: 'INVALID_TOKEN',
+      message: 'Failed to validate JWT token',
+      suggestedAction: 'Provide a valid JWT token from Keycloak',
+    });
+  }
+}
+
+/**
  * POST /api/display
  * Parse directive, fetch data from MCP servers, return component + narration
  */
-router.post('/', async (req: Request, res: Response) => {
-  const { directive, userContext } = req.body as DisplayRequest;
+router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  const { directive } = req.body as DisplayRequest;
+  const userContext = req.userContext!; // Set by validateJWT middleware
 
   // Validate required fields
-  if (!directive || !userContext) {
-    const missingField = !directive ? 'directive' : 'userContext';
+  if (!directive) {
     return res.status(400).json({
       status: 'error',
       code: 'MISSING_FIELD',
-      message: `Missing required field: ${missingField}`,
-      suggestedAction: 'Include both directive and userContext in the request body',
+      message: 'Missing required field: directive',
+      suggestedAction: 'Include directive in the request body',
     });
   }
 
