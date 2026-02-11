@@ -93,8 +93,8 @@ function EmployeeCard({
   );
 
   const cardClasses = [
-    'employee-card',
-    isSelf ? 'highlighted' : '',
+    'flex items-center gap-3 p-4 rounded-lg border-2 min-w-[200px] transition-all',
+    isSelf ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-secondary-200 bg-white hover:border-secondary-300 hover:shadow-sm',
     isClickable ? 'cursor-pointer' : '',
   ]
     .filter(Boolean)
@@ -116,27 +116,30 @@ function EmployeeCard({
         <img
           src={employee.avatarUrl}
           alt={employee.name}
-          className="employee-avatar"
+          className="w-16 h-16 rounded-full object-cover flex-shrink-0"
         />
       ) : (
-        <div data-testid="default-avatar" className="employee-avatar-default">
-          {employee.name
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()}
+        <div
+          data-testid="default-avatar"
+          className="w-16 h-16 rounded-full bg-secondary-200 flex items-center justify-center font-bold text-2xl text-secondary-400 flex-shrink-0"
+        >
+          {employee.name.charAt(0).toUpperCase()}
         </div>
       )}
 
       {/* Employee Info */}
-      <div className="employee-info">
-        <div className="employee-name">
-          {employee.name}
-          {isSelf && <span className="self-badge">You</span>}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-semibold text-secondary-900 truncate">{employee.name}</span>
+          {isSelf && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
+              You
+            </span>
+          )}
         </div>
-        <div className="employee-title">{employee.title}</div>
+        <div className="text-sm text-secondary-600 truncate">{employee.title}</div>
         {employee.email && (
-          <div className="employee-email">{employee.email}</div>
+          <div className="text-xs text-secondary-500 truncate mt-0.5">{employee.email}</div>
         )}
       </div>
     </div>
@@ -148,18 +151,18 @@ function EmployeeCard({
  */
 function OrgChartSkeleton(): JSX.Element {
   return (
-    <div data-testid="org-chart-skeleton" className="org-chart-skeleton">
-      <div className="skeleton-row">
-        <div className="skeleton-card" />
+    <div data-testid="org-chart-skeleton" className="space-y-6">
+      <div className="flex justify-center">
+        <div className="w-64 h-20 bg-gray-200 rounded-lg animate-pulse" />
       </div>
-      <div className="skeleton-row">
-        <div className="skeleton-card" />
-        <div className="skeleton-card" />
-        <div className="skeleton-card" />
+      <div className="flex justify-center gap-4">
+        <div className="w-64 h-20 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="w-64 h-20 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="w-64 h-20 bg-gray-200 rounded-lg animate-pulse" />
       </div>
-      <div className="skeleton-row">
-        <div className="skeleton-card" />
-        <div className="skeleton-card" />
+      <div className="flex justify-center gap-4">
+        <div className="w-64 h-20 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="w-64 h-20 bg-gray-200 rounded-lg animate-pulse" />
       </div>
     </div>
   );
@@ -170,9 +173,11 @@ function OrgChartSkeleton(): JSX.Element {
  */
 function OrgChartError({ message }: { message: string }): JSX.Element {
   return (
-    <div data-testid="org-chart-error" className="org-chart-error">
-      <div className="error-icon">!</div>
-      <div className="error-message">{message}</div>
+    <div data-testid="org-chart-error" className="flex flex-col items-center justify-center p-8 bg-red-50 border-2 border-red-200 rounded-lg">
+      <div className="w-12 h-12 flex items-center justify-center bg-red-500 text-white rounded-full text-2xl font-bold mb-4">
+        !
+      </div>
+      <div className="text-red-700 text-center">{message}</div>
     </div>
   );
 }
@@ -192,7 +197,7 @@ export function OrgChartComponent({
   className = '',
   compact = false,
 }: OrgChartComponentProps): JSX.Element {
-  const containerClasses = ['org-chart', className, compact ? 'compact' : '']
+  const containerClasses = ['space-y-6', className, compact ? 'text-sm' : '']
     .filter(Boolean)
     .join(' ');
 
@@ -203,7 +208,7 @@ export function OrgChartComponent({
   if (loading) {
     return (
       <div data-testid="org-chart" className={containerClasses}>
-        <h2>Organization Chart</h2>
+        <h2 className="text-2xl font-bold text-secondary-900 mb-4">Organization Chart</h2>
         <OrgChartSkeleton />
       </div>
     );
@@ -213,7 +218,7 @@ export function OrgChartComponent({
   if (error) {
     return (
       <div data-testid="org-chart" className={containerClasses}>
-        <h2>Organization Chart</h2>
+        <h2 className="text-2xl font-bold text-secondary-900 mb-4">Organization Chart</h2>
         <OrgChartError message={error} />
       </div>
     );
@@ -225,13 +230,13 @@ export function OrgChartComponent({
 
   return (
     <div data-testid="org-chart" className={containerClasses}>
-      <h2>Organization Chart</h2>
+      <h2 className="text-2xl font-bold text-secondary-900 mb-4">Organization Chart</h2>
 
       {/* Manager Row */}
       {showManagerRow && (
         <section
           data-testid="org-chart-manager-row"
-          className="org-chart-row manager-row"
+          className="flex flex-col items-center"
           role="region"
           aria-label="Manager"
         >
@@ -245,11 +250,11 @@ export function OrgChartComponent({
               {/* Connection line to self row */}
               <div
                 data-testid="connection-line-manager-self"
-                className="connection-line vertical"
+                className="w-px h-4 bg-secondary-300"
               />
             </>
           ) : (
-            <div className="empty-state">No manager assigned</div>
+            <div className="text-secondary-600 text-sm italic">No manager assigned</div>
           )}
         </section>
       )}
@@ -257,12 +262,14 @@ export function OrgChartComponent({
       {/* Self and Peers Row */}
       <section
         data-testid="org-chart-self-row"
-        className="org-chart-row self-row"
+        className="flex flex-col items-center"
         role="region"
         aria-label="Team members"
       >
-        <div className="row-header">Team ({teamCount})</div>
-        <div className="row-cards">
+        <div className="text-sm font-semibold text-secondary-700 uppercase tracking-wide mb-3">
+          Team ({teamCount})
+        </div>
+        <div className="flex flex-wrap justify-center gap-4">
           {/* Self card first */}
           <EmployeeCard
             employee={self}
@@ -283,7 +290,7 @@ export function OrgChartComponent({
 
           {/* Empty state for no peers */}
           {peers.length === 0 && showEmptyStates && (
-            <div className="empty-state">No peers</div>
+            <div className="text-secondary-600 text-sm italic">No peers</div>
           )}
         </div>
       </section>
@@ -292,7 +299,7 @@ export function OrgChartComponent({
       {showReportsRow && (
         <section
           data-testid="org-chart-reports-row"
-          className="org-chart-row reports-row"
+          className="flex flex-col items-center"
           role="region"
           aria-label="Direct reports"
         >
@@ -301,12 +308,12 @@ export function OrgChartComponent({
               {/* Connection line from self */}
               <div
                 data-testid="connection-line-self-reports"
-                className="connection-line vertical"
+                className="w-px h-4 bg-secondary-300"
               />
-              <div className="row-header">
+              <div className="text-sm font-semibold text-secondary-700 uppercase tracking-wide mb-3">
                 Direct Reports ({directReports.length})
               </div>
-              <div className="row-cards">
+              <div className="flex flex-wrap justify-center gap-4">
                 {directReports.map((report) => (
                   <EmployeeCard
                     key={report.id}
@@ -318,7 +325,7 @@ export function OrgChartComponent({
               </div>
             </>
           ) : (
-            <div className="empty-state">No direct reports</div>
+            <div className="text-secondary-600 text-sm italic">No direct reports</div>
           )}
         </section>
       )}
