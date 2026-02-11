@@ -151,6 +151,58 @@ User: "What approvals do I have?" → Emit: display:hr:approvals:userId=me
 
 **Testing**: Ready for manual testing - query "Show me my org chart" should now emit directive
 
+## What's NOW Implemented (Phase C.4) ✅ COMPLETE
+
+### 3. Nginx Proxying for MCP UI Service
+
+**Files**: All web app nginx.conf files (HR, Finance, Sales, Support, Payroll, Tax, Portal)
+
+Added `/api/mcp-ui/` location block to proxy MCP UI Service requests in stage/prod environments:
+
+**Configuration**:
+
+```nginx
+# Proxy MCP UI Service requests (Generative UI Components)
+# Must be BEFORE /api/ to take precedence
+location /api/mcp-ui/ {
+    proxy_pass http://mcp-ui:3118/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Pass through Authorization header for JWT validation
+    proxy_set_header Authorization $http_authorization;
+    proxy_pass_header Authorization;
+
+    # Disable buffering for streaming responses
+    proxy_buffering off;
+    proxy_cache off;
+
+    # Timeouts for component rendering
+    proxy_read_timeout 30s;
+    proxy_connect_timeout 10s;
+    proxy_send_timeout 30s;
+}
+```
+
+**Why This Matters**:
+- Dev environment: Uses `VITE_MCP_UI_URL=http://localhost:3118` (direct port access)
+- Stage/Prod: Uses `/api/mcp-ui/` (reverse proxied through Nginx)
+- Ensures consistent MCP UI Service access across all environments
+
+**Apps Updated**:
+1. clients/web/apps/hr/nginx.conf
+2. clients/web/apps/finance/nginx.conf
+3. clients/web/apps/sales/nginx.conf
+4. clients/web/apps/support/nginx.conf
+5. clients/web/apps/payroll/nginx.conf
+6. clients/web/apps/tax/nginx.conf
+7. clients/web/apps/portal/nginx.conf
+
+**Commit**: 814836b9
+
 ## What's NOW Implemented (Phase C.3) ✅ COMPLETE
 
 ### 2. Voice Integration - Input & Output
@@ -210,19 +262,7 @@ Implemented complete voice I/O integration:
 
 ## What's NOT Yet Implemented
 
-### 3. Kong/Nginx Proxying (Phase C.4)
-
-The `/api/mcp-ui/display` relative URL assumes Nginx proxying is configured.
-
-**TODO**: Add Nginx location block for MCP UI Service:
-
-```nginx
-location /api/mcp-ui/ {
-  proxy_pass http://mcp-ui:3118/api/;
-}
-```
-
-### 4. Other Apps (Finance, Sales, Support, Payroll, Tax)
+### Phase C.5: Other Apps (Finance, Sales, Support, Payroll, Tax)
 
 Only HR app has directive detection implemented.
 
