@@ -64,7 +64,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
   // Access tokens have a 5-minute lifetime; re-warm after 4 minutes.
   test.beforeEach(async () => {
     if (!authenticatedContext) return;
-    if (Date.now() - authCreatedAt > 4 * 60 * 1000) {
+    if (Date.now() - authCreatedAt > 3 * 60 * 1000) {
       await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/finance/`);
       authCreatedAt = Date.now();
     }

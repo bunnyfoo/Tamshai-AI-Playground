@@ -50,7 +50,7 @@ test.describe('Support Ticket Escalation Flow', () => {
   // to inject fresh sessionStorage tokens into subsequent pages.
   test.beforeEach(async () => {
     if (!authenticatedContext) return;
-    if (Date.now() - authCreatedAt > 4 * 60 * 1000) {
+    if (Date.now() - authCreatedAt > 3 * 60 * 1000) {
       await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/support/`);
       authCreatedAt = Date.now();
     }

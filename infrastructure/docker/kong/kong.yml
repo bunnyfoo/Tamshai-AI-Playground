@@ -87,6 +87,19 @@ routes:
     strip_path: false
     preserve_host: true
 
+  # Admin API for E2E test database management (snapshot/rollback)
+  - name: admin-route
+    service: mcp-gateway-service
+    paths:
+      - ~/api/admin/.*
+    methods:
+      - GET
+      - POST
+      - DELETE
+      - OPTIONS
+    strip_path: false
+    preserve_host: true
+
   # User Info (protected)
   - name: user-info-route
     service: mcp-gateway-service

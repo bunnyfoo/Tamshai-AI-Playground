@@ -222,7 +222,7 @@ export async function warmUpContext(
     }
 
     // Re-capture sessionStorage which now contains app-specific OIDC tokens
-    const sessionData = await warmup.evaluate(() => {
+    let sessionData = await warmup.evaluate(() => {
       const data: Record<string, string> = {};
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)!;
@@ -230,6 +230,30 @@ export async function warmUpContext(
       }
       return data;
     });
+
+    // Validate: OIDC tokens should contain keys with 'oidc' or 'token' patterns.
+    // If the page redirected to Keycloak login instead of the app, sessionStorage
+    // will be empty or contain only Keycloak-page data (no OIDC tokens).
+    const hasOidcTokens = Object.keys(sessionData).some(
+      key => key.includes('oidc') || key.includes('token') || key.includes('authority')
+    );
+
+    if (!hasOidcTokens) {
+      // Captured data is from Keycloak login page, not the app — re-authenticate
+      try {
+        await authenticateUser(warmup);
+        sessionData = await warmup.evaluate(() => {
+          const data: Record<string, string> = {};
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i)!;
+            data[key] = sessionStorage.getItem(key)!;
+          }
+          return data;
+        });
+      } catch {
+        // Re-auth failed; proceed with whatever we have
+      }
+    }
 
     // Add new initScript with app-specific tokens. Each script includes an
     // expiresAt timestamp so accumulated scripts from prior warmups become
