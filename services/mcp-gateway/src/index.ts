@@ -19,7 +19,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { v4 as uuidv4 } from 'uuid';
 // jwt import removed - now handled by JWTValidator class
 import winston from 'winston';
@@ -399,9 +399,9 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    // Use user ID if authenticated, otherwise use IP
+    // Use user ID if authenticated, otherwise use IP with IPv6 normalization
     const userContext = (req as AuthenticatedRequest).userContext;
-    return userContext?.userId || req.ip || 'unknown';
+    return userContext?.userId || ipKeyGenerator(req.ip || '');
   },
 });
 
@@ -414,7 +414,7 @@ const aiQueryLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
     const userContext = (req as AuthenticatedRequest).userContext;
-    return userContext?.userId || req.ip || 'unknown';
+    return userContext?.userId || ipKeyGenerator(req.ip || '');
   },
 });
 
