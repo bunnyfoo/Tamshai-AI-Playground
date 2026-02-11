@@ -23,6 +23,7 @@
 export {
   createDatabaseSnapshot,
   rollbackToSnapshot,
+  resetFinanceInvoices,
   seedTestData,
   clearTestData,
   getDatabaseStateHash,

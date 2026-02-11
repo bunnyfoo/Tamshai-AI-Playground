@@ -14,8 +14,7 @@
 
 import { test, expect, BrowserContext } from '@playwright/test';
 import {
-  createDatabaseSnapshot,
-  rollbackToSnapshot,
+  resetFinanceInvoices,
   expectBulkMenuEnabled,
   expectBulkMenuDisabled,
   selectTableRows,
@@ -39,13 +38,7 @@ const INVOICES_URL = `${BASE_URLS[ENV]}/finance/invoices`;
 
 let authenticatedContext: BrowserContext | null = null;
 
-/**
- * Warm up an authenticated context by visiting the app URL once.
- * This primes PrivateRoute OIDC checks so subsequent pages render immediately.
- */
-
 test.describe('Finance Invoice Bulk Operations', () => {
-  let snapshotId: string;
   let authCreatedAt: number;
 
   test.beforeAll(async ({ browser }) => {
@@ -53,7 +46,8 @@ test.describe('Finance Invoice Bulk Operations', () => {
     authenticatedContext = await createAuthenticatedContext(browser);
     await warmUpContext(authenticatedContext, `${BASE_URLS[ENV]}/finance/`);
     authCreatedAt = Date.now();
-    snapshotId = await createDatabaseSnapshot();
+    // Ensure invoices are in their seed data state before the suite
+    await resetFinanceInvoices();
   });
 
   test.afterAll(async () => {
@@ -61,7 +55,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   // Proactively refresh auth tokens before they expire.
-  // Access tokens have a 5-minute lifetime; re-warm after 4 minutes.
+  // Access tokens have a 5-minute lifetime; re-warm after 3 minutes.
   test.beforeEach(async () => {
     if (!authenticatedContext) return;
     if (Date.now() - authCreatedAt > 3 * 60 * 1000) {
@@ -71,8 +65,8 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.afterEach(async () => {
-    // Rollback to clean state after each test
-    await rollbackToSnapshot(snapshotId);
+    // Reset invoice statuses to seed data values after each test
+    await resetFinanceInvoices();
   });
 
   test.describe('Bulk Action Toolbar State', () => {
@@ -179,7 +173,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Approval Flow', () => {
-    // Helper: navigate to invoices page, filter to PENDING via UI, skip if no rows
+    // Helper: navigate to invoices page, filter to PENDING via UI
     async function gotoPendingInvoices(page: import('@playwright/test').Page): Promise<number> {
       await page.goto(INVOICES_URL);
       await page.waitForSelector('[data-testid="data-table"]', { timeout: 15000 });
@@ -193,7 +187,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       const page = await authenticatedContext!.newPage();
       try {
         const rowCount = await gotoPendingInvoices(page);
-        if (rowCount < 2) { test.skip(); return; }
+        expect(rowCount).toBeGreaterThanOrEqual(2);
         await selectTableRows(page, [0, 1]);
         await expectBulkActionsAvailable(page, ['approve']);
       } finally {
@@ -206,7 +200,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       const page = await authenticatedContext!.newPage();
       try {
         const rowCount = await gotoPendingInvoices(page);
-        if (rowCount < 3) { test.skip(); return; }
+        expect(rowCount).toBeGreaterThanOrEqual(3);
         await selectTableRows(page, [0, 1, 2]);
         await clickBulkAction(page, 'approve');
         const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
@@ -222,7 +216,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       const page = await authenticatedContext!.newPage();
       try {
         const rowCount = await gotoPendingInvoices(page);
-        if (rowCount < 1) { test.skip(); return; }
+        expect(rowCount).toBeGreaterThanOrEqual(1);
         const initialCount = rowCount;
         await selectTableRows(page, [0]);
         await clickBulkAction(page, 'approve');
@@ -239,7 +233,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       const page = await authenticatedContext!.newPage();
       try {
         const rowCount = await gotoPendingInvoices(page);
-        if (rowCount < 2) { test.skip(); return; }
+        expect(rowCount).toBeGreaterThanOrEqual(2);
         const initialCount = rowCount;
         await selectTableRows(page, [0, 1]);
         await clickBulkAction(page, 'approve');
@@ -275,7 +269,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Rejection Flow', () => {
-    // Helper: navigate to invoices page, filter to PENDING via UI, return row count
+    // Helper: navigate to invoices page, filter to PENDING via UI
     async function gotoPendingInvoices(page: import('@playwright/test').Page): Promise<number> {
       await page.goto(INVOICES_URL);
       await page.waitForSelector('[data-testid="data-table"]', { timeout: 15000 });
@@ -289,7 +283,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       const page = await authenticatedContext!.newPage();
       try {
         const rowCount = await gotoPendingInvoices(page);
-        if (rowCount < 1) { test.skip(); return; }
+        expect(rowCount).toBeGreaterThanOrEqual(1);
         await selectTableRows(page, [0]);
         await expectBulkActionsAvailable(page, ['reject']);
       } finally {
@@ -302,7 +296,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       const page = await authenticatedContext!.newPage();
       try {
         const rowCount = await gotoPendingInvoices(page);
-        if (rowCount < 1) { test.skip(); return; }
+        expect(rowCount).toBeGreaterThanOrEqual(1);
         await selectTableRows(page, [0]);
         await clickBulkAction(page, 'reject');
         const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');

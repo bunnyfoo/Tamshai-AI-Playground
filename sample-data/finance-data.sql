@@ -645,7 +645,11 @@ INSERT INTO finance.invoices (invoice_id, invoice_number, vendor_name, vendor_id
     ('INV-2025-011', 'INV-2025-011', 'Office Supplies Co', 'OSC-001', 'Q4 office supplies order', 4750.00, '2025-11-01', '2025-12-01', NULL, 'PENDING', 'OPS'),
     -- Multi-line item invoice (10 line items) - used to test detail modal scroll
     ('INV-2025-012', 'INV-2025-012', 'Tech Equipment Wholesale', 'TEW-001', 'IT equipment refresh - 10 monitors, 10 keyboards, 10 mice, 10 headsets, 10 webcams, 10 docking stations, 10 USB hubs, 10 mouse pads, 10 monitor stands, 10 cable organizers', 18750.00, '2025-11-15', '2025-12-15', NULL, 'PENDING', 'IT')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (invoice_id) DO UPDATE SET
+    status = EXCLUDED.status,
+    paid_date = EXCLUDED.paid_date,
+    approved_by = EXCLUDED.approved_by,
+    approved_at = EXCLUDED.approved_at;
 
 -- =============================================================================
 -- REVENUE SUMMARY (Quarterly)
@@ -858,7 +862,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Budget summary view (finance-read)
 CREATE OR REPLACE VIEW budget_summary AS
-SELECT 
+SELECT
     db.department_code,
     fy.year as fiscal_year,
     bc.name as category,
@@ -874,7 +878,7 @@ ORDER BY db.department_code, bc.type, bc.name;
 
 -- Revenue trend view (finance-read)
 CREATE OR REPLACE VIEW revenue_trend AS
-SELECT 
+SELECT
     rs.fiscal_year,
     rs.quarter,
     bc.name as revenue_type,
@@ -887,7 +891,7 @@ ORDER BY rs.fiscal_year, rs.quarter, bc.name;
 
 -- Public reports view (anyone can see non-confidential)
 CREATE OR REPLACE VIEW public_reports AS
-SELECT 
+SELECT
     id,
     report_type,
     fiscal_year,

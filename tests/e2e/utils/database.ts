@@ -326,6 +326,65 @@ export async function deleteSnapshot(snapshotId: string): Promise<void> {
 }
 
 /**
+ * Reset finance invoice statuses to their seed data values.
+ *
+ * Connects directly to PostgreSQL to restore invoice statuses that may
+ * have been modified by E2E tests (e.g., bulk approval). This replaces
+ * the broken pg_dump-based snapshot/rollback mechanism.
+ *
+ * @example
+ * ```typescript
+ * test.afterEach(async () => {
+ *   await resetFinanceInvoices();
+ * });
+ * ```
+ */
+export async function resetFinanceInvoices(): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Client } = require('pg');
+
+  const client = new Client({
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.PORT_PG || '5443', 10),
+    database: 'tamshai_finance',
+    user: process.env.POSTGRES_USER || 'tamshai',
+    password: process.env.TAMSHAI_DB_PASSWORD || process.env.POSTGRES_PASSWORD || '',
+    ssl: false,
+  });
+
+  try {
+    await client.connect();
+
+    // Reset invoices that should be PENDING (from seed data)
+    await client.query(`
+      UPDATE finance.invoices SET status = 'PENDING', approved_by = NULL, approved_at = NULL, paid_date = NULL
+      WHERE invoice_id IN ('INV-001', 'INV-2025-004', 'INV-2025-007', 'INV-2025-008', 'INV-2025-009', 'INV-2025-011', 'INV-2025-012')
+      AND status != 'PENDING'
+    `);
+
+    // Reset invoices that should be APPROVED (from seed data)
+    await client.query(`
+      UPDATE finance.invoices SET status = 'APPROVED', paid_date = NULL
+      WHERE invoice_id IN ('INV-2025-003', 'INV-2025-005', 'INV-2025-010')
+      AND status != 'APPROVED'
+    `);
+
+    // Reset invoices that should be PAID (from seed data)
+    await client.query(`
+      UPDATE finance.invoices SET status = 'PAID'
+      WHERE invoice_id IN ('INV-2025-001', 'INV-2025-002', 'INV-2025-006')
+      AND status != 'PAID'
+    `);
+
+    console.log('[DB Reset] Finance invoices restored to seed data values');
+  } catch (error) {
+    console.warn(`[DB Reset] Failed to reset finance invoices: ${error instanceof Error ? error.message : error}`);
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+/**
  * List all available snapshots
  *
  * Returns a list of all snapshots currently stored.
