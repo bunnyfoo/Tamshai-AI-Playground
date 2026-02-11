@@ -136,7 +136,7 @@ interface TokenResponse {
  * Get access token from Keycloak
  */
 async function getAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/auth/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
+  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
 
   const params = new URLSearchParams({
     grant_type: 'password',

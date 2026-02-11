@@ -19,9 +19,9 @@ import crypto from 'crypto';
 process.env.NODE_ENV = 'test';
 
 // Keycloak configuration for TOTP handling
-// Note: KEYCLOAK_URL should NOT include /auth - we add it where needed
+// Note: KEYCLOAK_URL INCLUDES /auth prefix (set by jest.integration.config.js)
 const KEYCLOAK_CONFIG = {
-  url: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190',
+  url: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
   realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
   adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD,  // Required - no fallback
 };
@@ -304,7 +304,7 @@ async function getKeycloakAdminToken(): Promise<string> {
     throw new Error('KEYCLOAK_ADMIN_PASSWORD environment variable is required for integration tests');
   }
   const response = await axios.post(
-    `${KEYCLOAK_CONFIG.url}/auth/realms/master/protocol/openid-connect/token`,
+    `${KEYCLOAK_CONFIG.url}/realms/master/protocol/openid-connect/token`,
     new URLSearchParams({
       client_id: 'admin-cli',
       username: 'admin',
@@ -321,7 +321,7 @@ async function getKeycloakAdminToken(): Promise<string> {
  */
 async function getUserId(username: string): Promise<string | null> {
   const response = await axios.get<KeycloakUser[]>(
-    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
+    `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
     {
       params: { username },
       headers: { Authorization: `Bearer ${keycloakAdminToken}` },
@@ -335,7 +335,7 @@ async function getUserId(username: string): Promise<string | null> {
  */
 async function getUser(userId: string): Promise<KeycloakUser> {
   const response = await axios.get<KeycloakUser>(
-    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
+    `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
     { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
   );
   return response.data;
@@ -346,7 +346,7 @@ async function getUser(userId: string): Promise<KeycloakUser> {
  */
 async function getUserCredentials(userId: string): Promise<KeycloakCredential[]> {
   const response = await axios.get<KeycloakCredential[]>(
-    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}/credentials`,
+    `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}/credentials`,
     { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
   );
   return response.data;
@@ -357,7 +357,7 @@ async function getUserCredentials(userId: string): Promise<KeycloakCredential[]>
  */
 async function updateUserRequiredActions(userId: string, requiredActions: string[]): Promise<void> {
   await axios.put(
-    `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
+    `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
     { requiredActions },
     {
       headers: {
@@ -532,7 +532,7 @@ const ephemeralUserIds: string[] = [];
  */
 const EPHEMERAL_USERS = [
   { username: 'test-exec', firstName: 'Test', lastName: 'Executive', email: 'test-exec@test.local', groups: ['/C-Suite'] },
-  { username: 'test-hr', firstName: 'Test', lastName: 'HR', email: 'test-hr@test.local', groups: ['/HR-Team'] },
+  { username: 'test-hr', firstName: 'Test', lastName: 'HR', email: 'test-hr@test.local', groups: ['/HR-Department'] },
   { username: 'test-finance', firstName: 'Test', lastName: 'Finance', email: 'test-finance@test.local', groups: ['/Finance-Team'] },
   { username: 'test-sales', firstName: 'Test', lastName: 'Sales', email: 'test-sales@test.local', groups: ['/Sales-Team'] },
   { username: 'test-support', firstName: 'Test', lastName: 'Support', email: 'test-support@test.local', groups: ['/Support-Team'] },
@@ -545,7 +545,7 @@ async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<str
   try {
     // Create user
     const response = await axios.post(
-      `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
+      `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users`,
       {
         username: user.username,
         firstName: user.firstName,
@@ -575,7 +575,7 @@ async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<str
       if (existingId) {
         // Reset password for the existing user
         await axios.put(
-          `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${existingId}/reset-password`,
+          `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${existingId}/reset-password`,
           { type: 'password', value: EPHEMERAL_TEST_PASSWORD, temporary: false },
           { headers: { Authorization: `Bearer ${keycloakAdminToken}`, 'Content-Type': 'application/json' } }
         );
@@ -601,7 +601,7 @@ async function createEphemeralUser(user: typeof EPHEMERAL_USERS[0]): Promise<str
 async function deleteEphemeralUser(userId: string): Promise<void> {
   try {
     await axios.delete(
-      `${KEYCLOAK_CONFIG.url}/auth/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
+      `${KEYCLOAK_CONFIG.url}/admin/realms/${KEYCLOAK_CONFIG.realm}/users/${userId}`,
       { headers: { Authorization: `Bearer ${keycloakAdminToken}` } }
     );
   } catch {

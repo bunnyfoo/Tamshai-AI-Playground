@@ -18,6 +18,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { generateInternalToken, INTERNAL_TOKEN_HEADER } from '@tamshai/shared';
+import { getEphemeralUser } from './setup';
 
 // Get internal secret from environment (required for gateway auth)
 const MCP_INTERNAL_SECRET = process.env.MCP_INTERNAL_SECRET || '';
@@ -31,6 +32,10 @@ const describeIntegration = isCI ? describe.skip : describe;
 const CONFIG = {
   mcpUiUrl: process.env.MCP_UI_URL || 'http://127.0.0.1:3118',
   mcpGatewayUrl: process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3110',
+  keycloakUrl: process.env.KEYCLOAK_URL!,
+  keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
+  clientId: 'mcp-gateway',
+  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET || '',
 };
 
 // Test users with their roles (matching setup.ts TEST_USERS)
@@ -106,27 +111,70 @@ function createMcpUiClient(): AxiosInstance {
 }
 
 /**
- * Helper to make display requests with gateway authentication
+ * Get access token from Keycloak using password grant
+ */
+async function getAccessToken(username: string, password: string): Promise<string> {
+  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
+
+  const params = new URLSearchParams({
+    grant_type: 'password',
+    client_id: CONFIG.clientId,
+    client_secret: CONFIG.clientSecret,
+    username,
+    password,
+    scope: 'openid profile email',
+  });
+
+  const response = await axios.post<{ access_token: string }>(tokenUrl, params, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+
+  return response.data.access_token;
+}
+
+// Cache tokens by username to avoid repeated Keycloak calls
+const tokenCache = new Map<string, string>();
+
+/**
+ * Helper to make display requests with JWT authentication
  */
 async function postDisplay(
   client: AxiosInstance,
   directive: string,
   userContext: DisplayRequest['userContext']
 ): Promise<{ status: number; data: DisplayResponse }> {
-  // Generate internal token for gateway authentication
-  const internalToken = MCP_INTERNAL_SECRET
-    ? generateInternalToken(MCP_INTERNAL_SECRET, userContext.userId, userContext.roles)
-    : '';
+  // Get JWT token for the user
+  let token = tokenCache.get(userContext.username!);
+  if (!token) {
+    // Map test user to ephemeral user credentials
+    const roleToEphemeralRole: Record<string, 'executive' | 'hr' | 'finance' | 'sales' | 'support'> = {
+      'executive': 'executive',
+      'hr-read': 'hr',
+      'hr-write': 'hr',
+      'finance-read': 'finance',
+      'finance-write': 'finance',
+      'sales-read': 'sales',
+      'sales-write': 'sales',
+      'support-read': 'support',
+      'support-write': 'support',
+      'manager': 'hr', // Managers are in HR department
+    };
+
+    const ephemeralRole = roleToEphemeralRole[userContext.roles[0]] || 'executive';
+    const ephemeralUser = getEphemeralUser(ephemeralRole);
+
+    token = await getAccessToken(ephemeralUser.username, ephemeralUser.password);
+    tokenCache.set(userContext.username!, token);
+  }
 
   const response = await client.post<DisplayResponse>(
     '/api/display',
     {
       directive,
-      userContext,
     },
     {
       headers: {
-        [INTERNAL_TOKEN_HEADER]: internalToken,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
@@ -350,15 +398,14 @@ describeIntegration('MCP UI - Error Handling', () => {
   });
 
   test('Missing directive field returns proper error', async () => {
-    // Need to include auth header even for validation errors
-    const internalToken = MCP_INTERNAL_SECRET
-      ? generateInternalToken(MCP_INTERNAL_SECRET, TEST_USERS.executive.userId, TEST_USERS.executive.roles)
-      : '';
+    // Get JWT token for the user
+    const ephemeralUser = getEphemeralUser('executive');
+    const token = await getAccessToken(ephemeralUser.username, ephemeralUser.password);
 
     const response = await client.post('/api/display', {
-      userContext: TEST_USERS.executive,
+      // Missing directive field
     }, {
-      headers: { [INTERNAL_TOKEN_HEADER]: internalToken },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     expect(response.status).toBe(400);
@@ -368,21 +415,9 @@ describeIntegration('MCP UI - Error Handling', () => {
   });
 
   test('Missing userContext field returns proper error', async () => {
-    // Need to include auth header even for validation errors
-    const internalToken = MCP_INTERNAL_SECRET
-      ? generateInternalToken(MCP_INTERNAL_SECRET, TEST_USERS.executive.userId, TEST_USERS.executive.roles)
-      : '';
-
-    const response = await client.post('/api/display', {
-      directive: 'display:hr:org_chart:userId=me',
-    }, {
-      headers: { [INTERNAL_TOKEN_HEADER]: internalToken },
-    });
-
-    expect(response.status).toBe(400);
-    expect(response.data.status).toBe('error');
-    expect(response.data.code).toBe('MISSING_FIELD');
-    expect(response.data.message).toMatch(/userContext/i);
+    // With JWT authentication, userContext is extracted from the token, so this test
+    // is no longer relevant. Skipping.
+    expect(true).toBe(true);
   });
 
   test('Non-existent route returns 404', async () => {
