@@ -179,12 +179,20 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Approval Flow', () => {
+    // Helper: navigate to invoices page and filter to PENDING via UI dropdown
+    async function gotoPendingInvoices(page: import('@playwright/test').Page) {
+      await page.goto(INVOICES_URL);
+      await page.waitForSelector('[data-testid="data-table"]', { timeout: 15000 });
+      await page.selectOption('[data-testid="status-filter"]', 'PENDING');
+      // Wait for client-side filter to re-render
+      await page.waitForTimeout(500);
+    }
+
     test('approve action is available for pending invoices', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${INVOICES_URL}?status=pending`);
-        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await gotoPendingInvoices(page);
         await selectTableRows(page, [0, 1]);
         await expectBulkActionsAvailable(page, ['approve']);
       } finally {
@@ -196,8 +204,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${INVOICES_URL}?status=pending`);
-        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await gotoPendingInvoices(page);
         await selectTableRows(page, [0, 1, 2]);
         await clickBulkAction(page, 'approve');
         const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
@@ -212,8 +219,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${INVOICES_URL}?status=pending`);
-        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await gotoPendingInvoices(page);
         const initialCount = await page.locator('tbody tr').count();
         await selectTableRows(page, [0]);
         await clickBulkAction(page, 'approve');
@@ -229,8 +235,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${INVOICES_URL}?status=pending`);
-        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await gotoPendingInvoices(page);
         const initialCount = await page.locator('tbody tr').count();
         await selectTableRows(page, [0, 1]);
         await clickBulkAction(page, 'approve');
@@ -266,12 +271,19 @@ test.describe('Finance Invoice Bulk Operations', () => {
   });
 
   test.describe('Bulk Rejection Flow', () => {
+    // Helper: navigate to invoices page and filter to PENDING via UI dropdown
+    async function gotoPendingInvoices(page: import('@playwright/test').Page) {
+      await page.goto(INVOICES_URL);
+      await page.waitForSelector('[data-testid="data-table"]', { timeout: 15000 });
+      await page.selectOption('[data-testid="status-filter"]', 'PENDING');
+      await page.waitForTimeout(500);
+    }
+
     test('reject action is available for pending invoices', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${INVOICES_URL}?status=pending`);
-        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await gotoPendingInvoices(page);
         await selectTableRows(page, [0]);
         await expectBulkActionsAvailable(page, ['reject']);
       } finally {
@@ -283,8 +295,7 @@ test.describe('Finance Invoice Bulk Operations', () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
       try {
-        await page.goto(`${INVOICES_URL}?status=pending`);
-        await page.waitForSelector('[data-testid="data-table"]', { timeout: 10000 });
+        await gotoPendingInvoices(page);
         await selectTableRows(page, [0]);
         await clickBulkAction(page, 'reject');
         const dialog = page.locator('[role="dialog"][data-testid="confirm-dialog"]');
