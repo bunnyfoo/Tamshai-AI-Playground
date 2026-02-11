@@ -30,6 +30,15 @@ const KEYCLOAK_URLS: Record<string, string> = {
   prod: 'https://keycloak-fn44nd7wba-uc.a.run.app/auth',
 };
 
+/**
+ * Ensure the Keycloak base URL ends with /auth (context path).
+ * Idempotent: normalizeKeycloakUrl('.../auth') === '.../auth'
+ */
+function normalizeKeycloakUrl(url: string): string {
+  const stripped = url.replace(/\/+$/, '');
+  return stripped.endsWith('/auth') ? stripped : `${stripped}/auth`;
+}
+
 // Directory for persisting TOTP secrets per environment (shared with login-journey.ui.spec.ts)
 const TOTP_SECRETS_DIR = path.join(__dirname, '.totp-secrets');
 
@@ -325,8 +334,10 @@ export default async function globalSetup(): Promise<void> {
     return;
   }
 
-  // Allow CI or custom environments to override the Keycloak URL via env var
-  const keycloakUrl = process.env.KEYCLOAK_URL || KEYCLOAK_URLS[ENV];
+  // Allow CI or custom environments to override the Keycloak URL via env var.
+  // Normalize to ensure /auth context path is present (idempotent).
+  const rawKeycloakUrl = process.env.KEYCLOAK_URL || KEYCLOAK_URLS[ENV];
+  const keycloakUrl = rawKeycloakUrl ? normalizeKeycloakUrl(rawKeycloakUrl) : undefined;
   if (!keycloakUrl) {
     console.log(`[globalSetup] Unknown environment: ${ENV} and no KEYCLOAK_URL set — skipping`);
     return;

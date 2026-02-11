@@ -1011,7 +1011,7 @@ jobs:
         run: npm test -- --project=api
         env:
           MCP_GATEWAY_URL: http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}
-          KEYCLOAK_URL: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
+          KEYCLOAK_URL: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth
           KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
           CI: true
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
