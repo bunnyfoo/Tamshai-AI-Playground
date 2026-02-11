@@ -211,23 +211,13 @@ test.describe('Generative UI - Component Interactions', () => {
     await sharedPage.click('a:has-text("Org Chart")');
     await sharedPage.waitForLoadState('networkidle');
 
-    // Wait for org chart to load
+    // Wait for org chart to load - fail if not found
     const orgChart = sharedPage.locator('[data-testid="org-chart"]');
-    const hasOrgChart = await orgChart.isVisible({ timeout: 15000 }).catch(() => false);
+    await expect(orgChart).toBeVisible({ timeout: 15000 });
 
-    if (!hasOrgChart) {
-      test.skip(true, 'Org chart not available - MCP HR may not be running');
-      return;
-    }
-
-    // Find an employee card (not the self card)
+    // Find an employee card (not the self card) - fail if none found
     const employeeCards = sharedPage.locator('[data-testid^="employee-card-"]');
-    const cardCount = await employeeCards.count();
-
-    if (cardCount === 0) {
-      test.skip(true, 'No employee cards found in org chart');
-      return;
-    }
+    await expect(employeeCards.first()).toBeVisible({ timeout: 5000 });
 
     // Click the first employee card
     const firstCard = employeeCards.first();
@@ -280,17 +270,11 @@ test.describe('Generative UI - Component Interactions', () => {
       await sharedPage.waitForLoadState('networkidle');
     }
 
-    // Look for approve/reject buttons
+    // Look for approve/reject buttons - fail if not found
     const approveButtons = sharedPage.locator('button:has-text("Approve")');
     const rejectButtons = sharedPage.locator('button:has-text("Reject")');
 
-    const hasApproveButtons = await approveButtons.first().isVisible({ timeout: 10000 }).catch(() => false);
-
-    if (!hasApproveButtons) {
-      console.log('No pending approvals available to test approve/reject actions');
-      test.skip(true, 'No pending approvals available');
-      return;
-    }
+    await expect(approveButtons.first()).toBeVisible({ timeout: 10000 });
 
     // Get count of approval buttons before clicking
     const approveCount = await approveButtons.count();
@@ -413,20 +397,13 @@ test.describe('Generative UI - Voice Features', () => {
     }
 
     // Look for voice input button
-    const voiceInputButton = sharedPage.locator(
-      '[data-testid="voice-input"], button[aria-label*="microphone" i], button[aria-label*="speak" i]'
-    );
+    const voiceInputButton = sharedPage.locator('[data-testid="voice-input"]');
 
-    const hasVoiceInput = await voiceInputButton.isVisible({ timeout: 5000 }).catch(() => false);
-
-    if (!hasVoiceInput) {
-      console.log('Voice input button not found - feature may not be implemented');
-      test.skip(true, 'Voice input not implemented');
-      return;
-    }
+    // Fail if voice input button is not found
+    await expect(voiceInputButton).toBeVisible({ timeout: 10000 });
 
     // Click the voice input button
-    await voiceInputButton.first().click();
+    await voiceInputButton.click();
 
     // Check for listening state indicator
     const listeningIndicator = sharedPage.locator(
@@ -597,15 +574,9 @@ test.describe('Generative UI - ComponentRenderer', () => {
     await sharedPage.click('a:has-text("Org Chart")');
     await sharedPage.waitForLoadState('networkidle');
 
-    // Wait for org chart to load
+    // Wait for org chart to load - fail if not found
     const orgChart = sharedPage.locator('[data-testid="org-chart"]');
-    const hasOrgChart = await orgChart.isVisible({ timeout: 15000 }).catch(() => false);
-
-    if (!hasOrgChart) {
-      console.log('Org chart not available - skipping accessibility test');
-      test.skip(true, 'Org chart not available');
-      return;
-    }
+    await expect(orgChart).toBeVisible({ timeout: 15000 });
 
     // Check for ComponentRenderer wrapper with aria attributes
     const componentRenderer = sharedPage.locator('[data-testid="component-renderer"]');
