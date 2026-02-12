@@ -210,8 +210,8 @@ export default function AIQueryPage() {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/approve_expense_report`;
           requestBody = { reportId: id };
         } else if (approvalType === 'time-off') {
-          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/approve_time_off`;
-          requestBody = { requestId: id };
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/approve_time_off_request`;
+          requestBody = { requestId: id, approved: true };
         } else {
           console.error('Unknown approval type:', approvalType);
           return;
@@ -261,8 +261,8 @@ export default function AIQueryPage() {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/reject_expense_report`;
           requestBody = { reportId: id, rejectionReason: reason || 'No reason provided' };
         } else if (approvalType === 'time-off') {
-          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/reject_time_off`;
-          requestBody = { requestId: id, reason: reason || 'No reason provided' };
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/approve_time_off_request`;
+          requestBody = { requestId: id, approved: false, approverNotes: reason || 'No reason provided' };
         } else {
           console.error('Unknown approval type:', approvalType);
           return;
