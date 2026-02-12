@@ -233,9 +233,21 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
     };
 
     // Helper: Extract lead status from query
+    // Maps natural language to valid lead statuses: NEW, CONTACTED, QUALIFIED, CONVERTED, DISQUALIFIED
     const extractLeadStatus = (q: string, defaultStatus = 'NEW'): string => {
-      const statusMatch = q.match(/\b(hot|warm|cold|new|qualified|contacted|nurturing)\b/i);
-      return statusMatch ? statusMatch[1].toUpperCase() : defaultStatus;
+      const statusMatch = q.match(/\b(hot|warm|cold|new|qualified|contacted|converted|disqualified|nurturing)\b/i);
+      if (!statusMatch) return defaultStatus;
+
+      const matched = statusMatch[1].toLowerCase();
+      // Map temperature terms to pipeline statuses
+      const statusMap: Record<string, string> = {
+        'hot': 'QUALIFIED',      // Hot leads are qualified and ready
+        'warm': 'CONTACTED',     // Warm leads have been contacted
+        'cold': 'NEW',           // Cold leads are new/uncontacted
+        'nurturing': 'CONTACTED', // Nurturing implies contacted
+      };
+
+      return statusMap[matched] || matched.toUpperCase();
     };
 
     // Helper: Extract limit from query
