@@ -659,6 +659,7 @@ services:
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
+      VITE_MCP_UI_URL: http://mcp-ui:3118
     ports:
       - "${PORT_WEB_SALES:?PORT_WEB_SALES is required}:80"
     depends_on:
