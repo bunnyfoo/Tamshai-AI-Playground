@@ -210,6 +210,14 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
     const queryLower = query.toLowerCase();
     let displayDirective: string | null = null;
 
+    logger.info('🔍 Directive detection check', {
+      requestId,
+      query,
+      queryLower,
+      includesApproval: queryLower.includes('approval'),
+      includesAwaitingMyApproval: queryLower.includes('awaiting my approval'),
+    });
+
     // Helper: Extract year from query (2020-2030), default to current year
     const extractYear = (q: string, defaultYear = 2026): number => {
       const match = q.match(/\b(202[0-9])\b/);
