@@ -235,7 +235,32 @@ export default function AIQueryPage() {
         const result = await response.json();
         console.log('Approve result:', result);
 
-        // Show success message
+        // Check if this is a pending_confirmation response (human-in-the-loop for AI)
+        // Since the user already clicked Approve, they ARE the human confirmation
+        // So we auto-confirm immediately
+        if (result.status === 'pending_confirmation' && result.confirmationId) {
+          console.log('Auto-confirming (user already approved via UI button)');
+
+          // Automatically call the confirmation endpoint
+          const confirmResponse = await fetch(`${apiConfig.mcpGatewayUrl}/api/confirm/${result.confirmationId}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ approved: true }),
+          });
+
+          if (!confirmResponse.ok) {
+            const errorData = await confirmResponse.json().catch(() => ({ message: confirmResponse.statusText }));
+            throw new Error(`Failed to confirm approval: ${errorData.message || confirmResponse.statusText}`);
+          }
+
+          const confirmResult = await confirmResponse.json();
+          console.log('Confirmation result:', confirmResult);
+        }
+
+        // Show success message (for both direct and confirmed approvals)
         alert(`Successfully approved ${approvalType}!`);
 
         // Refresh the component by re-fetching
@@ -285,6 +310,30 @@ export default function AIQueryPage() {
 
         const result = await response.json();
         console.log('Reject result:', result);
+
+        // Check if this is a pending_confirmation response
+        // Auto-confirm since the user already clicked Reject
+        if (result.status === 'pending_confirmation' && result.confirmationId) {
+          console.log('Auto-confirming reject (user already rejected via UI button)');
+
+          // Automatically call the confirmation endpoint
+          const confirmResponse = await fetch(`${apiConfig.mcpGatewayUrl}/api/confirm/${result.confirmationId}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ approved: true }), // approved=true means "yes, execute this reject action"
+          });
+
+          if (!confirmResponse.ok) {
+            const errorData = await confirmResponse.json().catch(() => ({ message: confirmResponse.statusText }));
+            throw new Error(`Failed to confirm rejection: ${errorData.message || confirmResponse.statusText}`);
+          }
+
+          const confirmResult = await confirmResponse.json();
+          console.log('Confirmation result:', confirmResult);
+        }
 
         // Show success message
         alert(`Successfully rejected ${approvalType}!`);
