@@ -261,19 +261,34 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     ],
     transform: (data: unknown): Record<string, unknown> => {
       const d = data as Record<string, unknown>;
+
+      // get_quarterly_report returns complete QuarterlyReport structure
+      // Component expects report object with quarter, year, kpis, arrWaterfall, highlights
       return {
-        quarter: d.quarter,
-        year: d.year,
-        revenue: d.revenue,
-        expenses: d.expenses,
-        profit: d.profit,
+        report: {
+          quarter: d.quarter,
+          year: d.year,
+          kpis: d.kpis || [],
+          arrWaterfall: d.arrWaterfall || [],
+          highlights: d.highlights || [],
+        },
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
-      const q = params.quarter || 'Q1';
-      const y = params.year || '2026';
+      const d = data as Record<string, unknown>;
+      const quarter = d.quarter || params.quarter || 'Q1';
+      const year = d.year || params.year || '2026';
+      const highlights = (d.highlights as string[]) || [];
+
+      // Generate summary from highlights if available
+      if (highlights.length > 0) {
+        return {
+          text: `${quarter} ${year} quarterly report. ${highlights[0]}`,
+        };
+      }
+
       return {
-        text: `Quarterly report for ${q} ${y}.`,
+        text: `Quarterly report for ${quarter} ${year}.`,
       };
     },
   },

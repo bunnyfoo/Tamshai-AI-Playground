@@ -18,6 +18,7 @@ import { UserContext, checkConnection, closePool } from './database/connection';
 import { getBudget, GetBudgetInputSchema } from './tools/get-budget';
 import { listBudgets, ListBudgetsInputSchema } from './tools/list-budgets';
 import { listInvoices, ListInvoicesInputSchema } from './tools/list-invoices';
+import { getQuarterlyReport, GetQuarterlyReportInputSchema } from './tools/get-quarterly-report';
 import { getExpenseReport, GetExpenseReportInputSchema } from './tools/get-expense-report';
 import { listExpenseReports, ListExpenseReportsInputSchema } from './tools/list-expense-reports';
 import { getArr, GetArrInputSchema } from './tools/get-arr';
@@ -349,6 +350,45 @@ app.post('/tools/get_budget', async (req: Request, res: Response) => {
       status: 'error',
       code: 'INTERNAL_ERROR',
       message: 'Failed to get budget',
+    });
+  }
+});
+
+/**
+ * Get Quarterly Report Tool (TIER 2 - Finance read and executive)
+ */
+app.post('/tools/get_quarterly_report', async (req: Request, res: Response) => {
+  try {
+    const { userContext, quarter, year } = req.body;
+
+    if (!userContext?.userId) {
+      res.status(400).json({
+        status: 'error',
+        code: 'MISSING_USER_CONTEXT',
+        message: 'User context is required',
+      });
+      return;
+    }
+
+    // Authorization check - Finance read and executive only
+    if (!canAccessBudgets(userContext.roles)) {
+      res.status(403).json({
+        status: 'error',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: `Access denied. Quarterly reports require finance or executive role. You have: ${userContext.roles.join(', ')}`,
+        suggestedAction: 'Contact your administrator to request Finance access permissions.',
+      });
+      return;
+    }
+
+    const result = await getQuarterlyReport({ quarter, year }, userContext);
+    res.json(result);
+  } catch (error) {
+    logger.error('get_quarterly_report error:', error);
+    res.status(500).json({
+      status: 'error',
+      code: 'INTERNAL_ERROR',
+      message: 'Failed to get quarterly report',
     });
   }
 });
