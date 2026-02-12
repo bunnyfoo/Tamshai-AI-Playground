@@ -98,12 +98,23 @@ const componentRegistry: Record<string, ComponentDefinition> = {
       { server: 'sales', tool: 'list_leads', paramMap: { status: 'status', limit: 'limit' } },
     ],
     transform: (data: unknown): Record<string, unknown> => {
-      // list_leads returns array of leads directly (already has id field mapped by MCP server)
-      const leads = (data as Array<any>) || [];
+      // list_leads returns array of leads - map MCP field names to component props
+      const rawLeads = (data as Array<any>) || [];
+      const leads = rawLeads.map((lead: any) => ({
+        id: lead.id || lead._id,
+        name: lead.contact_name || lead.name || 'Unknown',
+        email: lead.contact_email || lead.email || '',
+        company: lead.company_name || lead.company || 'Unknown',
+        status: (lead.status || 'new').toLowerCase(),
+        source: (lead.source || 'website').toLowerCase(),
+        score: lead.score?.total || lead.score || 0,
+        createdAt: lead.created_at || lead.createdAt || new Date().toISOString(),
+        lastActivity: lead.updated_at || lead.lastActivity || new Date().toISOString(),
+      }));
       return {
         leads,
-        totalCount: leads.length,  // Component doesn't use this, but kept for API consistency
-        filters: {},  // Component handles filters internally
+        totalCount: leads.length,
+        filters: {},
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
