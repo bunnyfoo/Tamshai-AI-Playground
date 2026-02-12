@@ -93,7 +93,7 @@ function saveTotpSecretToCache(username: string, environment: string, secret: st
     }
     const secretFile = path.join(TOTP_SECRETS_DIR, `${username}-${environment}.secret`);
     fs.writeFileSync(secretFile, secret, 'utf-8');
-    console.log(`[globalSetup] Saved TOTP cache: ${secretFile} (${secret.substring(0, 4)}****)`);
+    console.log(`[globalSetup] Saved TOTP cache: ${secretFile} ([REDACTED])`);
   } catch (error: any) {
     console.warn(`[globalSetup] Failed to save TOTP cache: ${error.message}`);
   }
@@ -344,7 +344,7 @@ export default async function globalSetup(): Promise<void> {
   }
 
   console.log(
-    `[globalSetup] Ensuring TOTP for test-user.journey (${ENV}, secret: ${totpSecret.substring(0, 4)}****)`
+    `[globalSetup] Ensuring TOTP for test-user.journey (${ENV}, secret: [REDACTED])`
   );
 
   try {
@@ -359,7 +359,7 @@ export default async function globalSetup(): Promise<void> {
     const username = process.env.TEST_USERNAME || 'test-user.journey';
     const base32ForOtplib = base32Encode(Buffer.from(totpSecret, 'utf-8'));
     saveTotpSecretToCache(username, ENV, base32ForOtplib);
-    console.log(`[globalSetup] Base32 bridge: ${totpSecret.substring(0, 4)}**** → ${base32ForOtplib.substring(0, 8)}****`);
+    console.log(`[globalSetup] Base32 bridge: [REDACTED] → [REDACTED]`);
   } catch (error: any) {
     // Credentials were explicitly provided — provisioning MUST succeed
     console.error(`[globalSetup] TOTP provisioning failed: ${error.message}`);

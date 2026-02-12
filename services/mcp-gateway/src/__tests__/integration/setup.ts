@@ -665,7 +665,7 @@ async function createEphemeralTestUsers(): Promise<void> {
   );
 
   results.forEach((r) => console.log(r));
-  console.log(`  Password for this run: [${EPHEMERAL_TEST_PASSWORD.substring(0, 4)}...]`);
+  console.log('  Password for this run: [REDACTED]');
 
   // Wait for group memberships to propagate in Keycloak
   await new Promise(resolve => setTimeout(resolve, 1000));

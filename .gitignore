@@ -131,3 +131,4 @@ nul
 *.tfplan
 tfplan
 services/mcp-journey/data/
+tests/e2e/certs/

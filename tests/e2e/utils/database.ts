@@ -10,13 +10,12 @@
  * The admin API is protected by X-Admin-Key header.
  */
 
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+
 // Environment configuration
 const ENV = process.env.TEST_ENV || 'dev';
-
-// Dev environment uses self-signed certificates; allow Node.js fetch to connect
-if (ENV === 'dev') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
 
 const API_BASE_URLS: Record<string, string> = {
   dev: 'https://www.tamshai-playground.local:8443/api/admin',
@@ -61,6 +60,31 @@ interface HealthResponse {
 }
 
 /**
+ * Create a custom HTTPS agent that trusts the local Caddy CA.
+ * This is the secure way to handle self-signed certificates in a dev environment.
+ */
+const getCustomAgent = (): https.Agent => {
+  try {
+    const caPath = path.resolve(__dirname, '..', 'certs', 'caddy_root.crt');
+    if (fs.existsSync(caPath)) {
+      const customCaCert = fs.readFileSync(caPath);
+      console.log('[HTTPS Agent] Loaded custom Caddy root CA for E2E tests.');
+      return new https.Agent({
+        ca: customCaCert,
+      });
+    }
+  } catch (error) {
+    console.warn(`[HTTPS Agent] Could not load custom CA. Using default agent. Error: ${error.message}`);
+  }
+
+  // Fallback to the default agent if the CA is not found or fails to load
+  return new https.Agent();
+};
+
+const customAgent = getCustomAgent();
+
+
+/**
  * Make authenticated request to admin API
  */
 async function adminRequest<T>(
@@ -81,6 +105,8 @@ async function adminRequest<T>(
         ...options.headers,
       },
       signal: controller.signal,
+      // Use the custom agent to trust the Caddy CA
+      agent: customAgent,
     });
 
     clearTimeout(timeoutId);

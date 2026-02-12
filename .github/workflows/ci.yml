@@ -335,12 +335,10 @@ jobs:
       - name: Audit MCP Gateway
         working-directory: services/mcp-gateway
         run: npm audit --audit-level=high
-        continue-on-error: true  # Non-blocking: vulnerabilities tracked via Dependabot
 
       - name: Audit Integration Tests
         working-directory: tests/integration
         run: npm audit --audit-level=high
-        continue-on-error: true  # Non-blocking: vulnerabilities tracked via Dependabot
 
   # =============================================================================
   # Terraform Security (tfsec)
@@ -1168,7 +1166,6 @@ jobs:
         id: scan
         with:
           sbom: sbom.spdx.json
-          fail-build: false
           severity-cutoff: critical
 
       - name: Upload SBOM artifacts
