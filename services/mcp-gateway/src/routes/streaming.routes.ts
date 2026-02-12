@@ -318,8 +318,8 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
       res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders();
 
-      // Send directive as a text chunk
-      res.write(`data: ${JSON.stringify({ text: displayDirective })}\n\n`);
+      // Send directive as a text chunk (must include type field for client compatibility)
+      res.write(`data: ${JSON.stringify({ type: 'text', text: displayDirective })}\n\n`);
       res.write('data: [DONE]\n\n');
       res.end();
 
