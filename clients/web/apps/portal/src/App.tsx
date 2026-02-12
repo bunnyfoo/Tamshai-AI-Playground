@@ -3,6 +3,7 @@ import { PrivateRoute } from '@tamshai/auth';
 import LandingPage from './pages/LandingPage';
 import CallbackPage from './pages/CallbackPage';
 import DownloadsPage from './pages/DownloadsPage';
+import AIQueryPage from './pages/AIQueryPage';
 
 function App() {
   return (
@@ -24,6 +25,14 @@ function App() {
         element={
           <PrivateRoute>
             <DownloadsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/ai-query"
+        element={
+          <PrivateRoute>
+            <AIQueryPage />
           </PrivateRoute>
         }
       />

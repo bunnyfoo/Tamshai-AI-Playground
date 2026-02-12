@@ -562,12 +562,20 @@ services:
     build:
       context: ../../clients/web
       dockerfile: apps/portal/Dockerfile
+      args:
+        VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
+        VITE_KEYCLOAK_CLIENT_ID: web-portal
+        VITE_API_GATEWAY_URL: http://127.0.0.1:${PORT_KONG_PROXY}
+        VITE_MCP_GATEWAY_URL: http://127.0.0.1:${PORT_MCP_GATEWAY}
+        # VITE_MCP_UI_URL left empty to use relative URL /mcp-ui/* (proxied by Caddy)
+        VITE_MCP_UI_URL: ""
     container_name: tamshai-pg-web-portal
     environment:
       VITE_KEYCLOAK_URL: http://127.0.0.1:8190/auth/realms/tamshai-corp
       VITE_KEYCLOAK_CLIENT_ID: web-portal
       VITE_API_GATEWAY_URL: http://kong:8000
       VITE_MCP_GATEWAY_URL: http://mcp-gateway:3110
+      VITE_MCP_UI_URL: http://mcp-ui:3118
     ports:
       - "${PORT_WEB_PORTAL:?PORT_WEB_PORTAL is required}:80"
     depends_on:
