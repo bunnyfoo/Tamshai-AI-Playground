@@ -1063,6 +1063,66 @@ Transform sample applications into enterprise-grade modules with unified UX, add
 **Phase 9**: ✅ Security remediation (Terraform infrastructure)
 **Phase 10**: ✅ Documentation
 
+### Generative UI Fixes (v1.5 - February 2026)
+
+**Status**: ✅ Complete (6 of 7 components operational)
+
+**Plan Files**:
+- `.claude/plans/generative-ui-fixes.md` - Complete implementation plan
+- `.claude/plans/generative-ui-validation.md` - MCP tool validation results
+- `.claude/plans/generative-ui-testing-guide.md` - Manual testing procedures
+
+**Completed Work**:
+
+**Phase 1 - Infrastructure** ✅
+- Docker Compose build args for VITE_MCP_UI_URL
+- .env files created for Sales, Finance, Support apps
+- Caddy reverse proxy configuration at /mcp-ui/*
+
+**Phase 2 - Frontend Fixes** ✅
+- AIQueryPage URL fallback: `/mcp-ui/api/display` (all apps)
+- Component styling: Converted to semantic tokens (secondary-*, primary-*, success/danger/warning-*)
+- Components updated: ForecastChart, BudgetSummaryCard, QuarterlyReportDashboard
+
+**Phase 3 - Component Registry Transforms** ✅
+- `hr:org_chart` - Maps employee_id → id, extracts self/directReports
+- `sales:customer` - Extracts customer/contacts, maps contact._id → id
+- `sales:leads` - Handles leads as direct array
+- `sales:forecast` - Maps forecast data (validation pending)
+- `finance:budget` - Maps BudgetSummary to BudgetData with categories
+- `approvals:pending` - Multi-source transform (HR + Finance) with field mapping
+
+**Phase 4 - MCP Tool Validation** ✅
+- 9 of 10 tools implemented and validated
+- Missing: `finance.get_quarterly_report` (blocks QuarterlyReportDashboard)
+
+**Phase 5 - Manual Testing** ⏳
+- Testing guide created
+- 6 components ready for testing
+- 1 component blocked (quarterly_report)
+
+**Phase 6 - Documentation** ✅
+- Validation report generated
+- Testing procedures documented
+- CLAUDE.md updated
+
+**Operational Components**:
+1. ✅ HR Org Chart (display:hr:org_chart)
+2. ✅ Sales Customer Detail (display:sales:customer)
+3. ✅ Sales Leads Table (display:sales:leads)
+4. ✅ Sales Forecast Chart (display:sales:forecast)
+5. ✅ Finance Budget Summary (display:finance:budget)
+6. ✅ Approvals Queue (display:approvals:pending)
+7. ❌ Finance Quarterly Report (display:finance:quarterly_report) - Tool not implemented
+
+**Known Limitations**:
+- `approvals:pending.expenseReports.itemCount` - Always 0 (MCP doesn't provide)
+- `approvals:pending.budgetAmendments.currentBudget` - Always 0 (MCP doesn't provide)
+- `finance:quarterly_report` - Cannot test until get_quarterly_report tool is implemented
+
+**Testing Instructions**:
+See `.claude/plans/generative-ui-testing-guide.md` for complete manual testing procedures.
+
 ---
 
 ## Security & Compliance
