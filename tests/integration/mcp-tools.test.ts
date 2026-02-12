@@ -230,7 +230,8 @@ describe('MCP HR Server - Read Tools', () => {
       expect(response.status).toBe(200);
       expect(response.data.status).toBe('success');
       expect(response.data.data).toBeDefined();
-      expect(response.data.data.employee_id).toBe(TEST_USERS.hrUser.userId);
+      // Check id (UUID primary key), not employee_id (VARCHAR employee number which may be NULL)
+      expect(response.data.data.id).toBe(TEST_USERS.hrUser.userId);
     });
 
     test('Returns LLM-friendly error for non-existent employee', async () => {

@@ -19,9 +19,10 @@ import {
 
 /**
  * Input schema for get_employee tool
+ * Accepts any string to support both UUID (e.id) and VARCHAR (e.keycloak_user_id) lookups
  */
 export const GetEmployeeInputSchema = z.object({
-  employeeId: z.string().uuid('Employee ID must be a valid UUID'),
+  employeeId: z.string(),
 });
 
 export type GetEmployeeInput = z.infer<typeof GetEmployeeInputSchema>;
@@ -70,6 +71,7 @@ export async function getEmployee(
 
     try {
       // Query with RLS enforcement (using actual schema columns)
+      // Support lookup by both UUID (e.id) and VARCHAR (e.keycloak_user_id)
       const result = await queryWithRLS<Employee>(
         userContext,
         `
@@ -97,7 +99,7 @@ export async function getEmployee(
         FROM hr.employees e
         LEFT JOIN hr.employees m ON e.manager_id = m.id
         LEFT JOIN hr.departments d ON e.department_id = d.id
-        WHERE e.id = $1
+        WHERE (e.id::text = $1 OR e.keycloak_user_id = $1)
           AND e.status = 'ACTIVE'
         `,
         [employeeId]
