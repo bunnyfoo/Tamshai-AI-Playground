@@ -141,7 +141,9 @@ router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) =
     }
 
     // Transform data for component props
+    logger.info('Transform input data', { mergedData: JSON.stringify(mergedData).substring(0, 500) });
     const props = componentDef.transform(mergedData);
+    logger.info('Transform output props', { props: JSON.stringify(props).substring(0, 500) });
 
     // Generate narration
     const narration = componentDef.generateNarration(mergedData, parsed.params);
