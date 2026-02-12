@@ -132,17 +132,12 @@ export async function getPendingBudgets(
           db.fiscal_year as "fiscalYear",
           bc.name as "categoryName",
           db.budgeted_amount::numeric as "budgetedAmount",
-          COALESCE(approved.budgeted_amount, 0)::numeric as "currentBudget",
+          0::numeric as "currentBudget",
           db.submitted_by as "submittedBy",
           NULL as "submittedByName",
           db.submitted_at::text as "submittedAt"
         FROM finance.department_budgets db
         LEFT JOIN finance.budget_categories bc ON db.category_id = bc.id
-        LEFT JOIN finance.department_budgets approved
-          ON approved.department_code = db.department_code
-          AND approved.category_id = db.category_id
-          AND approved.fiscal_year = db.fiscal_year - 1
-          AND approved.status = 'APPROVED'
         WHERE ${whereClauses.join(' AND ')}
         ORDER BY db.submitted_at DESC, db.id DESC
         LIMIT $${paramIndex}

@@ -201,20 +201,32 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     type: 'ApprovalsQueue',
     domain: 'approvals',
     component: 'pending',
-    description: 'Shows pending approvals across HR and Finance',
+    description: 'Shows pending approvals across HR and Finance with employee name resolution',
     mcpCalls: [
       { server: 'hr', tool: 'get_pending_time_off', paramMap: {}, dataField: 'timeOffRequests' },
       { server: 'finance', tool: 'get_pending_expenses', paramMap: {}, dataField: 'expenseReports' },
       { server: 'finance', tool: 'get_pending_budgets', paramMap: {}, dataField: 'budgetAmendments' },
+      { server: 'hr', tool: 'list_employees', paramMap: {}, dataField: 'employees' },
     ],
     transform: (data: unknown): Record<string, unknown> => {
       // Multiple MCP calls return merged object with arrays
       const d = data as Record<string, unknown>;
 
+      // Build employee name lookup map from list_employees result
+      const employees = (d.employees as Array<any>) || [];
+      const employeeNameMap = new Map<string, string>();
+      employees.forEach((emp: any) => {
+        const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Unknown';
+        // Index by both employee_id (UUID) and id fields
+        if (emp.employee_id) employeeNameMap.set(emp.employee_id, fullName);
+        if (emp.id) employeeNameMap.set(emp.id, fullName);
+      });
+
       // Map time-off requests: requestId → id, typeCode → type, notes → reason
+      // Resolve employee names from employeeId
       const timeOffRequests = ((d.timeOffRequests as Array<any>) || []).map((req: any) => ({
         id: req.requestId || req.id,
-        employeeName: req.employeeName,
+        employeeName: employeeNameMap.get(req.employeeId) || req.employeeName || 'Unknown',
         startDate: req.startDate,
         endDate: req.endDate,
         type: (req.typeCode || req.type || 'other').toLowerCase(),
@@ -222,22 +234,25 @@ const componentRegistry: Record<string, ComponentDefinition> = {
       }));
 
       // Map expense reports: totalAmount → amount, title → description, submissionDate → date
+      // Resolve employee names from employeeId (which is currently stored in employeeName field)
       const expenseReports = ((d.expenseReports as Array<any>) || []).map((exp: any) => ({
         id: exp.id,
-        employeeName: exp.employeeName || 'Unknown',
+        employeeName: employeeNameMap.get(exp.employeeId) || employeeNameMap.get(exp.employeeName) || 'Unknown',
         amount: Number(exp.totalAmount) || 0,
         date: exp.submissionDate || exp.submittedAt?.split('T')[0] || new Date().toISOString().split('T')[0],
         description: exp.title || exp.description || 'No description',
         itemCount: exp.itemCount || 0,
       }));
 
-      // Map budget amendments: budgetedAmount → requestedBudget, currentBudget from previous year
+      // Map budget amendments: budgetedAmount → requestedBudget
+      // Resolve submitter names from submittedBy field
       const budgetAmendments = ((d.budgetAmendments as Array<any>) || []).map((bud: any) => ({
         id: bud.id,
         department: bud.department || bud.departmentCode,
         currentBudget: Number(bud.currentBudget) || 0,
         requestedBudget: Number(bud.budgetedAmount) || 0,
         reason: bud.categoryName || bud.reason || 'Budget request',
+        submittedBy: employeeNameMap.get(bud.submittedBy) || 'Unknown',
       }));
 
       return {

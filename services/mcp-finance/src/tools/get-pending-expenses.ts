@@ -124,7 +124,7 @@ export async function getPendingExpenses(
           er.id,
           er.report_number as "reportNumber",
           er.employee_id as "employeeId",
-          COALESCE(e.first_name || ' ' || e.last_name, 'Unknown') as "employeeName",
+          er.employee_id as "employeeName",
           er.department_code as "departmentCode",
           er.title,
           er.total_amount::numeric as "totalAmount",
@@ -133,7 +133,6 @@ export async function getPendingExpenses(
           er.submitted_at::text as "submittedAt",
           COALESCE(item_counts.item_count, 0)::int as "itemCount"
         FROM finance.expense_reports er
-        LEFT JOIN hr.employees e ON e.employee_id = er.employee_id
         LEFT JOIN (
           SELECT expense_report_id, COUNT(*) as item_count
           FROM finance.expense_items
