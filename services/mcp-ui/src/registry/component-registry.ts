@@ -59,10 +59,22 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     ],
     transform: (data: unknown): Record<string, unknown> => {
       const d = data as Record<string, unknown>;
+
+      // get_customer returns customer with nested contacts array
+      // Extract contacts and map _id → id for component compatibility
+      const contacts = (d.contacts as Array<any>) || [];
+      const mappedContacts = contacts.map(contact => ({
+        ...contact,
+        id: contact._id || contact.id,
+      }));
+
+      // Extract customer without nested contacts
+      const { contacts: _, ...customer } = d;
+
       return {
-        customer: d.customer,
-        contacts: d.contacts || [],
-        opportunities: d.opportunities || [],
+        customer,  // Already has id field from MCP server
+        contacts: mappedContacts,
+        opportunities: [],  // TODO: Add second MCP call for opportunities
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
@@ -86,11 +98,12 @@ const componentRegistry: Record<string, ComponentDefinition> = {
       { server: 'sales', tool: 'list_leads', paramMap: { status: 'status', limit: 'limit' } },
     ],
     transform: (data: unknown): Record<string, unknown> => {
-      const d = data as Record<string, unknown>;
+      // list_leads returns array of leads directly (already has id field mapped by MCP server)
+      const leads = (data as Array<any>) || [];
       return {
-        leads: d.leads || [],
-        totalCount: d.totalCount || 0,
-        filters: d.filters || {},
+        leads,
+        totalCount: leads.length,  // Component doesn't use this, but kept for API consistency
+        filters: {},  // Component handles filters internally
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
@@ -138,11 +151,30 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     ],
     transform: (data: unknown): Record<string, unknown> => {
       const d = data as Record<string, unknown>;
+      const budgets = (d.budgets as Array<any>) || [];
+
+      // Map department budgets to category spending structure
+      const categories = budgets.map(b => ({
+        name: b.category_id || 'General',
+        allocated: Number(b.budgeted_amount) || 0,
+        spent: Number(b.actual_amount) || 0,
+        percentage: Number(b.budgeted_amount) > 0
+          ? Math.round((Number(b.actual_amount) / Number(b.budgeted_amount)) * 100)
+          : 0,
+      }));
+
+      const allocated = Number(d.total_budgeted) || 0;
+      const spent = Number(d.total_actual) || 0;
+
       return {
-        department: d.department,
-        budget: d.budget,
-        spent: d.spent,
-        remaining: d.remaining,
+        budget: {
+          departmentName: String(d.department),
+          fiscalYear: Number(d.fiscal_year),
+          allocated,
+          spent,
+          remaining: allocated - spent,
+          categories,
+        },
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
