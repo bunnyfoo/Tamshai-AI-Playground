@@ -343,12 +343,18 @@ async function getServiceAccountToken(): Promise<string> {
 export async function getImpersonatedToken(username: string): Promise<string> {
     const serviceToken = await getServiceAccountToken();
 
+    // Validate client secret is available
+    const clientSecret = process.env.MCP_INTEGRATION_RUNNER_SECRET;
+    if (!clientSecret) {
+        throw new Error('MCP_INTEGRATION_RUNNER_SECRET environment variable is required for integration tests');
+    }
+
     const response = await axios.post(
         `${KEYCLOAK_CONFIG.url}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/token`,
         new URLSearchParams({
             grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
             client_id: 'mcp-integration-runner',
-            client_secret: process.env.MCP_INTEGRATION_RUNNER_SECRET,
+            client_secret: clientSecret,
             subject_token: serviceToken,
             requested_subject: username,
             audience: 'mcp-gateway',
