@@ -317,6 +317,48 @@ async function getKeycloakAdminToken(): Promise<string> {
 }
 
 /**
+ * Gets a token for the integration test service account using client credentials.
+ */
+async function getServiceAccountToken(): Promise<string> {
+    const clientSecret = process.env.MCP_INTEGRATION_RUNNER_SECRET;
+    if (!clientSecret) {
+        throw new Error('MCP_INTEGRATION_RUNNER_SECRET environment variable is required for integration tests');
+    }
+
+    const response = await axios.post(
+        `${KEYCLOAK_CONFIG.url}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/token`,
+        new URLSearchParams({
+            client_id: 'mcp-integration-runner',
+            client_secret: clientSecret,
+            grant_type: 'client_credentials',
+        }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data.access_token;
+}
+
+/**
+ * Gets an impersonated token for a specific user using the Token Exchange grant.
+ */
+export async function getImpersonatedToken(username: string): Promise<string> {
+    const serviceToken = await getServiceAccountToken();
+
+    const response = await axios.post(
+        `${KEYCLOAK_CONFIG.url}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/token`,
+        new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+            client_id: 'mcp-integration-runner',
+            client_secret: process.env.MCP_INTEGRATION_RUNNER_SECRET,
+            subject_token: serviceToken,
+            requested_subject: username,
+            audience: 'mcp-gateway',
+        }),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data.access_token;
+}
+
+/**
  * Get user ID by username
  */
 async function getUserId(username: string): Promise<string | null> {

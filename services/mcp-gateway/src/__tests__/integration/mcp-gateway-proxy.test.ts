@@ -18,7 +18,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
-import { getEphemeralUser } from './setup';
+import { getEphemeralUser, getImpersonatedToken } from './setup';
 
 // CI Environment Check
 // Skip all tests in CI - proxy routes require full Docker network setup
@@ -126,34 +126,6 @@ const TEST_USERS = {
   },
 };
 
-interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
-
-/**
- * Get access token from Keycloak
- */
-async function getAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
-
-  const params = new URLSearchParams({
-    grant_type: 'password',
-    client_id: CONFIG.clientId,
-    client_secret: CONFIG.clientSecret,
-    username,
-    password,
-    scope: 'openid profile email',
-  });
-
-  const response = await axios.post<TokenResponse>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  return response.data.access_token;
-}
-
 /**
  * Create authenticated gateway client
  */
@@ -192,7 +164,7 @@ describeProxy('MCP Gateway - HR Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+    const token = await getImpersonatedToken(TEST_USERS.hrUser.username);
     client = createGatewayClient(token);
   });
 
@@ -241,7 +213,7 @@ describeProxy('MCP Gateway - Finance Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
+    const token = await getImpersonatedToken(TEST_USERS.financeUser.username);
     client = createGatewayClient(token);
   });
 
@@ -286,7 +258,7 @@ describeProxy('MCP Gateway - Sales Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.salesUser.username, TEST_USERS.salesUser.password);
+    const token = await getImpersonatedToken(TEST_USERS.salesUser.username);
     client = createGatewayClient(token);
   });
 
@@ -315,7 +287,7 @@ describeProxy('MCP Gateway - Support Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.supportUser.username, TEST_USERS.supportUser.password);
+    const token = await getImpersonatedToken(TEST_USERS.supportUser.username);
     client = createGatewayClient(token);
   });
 
@@ -345,7 +317,7 @@ describeProxy('MCP Gateway - Payroll Endpoints', () => {
 
   beforeAll(async () => {
     // Use executive user who has payroll-read role
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     client = createGatewayClient(token);
   });
 
@@ -442,7 +414,7 @@ describeProxy('MCP Gateway - Payroll Endpoints', () => {
  */
 describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('Executive can access payroll endpoints', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.PAYROLL.GET_PAYROLL_SUMMARY);
@@ -451,7 +423,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   });
 
   test('Executive can access all department data (full visibility)', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     // Test access to each service - executive sees all data
@@ -473,7 +445,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('HR user accessing finance gets RLS-filtered data (employee self-service)', async () => {
     // Design note: The 'employee' role grants access to finance for self-service features
     // (expense reports, personal budget visibility). RLS policies filter the data.
-    const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+    const token = await getImpersonatedToken(TEST_USERS.hrUser.username);
 
     // Decode token to see what roles the user has
     const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
@@ -501,7 +473,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('Finance user accessing HR gets RLS-filtered data (employee self-service)', async () => {
     // Design note: The 'employee' role grants access to HR for self-service features
     // (own profile, time-off balances). RLS policies filter to own record.
-    const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
+    const token = await getImpersonatedToken(TEST_USERS.financeUser.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.HR.LIST_EMPLOYEES);
@@ -523,7 +495,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
 
 describeProxy('MCP Gateway - Response Field Validation', () => {
   test('Payroll summary has fields expected by DashboardPage', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.PAYROLL.GET_PAYROLL_SUMMARY);
@@ -543,7 +515,7 @@ describeProxy('MCP Gateway - Response Field Validation', () => {
   });
 
   test('Pay runs have fields expected by PayRunsPage', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(`${MCP_ENDPOINTS.PAYROLL.LIST_PAY_RUNS}?year=2026`);
@@ -566,7 +538,7 @@ describeProxy('MCP Gateway - Response Field Validation', () => {
   });
 
   test('Benefits have fields expected by BenefitsPage', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.PAYROLL.GET_BENEFITS);
@@ -602,7 +574,7 @@ describeProxy('MCP Gateway - Error Handling', () => {
   });
 
   test('Returns 404 for non-existent endpoints', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await getImpersonatedToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get('/api/mcp/nonexistent/tool');

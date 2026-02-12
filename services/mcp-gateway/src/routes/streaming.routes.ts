@@ -27,6 +27,7 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { UserContext } from '../test-utils/mock-user-context';
 import { scrubPII } from '../utils/pii-scrubber';
 import { sanitizeForLog, MCPServerConfig } from '../utils/gateway-utils';
+import { promptDefense } from '../ai/prompt-defense';
 
 // =============================================================================
 // CONNECTION TRACKING (Phase 4 - Graceful Shutdown)
@@ -182,6 +183,20 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
     const requestId = req.headers['x-request-id'] as string;
     const userContext: UserContext = (req as AuthenticatedRequest).userContext!;
 
+    let safeQuery: string;
+    try {
+      safeQuery = promptDefense.sanitize(query);
+    } catch (error) {
+      logger.warn('Blocked a suspicious query due to prompt injection defenses.', {
+        requestId,
+        username: sanitizeForLog(userContext.username),
+        originalQuery: scrubPII(query.substring(0, 200)),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(400).json({ error: 'Invalid query.' });
+      return;
+    }
+
     logger.info('SSE Query received', {
       requestId,
       username: sanitizeForLog(userContext.username),
@@ -324,7 +339,7 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
 
       // Query all accessible MCP servers in parallel (with cursor for pagination)
       const mcpPromises = accessibleServers.map((server) =>
-        queryMCPServer(server, query, userContext, cursor)
+        queryMCPServer(server, safeQuery, userContext, cursor)
       );
       const mcpResults = await Promise.all(mcpPromises);
 
@@ -455,7 +470,7 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
         });
 
         const successfulServers = mcpResults.filter(r => r.status === 'success').map(r => r.server);
-        writeMockStream(res, query, userContext, successfulServers);
+        writeMockStream(res, safeQuery, userContext, successfulServers);
       } else {
         // Stream Claude response
         const stream = await anthropic.messages.stream({
@@ -465,7 +480,7 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
           messages: [
             {
               role: 'user',
-              content: query,
+              content: safeQuery,
             },
           ],
         });
@@ -486,7 +501,8 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
           }
 
           if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            res.write(`data: ${JSON.stringify({ type: 'text', text: chunk.delta.text })}\n\n`);
+            const sanitizedChunk = promptDefense.scanOutput(chunk.delta.text);
+            res.write(`data: ${JSON.stringify({ type: 'text', text: sanitizedChunk })}\n\n`);
           }
         }
       }

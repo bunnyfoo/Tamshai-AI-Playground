@@ -788,7 +788,7 @@
       "enabled": true,
       "publicClient": false,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "protocol": "openid-connect",
       "secret": "REPLACED_BY_SYNC_SCRIPT",

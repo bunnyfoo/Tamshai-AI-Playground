@@ -52,7 +52,8 @@ create_or_update_client() {
 
     if client_exists "$client_id"; then
         log_info "Client '$client_id' exists, updating..."
-        local uuid=$(get_client_uuid "$client_id")
+        local uuid
+        uuid=$(get_client_uuid "$client_id")
         # Some client types (service accounts) have immutable properties after creation
         # Catch update failures gracefully - the important config is already there from creation
         if echo "$client_json" | _kcadm update "clients/$uuid" -r "$REALM" -f - 2>/dev/null; then
@@ -71,7 +72,6 @@ create_or_update_client() {
         assign_client_scopes "$client_id"
     fi
 }
-
 # =============================================================================
 # Client JSON Generators
 # =============================================================================
@@ -132,7 +132,7 @@ get_mcp_gateway_client_json() {
     case "${ENV:-dev}" in
         dev)
             domain="tamshai-playground.local"
-            direct_access="true"
+            direct_access="false"
             ;;
         stage)
             domain="www.tamshai.com"
@@ -290,21 +290,24 @@ EOF
 # Sync tamshai-website client
 sync_website_client() {
     log_info "Syncing tamshai-website client..."
-    local client_json=$(get_tamshai_website_client_json)
+    local client_json
+    client_json=$(get_tamshai_website_client_json)
    create_or_update_client "tamshai-website" "$client_json"
 }
 
 # Sync Flutter client
 sync_flutter_client() {
     log_info "Syncing tamshai-flutter-client..."
-    local client_json=$(get_flutter_client_json)
+    local client_json
+    client_json=$(get_flutter_client_json)
    create_or_update_client "tamshai-flutter-client" "$client_json"
 }
 
 # Sync web-portal client
 sync_web_portal_client() {
     log_info "Syncing web-portal client..."
-    local client_json=$(get_web_portal_client_json)
+    local client_json
+    client_json=$(get_web_portal_client_json)
    create_or_update_client "web-portal" "$client_json"
 }
 
@@ -315,11 +318,13 @@ sync_mcp_gateway_client() {
     # Get client secret from environment (fail if not set)
     local client_secret="${MCP_GATEWAY_CLIENT_SECRET:?MCP_GATEWAY_CLIENT_SECRET must be set}"
 
-    local client_json=$(get_mcp_gateway_client_json)
+    local client_json
+    client_json=$(get_mcp_gateway_client_json)
    create_or_update_client "mcp-gateway" "$client_json"
 
     # Set client secret
-    local uuid=$(get_client_uuid "mcp-gateway")
+    local uuid
+    uuid=$(get_client_uuid "mcp-gateway")
     if [ -n "$uuid" ]; then
         log_info "  Setting client secret..."
         _kcadm update "clients/$uuid" -r "$REALM" -s "secret=$client_secret" 2>/dev/null || {
@@ -342,11 +347,13 @@ sync_mcp_hr_service_client() {
     # Get client secret from environment (fail if not set)
     local client_secret="${MCP_HR_SERVICE_CLIENT_SECRET:?MCP_HR_SERVICE_CLIENT_SECRET must be set}"
 
-    local client_json=$(get_mcp_hr_service_client_json)
+    local client_json
+    client_json=$(get_mcp_hr_service_client_json)
    create_or_update_client "mcp-hr-service" "$client_json"
 
     # Set client secret and fullScopeAllowed explicitly
-    local uuid=$(get_client_uuid "mcp-hr-service")
+    local uuid
+    uuid=$(get_client_uuid "mcp-hr-service")
     if [ -n "$uuid" ]; then
         log_info "  Setting client secret..."
         _kcadm update "clients/$uuid" -r "$REALM" -s "secret=$client_secret" 2>/dev/null || {
@@ -380,10 +387,12 @@ sync_mcp_hr_service_client() {
 
     # Assign service account roles for user management
     log_info "  Assigning realm-management roles to service account..."
-    local service_account_id=$(_kcadm get "clients/$uuid/service-account-user" -r "$REALM" --fields id 2>/dev/null | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+    local service_account_id
+    service_account_id=$(_kcadm get "clients/$uuid/service-account-user" -r "$REALM" --fields id 2>/dev/null | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
     if [ -n "$service_account_id" ]; then
         # Get realm-management client UUID
-        local realm_mgmt_uuid=$(get_client_uuid "realm-management")
+        local realm_mgmt_uuid
+        realm_mgmt_uuid=$(get_client_uuid "realm-management")
         if [ -n "$realm_mgmt_uuid" ]; then
             # Assign manage-users role
             log_info "  Assigning manage-users role..."
@@ -514,7 +523,7 @@ get_integration_runner_client_json() {
     "enabled": true,
     "publicClient": false,
     "standardFlowEnabled": false,
-    "directAccessGrantsEnabled": true,
+    "directAccessGrantsEnabled": false,
     "serviceAccountsEnabled": true,
     "protocol": "openid-connect",
     "redirectUris": ["http://localhost/*", "http://127.0.0.1/*"],
@@ -536,12 +545,14 @@ sync_integration_runner_client() {
 
     log_info "Syncing mcp-integration-runner client (integration tests)..."
 
-    local client_json=$(get_integration_runner_client_json)
+    local client_json
+    client_json=$(get_integration_runner_client_json)
     create_or_update_client "mcp-integration-runner" "$client_json"
 
     # Set client secret from environment or generate one
     local client_secret="${MCP_INTEGRATION_RUNNER_SECRET:-}"
-    local uuid=$(get_client_uuid "mcp-integration-runner")
+    local uuid
+    uuid=$(get_client_uuid "mcp-integration-runner")
 
     if [ -n "$uuid" ]; then
         if [ -n "$client_secret" ]; then
@@ -552,6 +563,22 @@ sync_integration_runner_client() {
         else
             log_info "  No MCP_INTEGRATION_RUNNER_SECRET set — using Keycloak-generated secret"
             log_info "  To set a specific secret: export MCP_INTEGRATION_RUNNER_SECRET=<secret>"
+        fi
+
+        # Grant the 'impersonate' role to the service account for token exchange
+        log_info "  Assigning 'impersonate' role to service account..."
+        local service_account_id
+        service_account_id=$(_kcadm get "clients/$uuid/service-account-user" -r "$REALM" --fields id 2>/dev/null | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        if [ -n "$service_account_id" ]; then
+            local realm_mgmt_uuid
+            realm_mgmt_uuid=$(get_client_uuid "realm-management")
+            if [ -n "$realm_mgmt_uuid" ]; then
+                if _kcadm add-roles -r "$REALM" --uusername "service-account-mcp-integration-runner" --cclientid realm-management --rolename impersonate; then
+                    log_info "    'impersonate' role assigned successfully."
+                else
+                    log_warn "    Could not assign 'impersonate' role (may already be assigned)."
+                fi
+            fi
         fi
     fi
 
