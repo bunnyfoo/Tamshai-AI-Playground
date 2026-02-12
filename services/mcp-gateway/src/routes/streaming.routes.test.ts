@@ -248,9 +248,10 @@ describe('Streaming Routes', () => {
       await handler(req, res, next);
 
       // Cursor should have been passed to MCP query
+      // Note: Query is wrapped in XML tags by prompt defense Layer 3
       expect(mockQueryMCPServer).toHaveBeenCalledWith(
         mockHRServer,
-        'list employees',
+        '<user_query>list employees</user_query>',
         expect.objectContaining({ userId: TEST_USERS.hrManager.userId }),
         'page-2-cursor'
       );
