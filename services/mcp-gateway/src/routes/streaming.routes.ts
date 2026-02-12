@@ -210,7 +210,41 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
     const queryLower = query.toLowerCase();
     let displayDirective: string | null = null;
 
-    // Check each directive's trigger keywords
+    // Helper: Extract year from query (2020-2030), default to current year
+    const extractYear = (q: string, defaultYear = 2026): number => {
+      const match = q.match(/\b(202[0-9])\b/);
+      return match ? parseInt(match[1]) : defaultYear;
+    };
+
+    // Helper: Extract department from query
+    const extractDepartment = (q: string, defaultDept = 'Engineering'): string => {
+      const deptMatch = q.match(/\b(engineering|finance|hr|human resources|sales|it|marketing|executive|operations|legal)\b/i);
+      if (!deptMatch) return defaultDept;
+      const dept = deptMatch[1].toLowerCase();
+      // Normalize department names
+      if (dept === 'human resources') return 'HR';
+      return dept.charAt(0).toUpperCase() + dept.slice(1);
+    };
+
+    // Helper: Extract quarter from query (Q1-Q4)
+    const extractQuarter = (q: string, defaultQuarter = 'Q1'): string => {
+      const match = q.match(/\b(q[1-4])\b/i);
+      return match ? match[1].toUpperCase() : defaultQuarter;
+    };
+
+    // Helper: Extract lead status from query
+    const extractLeadStatus = (q: string, defaultStatus = 'NEW'): string => {
+      const statusMatch = q.match(/\b(hot|warm|cold|new|qualified|contacted|nurturing)\b/i);
+      return statusMatch ? statusMatch[1].toUpperCase() : defaultStatus;
+    };
+
+    // Helper: Extract limit from query
+    const extractLimit = (q: string, defaultLimit = 50): number => {
+      const match = q.match(/\b(\d+)\s+(leads|records|results)\b/i);
+      return match ? parseInt(match[1]) : defaultLimit;
+    };
+
+    // Check each directive's trigger keywords with parameter extraction
     if (
       queryLower.includes('org chart') ||
       queryLower.includes('team structure') ||
@@ -228,28 +262,36 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
       queryLower.includes('time off requests') ||
       queryLower.includes('show pending approvals')
     ) {
-      displayDirective = 'display:hr:approvals:userId=me';
+      displayDirective = 'display:approvals:pending:userId=me';
     } else if (
       queryLower.includes('leads') ||
       queryLower.includes('pipeline') ||
       queryLower.includes('prospects') ||
       queryLower.includes('show leads')
     ) {
-      displayDirective = 'display:sales:leads:status=NEW,limit=10';
+      const status = extractLeadStatus(query);
+      const limit = extractLimit(query);
+      displayDirective = `display:sales:leads:status=${status},limit=${limit}`;
     } else if (
       queryLower.includes('forecast') ||
       queryLower.includes('quota') ||
       queryLower.includes('sales targets') ||
       queryLower.includes('revenue forecast')
     ) {
-      displayDirective = 'display:sales:forecast:period=current';
+      // Extract period (quarter or year)
+      const quarter = query.match(/\b(q[1-4])\b/i);
+      const year = query.match(/\b(202[0-9])\b/);
+      const period = quarter ? quarter[1].toUpperCase() : (year ? year[1] : 'current');
+      displayDirective = `display:sales:forecast:period=${period}`;
     } else if (
       queryLower.includes('budget') ||
       queryLower.includes('spending') ||
       queryLower.includes('department budget') ||
       queryLower.includes('show budget')
     ) {
-      displayDirective = 'display:finance:budget:department=all,year=2026';
+      const department = extractDepartment(query);
+      const year = extractYear(query);
+      displayDirective = `display:finance:budget:department=${department},year=${year}`;
     } else if (
       queryLower.includes('quarterly financials') ||
       queryLower.includes('q1 report') ||
@@ -258,7 +300,9 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
       queryLower.includes('q4 report') ||
       queryLower.includes('quarterly report')
     ) {
-      displayDirective = 'display:finance:quarterly_report:quarter=Q4,year=2025';
+      const quarter = extractQuarter(query);
+      const year = extractYear(query, 2025);
+      displayDirective = `display:finance:quarterly_report:quarter=${quarter},year=${year}`;
     }
 
     // If directive matched, send it immediately and skip Claude API call

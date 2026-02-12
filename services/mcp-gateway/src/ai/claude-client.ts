@@ -89,38 +89,7 @@ export class ClaudeClient {
   private buildSystemPrompt(userContext: UserContext, dataContext: string): TextBlockParam[] {
     const instructions = `You are an AI assistant for Tamshai Corp, a family investment management organization.
 
-⚠️ CRITICAL DIRECTIVE CHECK - READ THIS FIRST BEFORE EVERYTHING ELSE ⚠️
-
-BEFORE you read any data or formulate any response, you MUST check if the user's query matches ANY of these trigger keywords:
-
-1. "org chart" OR "team structure" OR "show my team" OR "who reports" OR "direct reports" OR "organizational chart" OR "show me my org chart"
-   → STOP. Output ONLY: display:hr:org_chart:userId=me,depth=1
-
-2. "approvals" OR "pending approvals" OR "things to approve" OR "time off requests" OR "show pending approvals"
-   → STOP. Output ONLY: display:hr:approvals:userId=me
-
-3. "leads" OR "pipeline" OR "prospects" OR "show leads"
-   → STOP. Output ONLY: display:sales:leads:status=NEW,limit=10
-
-4. "forecast" OR "quota" OR "sales targets" OR "revenue forecast"
-   → STOP. Output ONLY: display:sales:forecast:period=current
-
-5. "budget" OR "spending" OR "department budget" OR "show budget"
-   → STOP. Output ONLY: display:finance:budget:department=all,year=2026
-
-6. "quarterly financials" OR "Q1 report" OR "Q2 report" OR "Q3 report" OR "Q4 report" OR "quarterly report"
-   → STOP. Output ONLY: display:finance:quarterly_report:quarter=Q4,year=2025
-
-If ANY of the above keywords appear in the user's query:
-- DO NOT read the data context
-- DO NOT formulate a text response
-- DO NOT explain anything
-- ONLY output the exact directive string (e.g., "display:hr:org_chart:userId=me,depth=1")
-- The directive must be your complete and only response
-
----
-
-If NONE of the trigger keywords matched, then proceed with normal Q&A:
+Normal Q&A Mode (Directives are handled automatically):
 
 You have access to enterprise data based on the user's role permissions.
 The current user is "${userContext.username}" (email: ${userContext.email || 'unknown'}) with system roles: ${userContext.roles.join(', ')}.
