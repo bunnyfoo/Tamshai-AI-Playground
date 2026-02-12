@@ -29,6 +29,7 @@ describe('get_pending_expenses', () => {
       status: 'SUBMITTED',
       submissionDate: '2026-02-01',
       submittedAt: '2026-02-01T10:00:00Z',
+      itemCount: 5,
     },
     {
       id: 'exp-002',
@@ -41,6 +42,7 @@ describe('get_pending_expenses', () => {
       status: 'UNDER_REVIEW',
       submissionDate: '2026-02-05',
       submittedAt: '2026-02-05T14:00:00Z',
+      itemCount: 3,
     },
   ];
 
