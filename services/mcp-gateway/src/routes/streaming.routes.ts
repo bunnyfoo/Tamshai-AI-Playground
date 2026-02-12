@@ -268,11 +268,12 @@ export function createStreamingRoutes(deps: StreamingRoutesDependencies): Router
     ) {
       displayDirective = 'display:hr:org_chart:userId=me,depth=1';
     } else if (
-      queryLower.includes('approvals') ||
-      queryLower.includes('pending approvals') ||
+      queryLower.includes('approval') || // Matches both singular and plural
       queryLower.includes('things to approve') ||
-      queryLower.includes('time off requests') ||
-      queryLower.includes('show pending approvals')
+      queryLower.includes('items to approve') ||
+      queryLower.includes('awaiting my approval') ||
+      queryLower.includes('need my approval') ||
+      queryLower.includes('time off requests')
     ) {
       displayDirective = 'display:approvals:pending:userId=me';
     } else if (
