@@ -36,10 +36,11 @@ describe('GetOrgChartInputSchema', () => {
     expect(result.maxDepth).toBe(5);
   });
 
-  it('should reject invalid UUID', () => {
-    expect(() =>
-      GetOrgChartInputSchema.parse({ rootEmployeeId: 'not-a-uuid' })
-    ).toThrow();
+  it('should accept any string for rootEmployeeId (relaxed validation)', () => {
+    // Validation relaxed from .uuid() to .string().optional() to support
+    // both UUID and VARCHAR keycloak_user_id lookups (see commit a8ac80a9)
+    const result = GetOrgChartInputSchema.parse({ rootEmployeeId: 'not-a-uuid' });
+    expect(result.rootEmployeeId).toBe('not-a-uuid');
   });
 
   it('should reject maxDepth greater than 10', () => {
