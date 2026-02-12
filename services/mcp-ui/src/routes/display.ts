@@ -58,11 +58,17 @@ function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunctio
 
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
 
+    // Extract roles from resource_access (client roles) or realm_access (realm roles)
+    // Service accounts typically have realm roles, regular users have client roles
+    const clientRoles = payload.resource_access?.['mcp-gateway']?.roles || [];
+    const realmRoles = payload.realm_access?.roles || [];
+    const roles = clientRoles.length > 0 ? clientRoles : realmRoles;
+
     req.userContext = {
       userId: payload.sub || 'unknown',
       username: payload.preferred_username || payload.name || 'unknown',
       email: payload.email || undefined,
-      roles: payload.resource_access?.['mcp-gateway']?.roles || [],
+      roles,
     };
 
     next();
