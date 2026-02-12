@@ -88,12 +88,12 @@ function formatCurrency(amount: number): string {
  */
 function getProgressBarColor(percentage: number): string {
   if (percentage > 95) {
-    return 'bg-red-500';
+    return 'bg-danger-500';
   }
   if (percentage >= 80) {
     return 'bg-yellow-500';
   }
-  return 'bg-green-500';
+  return 'bg-success-500';
 }
 
 /**
@@ -168,13 +168,13 @@ export function BudgetSummaryCard({
         data-testid="budget-summary-skeleton"
         className="animate-pulse w-full p-6 bg-white rounded-lg shadow space-y-4"
       >
-        <div className="h-6 bg-gray-200 rounded w-1/3" />
-        <div className="h-4 bg-gray-200 rounded w-1/4" />
-        <div className="h-8 bg-gray-200 rounded w-full" />
+        <div className="h-6 bg-secondary-200 rounded w-1/3" />
+        <div className="h-4 bg-secondary-200 rounded w-1/4" />
+        <div className="h-8 bg-secondary-200 rounded w-full" />
         <div className="space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-1/2" />
-          <div className="h-4 bg-gray-200 rounded w-2/3" />
-          <div className="h-4 bg-gray-200 rounded w-1/3" />
+          <div className="h-4 bg-secondary-200 rounded w-1/2" />
+          <div className="h-4 bg-secondary-200 rounded w-2/3" />
+          <div className="h-4 bg-secondary-200 rounded w-1/3" />
         </div>
       </div>
     );
@@ -203,12 +203,12 @@ export function BudgetSummaryCard({
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-gray-700 mb-4">{error}</p>
+          <p className="text-secondary-700 mb-4">{error}</p>
           {onRetry && (
             <button
               type="button"
               onClick={onRetry}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
             >
               Retry
             </button>
@@ -228,10 +228,10 @@ export function BudgetSummaryCard({
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-secondary-900">
             {budget.departmentName}
           </h2>
-          <p className="text-sm text-gray-600">FY {budget.fiscalYear}</p>
+          <p className="text-sm text-secondary-600">FY {budget.fiscalYear}</p>
         </div>
 
         {/* Trend Indicator */}
@@ -239,8 +239,8 @@ export function BudgetSummaryCard({
           <div
             data-testid="trend-indicator"
             className={`flex items-center gap-1 text-sm ${
-              trendDirection === 'down' ? 'text-green-600' :
-              trendDirection === 'up' ? 'text-red-600' : 'text-gray-600'
+              trendDirection === 'down' ? 'text-success-600' :
+              trendDirection === 'up' ? 'text-danger-600' : 'text-secondary-600'
             }`}
             aria-label={`spending rate ${trendDirection === 'up' ? 'increased' : trendDirection === 'down' ? 'decreased' : 'stable'} by ${Math.abs(trendPercentage)}% compared to last period`}
           >
@@ -322,26 +322,26 @@ export function BudgetSummaryCard({
       {/* Budget Summary */}
       {budget.allocated === 0 ? (
         <div className="mb-4">
-          <p className="text-sm text-gray-600">Budget</p>
-          <p className="text-lg font-semibold text-gray-900">$0</p>
+          <p className="text-sm text-secondary-600">Budget</p>
+          <p className="text-lg font-semibold text-secondary-900">$0</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
-            <p className="text-sm text-gray-600">Allocated</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-sm text-secondary-600">Allocated</p>
+            <p className="text-lg font-semibold text-secondary-900">
               {formatCurrency(budget.allocated)}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Spent</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-sm text-secondary-600">Spent</p>
+            <p className="text-lg font-semibold text-secondary-900">
               {formatCurrency(budget.spent)}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Remaining</p>
-            <p className={`text-lg font-semibold ${isOverBudget ? 'text-red-600' : 'text-gray-900'}`}>
+            <p className="text-sm text-secondary-600">Remaining</p>
+            <p className={`text-lg font-semibold ${isOverBudget ? 'text-danger-600' : 'text-secondary-900'}`}>
               {formatCurrency(budget.remaining)}
             </p>
           </div>
@@ -351,10 +351,10 @@ export function BudgetSummaryCard({
       {/* Progress Bar */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-sm text-gray-600">Budget Used</span>
-          <span className="text-sm font-medium text-gray-900">{percentSpent}%</span>
+          <span className="text-sm text-secondary-600">Budget Used</span>
+          <span className="text-sm font-medium text-secondary-900">{percentSpent}%</span>
         </div>
-        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-3 bg-secondary-200 rounded-full overflow-hidden">
           <div
             role="progressbar"
             aria-valuenow={percentSpent}
@@ -372,35 +372,35 @@ export function BudgetSummaryCard({
         <h3 className="text-lg font-medium text-gray-800 mb-3">Category Breakdown</h3>
 
         {budget.categories.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No categories available</p>
+          <p className="text-sm text-secondary-500 italic">No categories available</p>
         ) : (
           <table
             className="w-full"
             aria-label="Budget category breakdown"
           >
             <thead>
-              <tr className="border-b border-gray-200">
+              <tr className="border-b border-secondary-200">
                 <th
                   scope="col"
-                  className="text-left text-sm font-medium text-gray-600 py-2"
+                  className="text-left text-sm font-medium text-secondary-600 py-2"
                 >
                   Category
                 </th>
                 <th
                   scope="col"
-                  className="text-right text-sm font-medium text-gray-600 py-2"
+                  className="text-right text-sm font-medium text-secondary-600 py-2"
                 >
                   Allocated
                 </th>
                 <th
                   scope="col"
-                  className="text-right text-sm font-medium text-gray-600 py-2"
+                  className="text-right text-sm font-medium text-secondary-600 py-2"
                 >
                   Spent
                 </th>
                 <th
                   scope="col"
-                  className="text-right text-sm font-medium text-gray-600 py-2 w-32"
+                  className="text-right text-sm font-medium text-secondary-600 py-2 w-32"
                 >
                   Progress
                 </th>
@@ -416,23 +416,23 @@ export function BudgetSummaryCard({
                     tabIndex={0}
                     className="border-b border-gray-100 last:border-0"
                   >
-                    <td className="py-2 text-sm text-gray-900">{category.name}</td>
-                    <td className="py-2 text-sm text-gray-700 text-right">
+                    <td className="py-2 text-sm text-secondary-900">{category.name}</td>
+                    <td className="py-2 text-sm text-secondary-700 text-right">
                       {formatCurrency(category.allocated)}
                     </td>
-                    <td className="py-2 text-sm text-gray-700 text-right">
+                    <td className="py-2 text-sm text-secondary-700 text-right">
                       {formatCurrency(category.spent)}
                     </td>
                     <td className="py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-16 h-2 bg-secondary-200 rounded-full overflow-hidden">
                           <div
                             data-testid="category-progress"
                             className={`h-full ${categoryColor}`}
                             style={{ width: `${Math.min(category.percentage, 100)}%` }}
                           />
                         </div>
-                        <span className="text-sm text-gray-700 w-10 text-right">
+                        <span className="text-sm text-secondary-700 w-10 text-right">
                           {Math.round(category.percentage)}%
                         </span>
                       </div>
@@ -446,7 +446,7 @@ export function BudgetSummaryCard({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-secondary-200">
         {showAmendmentButton && (
           <button
             type="button"
@@ -465,7 +465,7 @@ export function BudgetSummaryCard({
           onKeyDown={onViewDetails ? handleKeyDown(handleViewDetails) : undefined}
           disabled={!onViewDetails}
           aria-label={`View details for ${budget.departmentName} budget`}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           View Details
         </button>

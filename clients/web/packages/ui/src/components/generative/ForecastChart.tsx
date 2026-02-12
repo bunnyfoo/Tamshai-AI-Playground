@@ -110,18 +110,18 @@ function getFullMonthName(abbrev: string): string {
  * Get bar color based on percentage
  */
 function getBarColor(percentage: number, isAboveForecast: boolean): string {
-  if (isAboveForecast) return 'bg-green-500';
-  if (percentage < 80) return 'bg-red-500';
-  return 'bg-blue-500';
+  if (isAboveForecast) return 'bg-success-500';
+  if (percentage < 80) return 'bg-danger-500';
+  return 'bg-primary-500';
 }
 
 /**
  * Get status indicator class based on percentage
  */
 function getStatusIndicatorClass(percentage: number): string {
-  if (percentage >= 100) return 'text-green-600';
-  if (percentage >= 80) return 'text-amber-600';
-  return 'text-red-600';
+  if (percentage >= 100) return 'text-success-600';
+  if (percentage >= 80) return 'text-warning-600';
+  return 'text-danger-600';
 }
 
 /**
@@ -135,19 +135,19 @@ function ChartLegend(): JSX.Element {
       aria-label="Chart legend"
     >
       <div data-testid="legend-actual" className="flex items-center gap-2">
-        <div data-testid="legend-color-box" className="w-4 h-4 bg-blue-500 rounded" />
-        <span className="text-sm text-gray-600">Actual</span>
+        <div data-testid="legend-color-box" className="w-4 h-4 bg-primary-500 rounded" />
+        <span className="text-sm text-secondary-600">Actual</span>
       </div>
       <div data-testid="legend-forecast" className="flex items-center gap-2">
-        <div data-testid="legend-color-box" className="w-4 h-4 bg-gray-300 rounded" />
-        <span className="text-sm text-gray-600">Forecast</span>
+        <div data-testid="legend-color-box" className="w-4 h-4 bg-secondary-300 rounded" />
+        <span className="text-sm text-secondary-600">Forecast</span>
       </div>
       <div data-testid="legend-target" className="flex items-center gap-2">
         <div
           data-testid="legend-color-box"
-          className="w-4 h-1 border-2 border-orange-500 border-dashed"
+          className="w-4 h-1 border-2 border-warning-500 border-dashed"
         />
-        <span className="text-sm text-gray-600">Target</span>
+        <span className="text-sm text-secondary-600">Target</span>
       </div>
     </div>
   );
@@ -159,12 +159,12 @@ function ChartLegend(): JSX.Element {
 function LoadingSkeleton(): JSX.Element {
   return (
     <div data-testid="forecast-chart-skeleton" className="animate-pulse">
-      <div className="h-8 bg-gray-200 rounded w-48 mb-4" />
+      <div className="h-8 bg-secondary-200 rounded w-48 mb-4" />
       <div className="flex items-end gap-4 h-64 mb-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} data-testid={`skeleton-bar-${i}`} className="flex-1">
             <div
-              className="bg-gray-200 rounded"
+              className="bg-secondary-200 rounded"
               style={{ height: `${60 + Math.random() * 40}%` }}
             />
           </div>
@@ -172,7 +172,7 @@ function LoadingSkeleton(): JSX.Element {
       </div>
       <div data-testid="skeleton-summary-cards" className="grid grid-cols-4 gap-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-gray-200 rounded" />
+          <div key={i} className="h-20 bg-secondary-200 rounded" />
         ))}
       </div>
     </div>
@@ -195,7 +195,7 @@ function ErrorState({
       className="flex flex-col items-center justify-center py-12 text-center"
     >
       <svg
-        className="w-12 h-12 text-red-500 mb-4"
+        className="w-12 h-12 text-danger-500 mb-4"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -207,11 +207,11 @@ function ErrorState({
           d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
         />
       </svg>
-      <p className="text-gray-700 mb-4">{error}</p>
+      <p className="text-secondary-700 mb-4">{error}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="px-4 py-2 bg-primary-500 text-white rounded hover:bg-primary-600"
         >
           Retry
         </button>
@@ -231,7 +231,7 @@ function EmptyState(): JSX.Element {
     >
       <svg
         data-testid="empty-state-icon"
-        className="w-16 h-16 text-gray-400 mb-4"
+        className="w-16 h-16 text-secondary-400 mb-4"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -243,8 +243,8 @@ function EmptyState(): JSX.Element {
           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
         />
       </svg>
-      <p className="text-gray-700 font-medium mb-2">No forecast data available</p>
-      <p className="text-gray-500 text-sm">Add sales data to see forecast</p>
+      <p className="text-secondary-700 font-medium mb-2">No forecast data available</p>
+      <p className="text-secondary-500 text-sm">Add sales data to see forecast</p>
     </div>
   );
 }
@@ -264,7 +264,7 @@ function Tooltip({
   return (
     <div
       data-testid="bar-tooltip"
-      className="absolute z-10 bg-gray-800 text-white text-sm rounded-lg p-3 shadow-lg pointer-events-none"
+      className="absolute z-10 bg-secondary-800 text-white text-sm rounded-lg p-3 shadow-lg pointer-events-none"
       style={{ transform: 'translateX(-50%)' }}
     >
       <p className="font-medium mb-1">{getFullMonthName(period.label)}</p>
@@ -291,10 +291,10 @@ function SummaryCard({
   variant?: 'default' | 'success' | 'warning' | 'danger';
 }): JSX.Element {
   const variantClasses = {
-    default: 'bg-white border-gray-200',
-    success: 'bg-green-50 border-green-200',
-    warning: 'bg-amber-50 border-amber-200',
-    danger: 'bg-red-50 border-red-200',
+    default: 'bg-white border-secondary-200',
+    success: 'bg-success-50 border-success-200',
+    warning: 'bg-warning-50 border-warning-200',
+    danger: 'bg-danger-50 border-danger-200',
   };
 
   return (
@@ -302,9 +302,9 @@ function SummaryCard({
       data-testid={testId}
       className={`p-4 rounded-lg border ${variantClasses[variant]}`}
     >
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
-      {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+      <p className="text-sm text-secondary-500 mb-1">{label}</p>
+      <p className="text-xl font-bold text-secondary-900">{value}</p>
+      {subtitle && <p className="text-sm text-secondary-500 mt-1">{subtitle}</p>}
     </div>
   );
 }
@@ -335,7 +335,7 @@ function Bar({
   const isFuture = period.actual === 0 && isActual;
   const barColor = isActual
     ? getBarColor(period.percentage, period.actual > period.forecast)
-    : 'bg-gray-300';
+    : 'bg-secondary-300';
 
   const heightPercent = Math.max(0, Math.min(100, (height / maxHeight) * 100));
   const clickableClasses = isClickable ? 'cursor-pointer hover:opacity-80' : '';
@@ -458,7 +458,7 @@ export function ForecastChart({
     >
       {/* Header with title and period selector */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Sales Forecast</h2>
+        <h2 className="text-xl font-bold text-secondary-900">Sales Forecast</h2>
         <div data-testid="period-selector" className="flex gap-2">
           <button
             onClick={() => handlePeriodChange('monthly')}
@@ -466,8 +466,8 @@ export function ForecastChart({
             aria-pressed={periodView === 'monthly'}
             className={`px-4 py-2 text-sm font-medium rounded ${
               periodView === 'monthly'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-primary-500 text-white'
+                : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
             }`}
           >
             Monthly
@@ -478,8 +478,8 @@ export function ForecastChart({
             aria-pressed={periodView === 'quarterly'}
             className={`px-4 py-2 text-sm font-medium rounded ${
               periodView === 'quarterly'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-primary-500 text-white'
+                : 'bg-secondary-100 text-secondary-700 hover:bg-secondary-200'
             }`}
           >
             Quarterly
@@ -499,7 +499,7 @@ export function ForecastChart({
           style={{ height: `${height}px` }}
         >
           {/* Y-Axis */}
-          <div data-testid="y-axis" className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-gray-500">
+          <div data-testid="y-axis" className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-xs text-secondary-500">
             <span>{formatCurrency(maxValue)}</span>
             <span>{formatCurrency(maxValue / 2)}</span>
             <span>$0</span>
@@ -508,10 +508,10 @@ export function ForecastChart({
           {/* Target Line */}
           <div
             data-testid="target-line"
-            className="absolute left-16 right-0 border-t-2 border-dashed border-orange-500 z-10"
+            className="absolute left-16 right-0 border-t-2 border-dashed border-warning-500 z-10"
             style={{ bottom: `${(forecast.target / maxValue / forecast.periods.length) * 100}%` }}
           >
-            <span className="absolute right-0 -top-5 text-xs font-medium text-orange-600 bg-white px-1">
+            <span className="absolute right-0 -top-5 text-xs font-medium text-warning-600 bg-white px-1">
               Target
             </span>
           </div>
@@ -554,7 +554,7 @@ export function ForecastChart({
                 </div>
 
                 {/* X-Axis Label */}
-                <span className="mt-2 text-sm text-gray-600">{period.label}</span>
+                <span className="mt-2 text-sm text-secondary-600">{period.label}</span>
               </div>
             ))}
           </div>

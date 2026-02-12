@@ -228,7 +228,7 @@ export function QuarterlyReportDashboard({
         className="animate-pulse w-full p-6 bg-white rounded-lg shadow space-y-6"
       >
         {/* Header skeleton */}
-        <div className="h-8 bg-gray-200 rounded w-1/3" />
+        <div className="h-8 bg-secondary-200 rounded w-1/3" />
 
         {/* KPI cards skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -236,23 +236,23 @@ export function QuarterlyReportDashboard({
             <div
               key={i}
               data-testid="kpi-skeleton-card"
-              className="p-4 bg-gray-100 rounded-lg space-y-3"
+              className="p-4 bg-secondary-100 rounded-lg space-y-3"
             >
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-              <div className="h-6 bg-gray-200 rounded w-2/3" />
-              <div className="h-4 bg-gray-200 rounded w-1/4" />
+              <div className="h-4 bg-secondary-200 rounded w-1/2" />
+              <div className="h-6 bg-secondary-200 rounded w-2/3" />
+              <div className="h-4 bg-secondary-200 rounded w-1/4" />
             </div>
           ))}
         </div>
 
         {/* Waterfall skeleton */}
-        <div className="h-48 bg-gray-200 rounded" />
+        <div className="h-48 bg-secondary-200 rounded" />
 
         {/* Highlights skeleton */}
         <div className="space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-1/4" />
-          <div className="h-4 bg-gray-200 rounded w-3/4" />
-          <div className="h-4 bg-gray-200 rounded w-2/3" />
+          <div className="h-4 bg-secondary-200 rounded w-1/4" />
+          <div className="h-4 bg-secondary-200 rounded w-3/4" />
+          <div className="h-4 bg-secondary-200 rounded w-2/3" />
         </div>
       </div>
     );
@@ -281,12 +281,12 @@ export function QuarterlyReportDashboard({
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          <p className="text-gray-700 mb-4">{error}</p>
+          <p className="text-secondary-700 mb-4">{error}</p>
           {onRetry && (
             <button
               type="button"
               onClick={onRetry}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
             >
               Retry
             </button>
@@ -304,7 +304,7 @@ export function QuarterlyReportDashboard({
       {/* Header with Title and Export Toolbar */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-secondary-900">
             Quarterly Report - {report.quarter} {report.year}
           </h1>
         </div>
@@ -322,7 +322,7 @@ export function QuarterlyReportDashboard({
             }}
             disabled={!onExport}
             aria-label="Export PDF"
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Export PDF
           </button>
@@ -337,7 +337,7 @@ export function QuarterlyReportDashboard({
             }}
             disabled={!onExport}
             aria-label="Export CSV"
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-success-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Export CSV
           </button>
@@ -346,12 +346,12 @@ export function QuarterlyReportDashboard({
 
       {/* KPIs Section */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        <h2 className="text-lg font-semibold text-secondary-800 mb-4">
           Key Performance Indicators
         </h2>
 
         {report.kpis.length === 0 ? (
-          <p className="text-gray-500 italic">No KPIs available</p>
+          <p className="text-secondary-500 italic">No KPIs available</p>
         ) : (
           <div
             data-testid="kpi-cards-grid"
@@ -364,14 +364,14 @@ export function QuarterlyReportDashboard({
               const targetStatus = getTargetStatus(kpi.value, kpi.target, kpi.name);
 
               // Determine change color
-              let changeColorClass = 'text-gray-600';
+              let changeColorClass = 'text-secondary-600';
               if (!isNeutral) {
                 // For churn, negative change is green (good)
                 // For others, positive change is green (good)
                 if (isPositive) {
-                  changeColorClass = 'text-green-600';
+                  changeColorClass = 'text-success-600';
                 } else {
-                  changeColorClass = 'text-red-600';
+                  changeColorClass = 'text-danger-600';
                 }
               }
 
@@ -396,23 +396,23 @@ export function QuarterlyReportDashboard({
                   tabIndex={onDrillDown ? 0 : undefined}
                   role="button"
                   aria-label={`${kpi.name}: ${formatKPIValue(kpi.value, kpi.unit)}, change ${kpi.change >= 0 ? 'increased' : 'decreased'} by ${Math.abs(kpi.change)}%`}
-                  className={`p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors ${
+                  className={`p-4 bg-secondary-50 rounded-lg border border-secondary-200 hover:border-secondary-300 transition-colors ${
                     onDrillDown ? 'cursor-pointer' : ''
                   }`}
                 >
                   {/* KPI Name - special handling for "Churn" to avoid conflict with waterfall */}
                   {kpi.name.toLowerCase() === 'churn' ? (
                     <p
-                      className="text-sm text-gray-600 mb-1 after:content-[attr(data-name)]"
+                      className="text-sm text-secondary-600 mb-1 after:content-[attr(data-name)]"
                       data-name={kpi.name}
                       aria-label={kpi.name}
                     />
                   ) : (
-                    <p className="text-sm text-gray-600 mb-1">{kpi.name}</p>
+                    <p className="text-sm text-secondary-600 mb-1">{kpi.name}</p>
                   )}
 
                   {/* KPI Value */}
-                  <p className="text-2xl font-bold text-gray-900 mb-2">
+                  <p className="text-2xl font-bold text-secondary-900 mb-2">
                     {formatKPIValue(kpi.value, kpi.unit)}
                   </p>
 
@@ -459,8 +459,8 @@ export function QuarterlyReportDashboard({
 
                   {/* Target Indicator */}
                   {kpi.target !== undefined && (
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">
+                    <div className="mt-2 pt-2 border-t border-secondary-200">
+                      <p className="text-xs text-secondary-500">
                         Target: {formatKPIValue(kpi.target, kpi.unit)}
                       </p>
                       {targetStatus && (
@@ -468,10 +468,10 @@ export function QuarterlyReportDashboard({
                           data-testid="target-indicator"
                           className={`text-xs mt-1 ${
                             targetStatus === 'exceeded'
-                              ? 'text-green-600'
+                              ? 'text-success-600'
                               : targetStatus === 'missed'
-                                ? 'text-red-600'
-                                : 'text-gray-600'
+                                ? 'text-danger-600'
+                                : 'text-secondary-600'
                           }`}
                         >
                           {targetStatus === 'exceeded' && 'Above target'}
@@ -490,17 +490,17 @@ export function QuarterlyReportDashboard({
 
       {/* ARR Waterfall Section */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        <h2 className="text-lg font-semibold text-secondary-800 mb-4">
           ARR Waterfall
         </h2>
 
         {report.arrWaterfall.length === 0 ? (
-          <p className="text-gray-500 italic">No ARR data available</p>
+          <p className="text-secondary-500 italic">No ARR data available</p>
         ) : (
           <div
             data-testid="arr-waterfall-chart"
             aria-label="ARR Waterfall Chart"
-            className="flex items-end gap-2 h-48 bg-gray-50 rounded-lg p-4"
+            className="flex items-end gap-2 h-48 bg-secondary-50 rounded-lg p-4"
           >
             {report.arrWaterfall.map((item) => {
               // Calculate bar height based on value relative to max
@@ -512,9 +512,9 @@ export function QuarterlyReportDashboard({
               // Determine bar color based on type
               let barColorClass = 'bg-blue-500';
               if (item.type === 'increase') {
-                barColorClass = 'bg-green-500';
+                barColorClass = 'bg-success-500';
               } else if (item.type === 'decrease') {
-                barColorClass = 'bg-red-500';
+                barColorClass = 'bg-danger-500';
               } else if (item.type === 'end') {
                 barColorClass = 'bg-blue-700';
               }
@@ -525,7 +525,7 @@ export function QuarterlyReportDashboard({
                   className="flex-1 flex flex-col items-center justify-end h-full"
                 >
                   {/* Value label */}
-                  <span className="text-xs text-gray-600 mb-1">
+                  <span className="text-xs text-secondary-600 mb-1">
                     {item.value < 0 ? '-' : ''}
                     {formatCurrency(Math.abs(item.value))}
                   </span>
@@ -538,7 +538,7 @@ export function QuarterlyReportDashboard({
                   />
 
                   {/* Label - exact text for testing */}
-                  <span className="text-xs text-gray-700 mt-2 text-center truncate w-full">
+                  <span className="text-xs text-secondary-700 mt-2 text-center truncate w-full">
                     {item.label}
                   </span>
                 </div>
@@ -550,10 +550,10 @@ export function QuarterlyReportDashboard({
 
       {/* Highlights Section */}
       <section data-testid="highlights-section">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Highlights</h2>
+        <h2 className="text-lg font-semibold text-secondary-800 mb-4">Highlights</h2>
 
         {report.highlights.length === 0 ? (
-          <p className="text-gray-500 italic">No highlights available</p>
+          <p className="text-secondary-500 italic">No highlights available</p>
         ) : (
           <ul aria-label="Highlights" className="space-y-2">
             {report.highlights.map((highlight, index) => (
@@ -562,7 +562,7 @@ export function QuarterlyReportDashboard({
                   data-testid="highlight-bullet"
                   className="w-2 h-2 mt-2 bg-blue-500 rounded-full flex-shrink-0"
                 />
-                <span className="text-gray-700">{highlight}</span>
+                <span className="text-secondary-700">{highlight}</span>
               </li>
             ))}
           </ul>
