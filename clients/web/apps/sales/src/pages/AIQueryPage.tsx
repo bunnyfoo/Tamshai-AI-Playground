@@ -349,7 +349,7 @@ export default function AIQueryPage() {
               </h3>
             </div>
             <ComponentRenderer
-              component={componentResponse}
+              component={componentResponse.component}
               onAction={handleComponentAction}
               voiceEnabled={voiceEnabled}
             />
