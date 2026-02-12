@@ -214,6 +214,8 @@ const componentRegistry: Record<string, ComponentDefinition> = {
 
       // Build employee name lookup map from list_employees result
       const employees = (d.employees as Array<any>) || [];
+      console.log(`[APPROVALS TRANSFORM] Employees count: ${employees.length}`);
+      console.log(`[APPROVALS TRANSFORM] ExpenseReports count: ${((d.expenseReports as Array<any>) || []).length}`);
       const employeeNameMap = new Map<string, string>();
       employees.forEach((emp: any) => {
         const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Unknown';
@@ -221,6 +223,7 @@ const componentRegistry: Record<string, ComponentDefinition> = {
         if (emp.employee_id) employeeNameMap.set(emp.employee_id, fullName);
         if (emp.id) employeeNameMap.set(emp.id, fullName);
       });
+      console.log(`[APPROVALS TRANSFORM] Employee map size: ${employeeNameMap.size}`);
 
       // Map time-off requests: requestId → id, typeCode → type, notes → reason
       // Resolve employee names from employeeId

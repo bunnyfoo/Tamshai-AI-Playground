@@ -148,6 +148,13 @@ export async function getPendingExpenses(
       const hasMore = result.rowCount! > limit;
       const reports = hasMore ? result.rows.slice(0, limit) : result.rows;
 
+      // DEBUG: Log itemCount values
+      console.log('[DEBUG] Expense reports itemCount values:', reports.slice(0, 3).map(r => ({
+        title: r.title,
+        itemCount: r.itemCount,
+        itemCountType: typeof r.itemCount,
+      })));
+
       const lastReport = reports[reports.length - 1];
 
       const metadata: PaginationMetadata = {

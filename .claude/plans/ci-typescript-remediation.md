@@ -20,13 +20,15 @@
 **Line**: 348
 
 **Error Message**:
-```
+
+```text
 Argument of type '{ grant_type: string; client_id: string;
 client_secret: string | undefined; ... }' is not assignable to
 parameter of type 'string | Record<string, string> | ...'
 ```
 
 **Problem Code**:
+
 ```typescript
 export async function getImpersonatedToken(username: string): Promise<string> {
     const serviceToken = await getServiceAccountToken();
@@ -78,6 +80,7 @@ async function getServiceAccountToken(): Promise<string> {
 ### Proposed Fix
 
 **Option 1: Add validation (Recommended)**
+
 ```typescript
 export async function getImpersonatedToken(username: string): Promise<string> {
     const serviceToken = await getServiceAccountToken();
@@ -105,6 +108,7 @@ export async function getImpersonatedToken(username: string): Promise<string> {
 ```
 
 **Option 2: Non-null assertion (Alternative)**
+
 ```typescript
 client_secret: process.env.MCP_INTEGRATION_RUNNER_SECRET!,
 ```
@@ -120,11 +124,13 @@ client_secret: process.env.MCP_INTEGRATION_RUNNER_SECRET!,
 ## 📝 Implementation Steps
 
 ### Step 1: Fix TypeScript Error
+
 1. Edit `services/mcp-gateway/src/__tests__/integration/setup.ts`
 2. Add client secret validation to `getImpersonatedToken` function
 3. Follow the same pattern as `getServiceAccountToken`
 
 ### Step 2: Verify Fix Locally
+
 ```bash
 cd services/mcp-gateway
 npm run typecheck
@@ -133,6 +139,7 @@ npm run typecheck
 Expected output: ✅ No errors
 
 ### Step 3: Commit and Push
+
 ```bash
 git add services/mcp-gateway/src/__tests__/integration/setup.ts
 git commit -m "fix(mcp-gateway): validate client secret in getImpersonatedToken
@@ -157,6 +164,7 @@ git push
 ```
 
 ### Step 4: Verify CI Passes
+
 - Monitor GitHub Actions run
 - Verify Gateway - Node 20 ✅
 - Verify Gateway - Node 22 ✅
@@ -190,6 +198,7 @@ This code was likely written before TypeScript's stricter checks, or the `@types
 1. ✅ TypeScript strict mode is already enabled
 2. ✅ CI runs type checks on all pushes
 3. 💡 Consider adding a utility function for required env vars:
+
    ```typescript
    function requireEnv(key: string): string {
        const value = process.env[key];

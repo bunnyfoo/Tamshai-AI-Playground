@@ -151,17 +151,33 @@ router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) =
         const result = mcpResults[i];
         const call = componentDef.mcpCalls[i];
 
+        logger.info(`[MCP CALL ${i}] ${call.server}/${call.tool}`, {
+          status: result.status,
+          dataField: call.dataField,
+          hasData: result.status === 'success' ? !!result.data : false,
+          dataType: result.status === 'success' && result.data ? (Array.isArray(result.data) ? 'array' : typeof result.data) : 'N/A',
+          dataLength: result.status === 'success' && result.data && Array.isArray(result.data) ? result.data.length : 'N/A',
+        });
+
         if (result.status === 'success' && result.data) {
           // If dataField is specified, use it as the key (handles arrays properly)
           if (call.dataField) {
             merged[call.dataField] = result.data;
+            logger.info(`[MERGE] Added ${call.dataField} to merged data`);
           } else {
             // Otherwise, use Object.assign for backward compatibility
             Object.assign(merged, result.data);
+            logger.info(`[MERGE] Object.assign for ${call.server}/${call.tool}`);
           }
+        } else {
+          logger.warn(`[MERGE] Skipped ${call.server}/${call.tool}`, {
+            status: result.status,
+            errorCode: result.status === 'error' ? result.code : 'N/A',
+          });
         }
       }
       mergedData = merged;
+      logger.info('[MERGE COMPLETE] Final merged keys:', { keys: Object.keys(merged) });
     }
 
     // Transform data for component props

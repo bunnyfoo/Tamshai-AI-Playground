@@ -199,33 +199,44 @@ export default function AIQueryPage() {
         const { approvalType, id } = action.params;
         console.log(`Approving ${approvalType}:`, id);
 
-        // Map approval type to MCP server endpoint
+        // Map approval type to MCP server endpoint and request body
         let mcpEndpoint: string;
+        let requestBody: any;
+
         if (approvalType === 'budget') {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/approve_budget`;
+          requestBody = { budgetId: id };
         } else if (approvalType === 'expense') {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/approve_expense_report`;
+          requestBody = { reportId: id };
         } else if (approvalType === 'time-off') {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/approve_time_off`;
+          requestBody = { requestId: id };
         } else {
           console.error('Unknown approval type:', approvalType);
           return;
         }
 
-        // Call MCP Gateway
-        const response = await fetch(`${mcpEndpoint}?id=${id}`, {
-          method: 'GET',
+        // Call MCP Gateway with POST method
+        const response = await fetch(mcpEndpoint, {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to approve: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({ message: response.statusText }));
+          throw new Error(`Failed to approve: ${errorData.message || response.statusText}`);
         }
 
         const result = await response.json();
         console.log('Approve result:', result);
+
+        // Show success message
+        alert(`Successfully approved ${approvalType}!`);
 
         // Refresh the component by re-fetching
         const directive = detectDirective(activeQuery || '');
@@ -239,33 +250,44 @@ export default function AIQueryPage() {
         const { approvalType, id, reason } = action.params;
         console.log(`Rejecting ${approvalType}:`, id, 'Reason:', reason);
 
-        // Map approval type to MCP server endpoint
+        // Map approval type to MCP server endpoint and request body
         let mcpEndpoint: string;
+        let requestBody: any;
+
         if (approvalType === 'budget') {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/reject_budget`;
+          requestBody = { budgetId: id, rejectionReason: reason || 'No reason provided' };
         } else if (approvalType === 'expense') {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/reject_expense_report`;
+          requestBody = { reportId: id, rejectionReason: reason || 'No reason provided' };
         } else if (approvalType === 'time-off') {
           mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/reject_time_off`;
+          requestBody = { requestId: id, reason: reason || 'No reason provided' };
         } else {
           console.error('Unknown approval type:', approvalType);
           return;
         }
 
-        // Call MCP Gateway
-        const response = await fetch(`${mcpEndpoint}?id=${id}&reason=${encodeURIComponent(reason || 'No reason provided')}`, {
-          method: 'GET',
+        // Call MCP Gateway with POST method
+        const response = await fetch(mcpEndpoint, {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to reject: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({ message: response.statusText }));
+          throw new Error(`Failed to reject: ${errorData.message || response.statusText}`);
         }
 
         const result = await response.json();
         console.log('Reject result:', result);
+
+        // Show success message
+        alert(`Successfully rejected ${approvalType}!`);
 
         // Refresh the component by re-fetching
         const directive = detectDirective(activeQuery || '');
