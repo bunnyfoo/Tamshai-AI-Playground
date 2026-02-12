@@ -179,7 +179,7 @@ describe('getQuarterlyReport', () => {
 
     it('should validate quarter format', async () => {
       const result = await getQuarterlyReport(
-        { quarter: 'Q5', year: 2025 },
+        { quarter: 'Q5' as any, year: 2025 },
         userContext
       );
 
