@@ -342,15 +342,29 @@ describe('get-employee tool', () => {
   });
 
   describe('Input validation', () => {
-    it('rejects invalid UUID format', async () => {
+    it('accepts any string for employeeId (relaxed validation)', async () => {
+      // Validation relaxed from .uuid() to .string() to support
+      // both UUID (e.id) and VARCHAR (e.keycloak_user_id) lookups (see commit acbd8003)
+      const mockQueryWithRLS = jest.spyOn(dbConnection, 'queryWithRLS');
+
+      mockQueryWithRLS.mockResolvedValue({
+        rows: [],
+        rowCount: 0,
+        command: '',
+        oid: 0,
+        fields: [],
+      });
+
       const input: GetEmployeeInput = { employeeId: 'not-a-uuid' };
       const result = await getEmployee(input, mockHrReadUser);
 
+      // Should not fail validation, but will return employee not found
       expect(result.status).toBe('error');
       if (result.status === 'error') {
-        expect(result.code).toBe('INVALID_INPUT');
-        expect(result.message).toContain('UUID');
+        expect(result.code).toBe('EMPLOYEE_NOT_FOUND');
       }
+
+      mockQueryWithRLS.mockRestore();
     });
 
     it('accepts valid UUID format', async () => {
