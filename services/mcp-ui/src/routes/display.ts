@@ -147,9 +147,18 @@ router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) =
     } else {
       // Multiple MCP calls - merge into object
       const merged: Record<string, unknown> = {};
-      for (const result of mcpResults) {
+      for (let i = 0; i < mcpResults.length; i++) {
+        const result = mcpResults[i];
+        const call = componentDef.mcpCalls[i];
+
         if (result.status === 'success' && result.data) {
-          Object.assign(merged, result.data);
+          // If dataField is specified, use it as the key (handles arrays properly)
+          if (call.dataField) {
+            merged[call.dataField] = result.data;
+          } else {
+            // Otherwise, use Object.assign for backward compatibility
+            Object.assign(merged, result.data);
+          }
         }
       }
       mergedData = merged;

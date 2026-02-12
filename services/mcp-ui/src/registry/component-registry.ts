@@ -203,9 +203,9 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     component: 'pending',
     description: 'Shows pending approvals across HR and Finance',
     mcpCalls: [
-      { server: 'hr', tool: 'get_pending_time_off', paramMap: {} },
-      { server: 'finance', tool: 'get_pending_expenses', paramMap: {} },
-      { server: 'finance', tool: 'get_pending_budgets', paramMap: {} },
+      { server: 'hr', tool: 'get_pending_time_off', paramMap: {}, dataField: 'timeOffRequests' },
+      { server: 'finance', tool: 'get_pending_expenses', paramMap: {}, dataField: 'expenseReports' },
+      { server: 'finance', tool: 'get_pending_budgets', paramMap: {}, dataField: 'budgetAmendments' },
     ],
     transform: (data: unknown): Record<string, unknown> => {
       // Multiple MCP calls return merged object with arrays

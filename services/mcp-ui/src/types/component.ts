@@ -8,6 +8,8 @@ export interface MCPCall {
   server: string;
   tool: string;
   paramMap: Record<string, string>;
+  /** Optional field name for merging response data (for multi-call components) */
+  dataField?: string;
 }
 
 export interface ComponentDefinition {

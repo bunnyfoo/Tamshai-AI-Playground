@@ -26,6 +26,8 @@ export interface MCPCall {
   tool: string;
   /** Maps tool parameter names to directive parameter names */
   paramMap: Record<string, string>;
+  /** Optional field name for merging response data (for multi-call components) */
+  dataField?: string;
 }
 
 /**
