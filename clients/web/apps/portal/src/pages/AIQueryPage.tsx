@@ -121,7 +121,21 @@ export default function AIQueryPage() {
         throw new Error(`MCP UI Service error: ${response.status}`);
       }
 
-      const componentData: ComponentResponse = await response.json();
+      const result = await response.json();
+
+      // MCP UI returns: { status, component: { type, props, actions }, narration, metadata }
+      // We need to merge component and narration into ComponentResponse format
+      if (!result || !result.component) {
+        throw new Error('Invalid response from MCP UI: missing component data');
+      }
+
+      const componentData: ComponentResponse = {
+        type: result.component.type,
+        props: result.component.props || {},
+        actions: result.component.actions || [],
+        narration: result.narration,
+      };
+
       setComponentResponse(componentData);
       setDirectiveError(null);
     } catch (error) {
@@ -369,7 +383,7 @@ export default function AIQueryPage() {
               </h3>
             </div>
             <ComponentRenderer
-              component={componentResponse.component}
+              component={componentResponse}
               onAction={handleComponentAction}
               voiceEnabled={voiceEnabled}
             />
