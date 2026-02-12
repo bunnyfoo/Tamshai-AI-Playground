@@ -22,6 +22,7 @@ interface AuthenticatedRequest extends Request {
     username?: string;
     email?: string;
   };
+  userToken?: string; // Original JWT token from the user
 }
 
 interface DisplayRequest {
@@ -71,6 +72,9 @@ function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunctio
       roles,
     };
 
+    // Store the original user token for forwarding to MCP Gateway
+    req.userToken = token;
+
     next();
   } catch (error) {
     logger.error('JWT validation error', { error: error instanceof Error ? error.message : 'Unknown' });
@@ -90,6 +94,7 @@ function validateJWT(req: AuthenticatedRequest, res: Response, next: NextFunctio
 router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) => {
   const { directive } = req.body as DisplayRequest;
   const userContext = req.userContext!; // Set by validateJWT middleware
+  const userToken = req.userToken; // Original user JWT from browser
 
   // Validate required fields
   if (!directive) {
@@ -125,9 +130,13 @@ router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) =
   }
 
   try {
-    // Call MCP servers for data
+    // Call MCP servers for data, passing user's original token
     const mcpResults = await Promise.all(
-      componentDef.mcpCalls.map((call) => callMCPTool(call, parsed.params, userContext))
+      componentDef.mcpCalls.map((call) =>
+        callMCPTool(call, parsed.params, userContext, {
+          userToken, // Forward the user's JWT instead of using service account token
+        })
+      )
     );
 
     // Merge all MCP response data

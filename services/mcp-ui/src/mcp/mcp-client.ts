@@ -58,6 +58,8 @@ export interface MCPCallOptions {
   authService?: KeycloakAuthService;
   /** Retry on 401 with refreshed token (default: true) */
   retryOnAuthError?: boolean;
+  /** Optional user JWT token to forward (instead of using service account token) */
+  userToken?: string;
 }
 
 // Module-level auth service instance (set via setAuthService)
@@ -106,7 +108,7 @@ export async function callMCPTool(
   userContext: UserContext,
   options: MCPCallOptions = {}
 ): Promise<MCPToolResponse> {
-  const { authService = globalAuthService, retryOnAuthError = true } = options;
+  const { authService = globalAuthService, retryOnAuthError = true, userToken } = options;
 
   // Get gateway URL from environment (required)
   const gatewayUrl = process.env.MCP_GATEWAY_URL;
@@ -135,11 +137,25 @@ export async function callMCPTool(
     'X-User-Roles': userContext.roles.join(','),
   };
 
-  // Add Authorization header if auth service is available
-  if (authService) {
+  // Add Authorization header
+  // Priority: userToken (forwarded from browser) > service account token
+  if (userToken) {
+    // Forward the user's original JWT token
+    headers['Authorization'] = `Bearer ${userToken}`;
+    logger.debug('Using forwarded user token for MCP call', {
+      server: call.server,
+      tool: call.tool,
+      userId: userContext.userId,
+    });
+  } else if (authService) {
+    // Fall back to service account token (for non-user-initiated calls)
     try {
       const token = await authService.getAccessToken();
       headers['Authorization'] = `Bearer ${token}`;
+      logger.debug('Using service account token for MCP call', {
+        server: call.server,
+        tool: call.tool,
+      });
     } catch (error) {
       logger.warn('Failed to get auth token, proceeding without authentication', {
         error: error instanceof Error ? error.message : 'Unknown error',
