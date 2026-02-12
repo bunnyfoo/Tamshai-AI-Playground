@@ -124,7 +124,7 @@ describe('get-employee tool', () => {
 
       expect(mockQueryWithRLS).toHaveBeenCalledWith(
         mockHrReadUser,
-        expect.stringContaining('WHERE e.id = $1'),
+        expect.stringContaining('WHERE (e.id::text = $1 OR e.keycloak_user_id = $1)'),
         [employeeId]
       );
     });
@@ -445,17 +445,18 @@ describe('get-employee tool', () => {
         fields: [],
       });
 
-      // Attempt SQL injection (should be caught by UUID validation)
+      // Attempt SQL injection (validation is relaxed, but parameterized queries prevent injection)
       const maliciousInput: GetEmployeeInput = {
         employeeId: "'; DROP TABLE employees; --" as any,
       };
 
       const result = await getEmployee(maliciousInput, mockHrReadUser);
 
-      // Should fail validation before reaching database
+      // Validation accepts any string, but parameterized query prevents SQL injection
+      // Returns EMPLOYEE_NOT_FOUND instead of INVALID_INPUT (validation was relaxed in acbd8003)
       expect(result.status).toBe('error');
       if (result.status === 'error') {
-        expect(result.code).toBe('INVALID_INPUT');
+        expect(result.code).toBe('EMPLOYEE_NOT_FOUND');
       }
     });
   });
