@@ -192,16 +192,48 @@ const componentRegistry: Record<string, ComponentDefinition> = {
     component: 'pending',
     description: 'Shows pending approvals across HR and Finance',
     mcpCalls: [
-      { server: 'hr', tool: 'get_pending_time_off', paramMap: { userId: 'userId' } },
-      { server: 'finance', tool: 'get_pending_expenses', paramMap: { userId: 'userId' } },
-      { server: 'finance', tool: 'get_pending_budgets', paramMap: { userId: 'userId' } },
+      { server: 'hr', tool: 'get_pending_time_off', paramMap: {} },
+      { server: 'finance', tool: 'get_pending_expenses', paramMap: {} },
+      { server: 'finance', tool: 'get_pending_budgets', paramMap: {} },
     ],
     transform: (data: unknown): Record<string, unknown> => {
+      // Multiple MCP calls return merged object with arrays
       const d = data as Record<string, unknown>;
+
+      // Map time-off requests: requestId → id, typeCode → type, notes → reason
+      const timeOffRequests = ((d.timeOffRequests as Array<any>) || []).map((req: any) => ({
+        id: req.requestId || req.id,
+        employeeName: req.employeeName,
+        startDate: req.startDate,
+        endDate: req.endDate,
+        type: (req.typeCode || req.type || 'other').toLowerCase(),
+        reason: req.notes || req.reason || '',
+      }));
+
+      // Map expense reports: totalAmount → amount, title → description, submittedAt → date
+      const expenseReports = ((d.expenseReports as Array<any>) || []).map((exp: any) => ({
+        id: exp.id,
+        employeeName: exp.employeeName || 'Unknown',
+        amount: exp.totalAmount || exp.amount || 0,
+        date: exp.submittedAt || exp.submissionDate || exp.date,
+        description: exp.title || exp.description || 'No description',
+        itemCount: 0, // Not available from MCP response
+      }));
+
+      // Map budget amendments: budgetedAmount → requestedBudget
+      // Note: currentBudget not available from get_pending_budgets tool
+      const budgetAmendments = ((d.budgetAmendments as Array<any>) || []).map((bud: any) => ({
+        id: bud.id,
+        department: bud.department || bud.departmentCode,
+        currentBudget: 0, // Not available from MCP response
+        requestedBudget: bud.budgetedAmount || bud.requestedBudget || 0,
+        reason: bud.categoryName || bud.reason || 'Budget request',
+      }));
+
       return {
-        timeOffRequests: d.timeOffRequests || [],
-        expenseReports: d.expenseReports || [],
-        budgetAmendments: d.budgetAmendments || [],
+        timeOffRequests,
+        expenseReports,
+        budgetAmendments,
       };
     },
     generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
