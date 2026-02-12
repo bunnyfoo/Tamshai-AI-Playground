@@ -183,11 +183,107 @@ export default function AIQueryPage() {
   };
 
   /**
-   * Handle component actions (navigate, drilldown, etc.)
+   * Handle component actions (navigate, drilldown, approve, reject, etc.)
    */
-  const handleComponentAction = (action: any) => {
+  const handleComponentAction = async (action: any) => {
     console.log('Component action:', action);
-    // TODO: Implement action handling (navigation, drilldowns)
+
+    try {
+      const token = getAccessToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Handle approve action
+      if (action.type === 'approve' && action.params) {
+        const { approvalType, id } = action.params;
+        console.log(`Approving ${approvalType}:`, id);
+
+        // Map approval type to MCP server endpoint
+        let mcpEndpoint: string;
+        if (approvalType === 'budget') {
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/approve_budget`;
+        } else if (approvalType === 'expense') {
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/approve_expense_report`;
+        } else if (approvalType === 'time-off') {
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/approve_time_off`;
+        } else {
+          console.error('Unknown approval type:', approvalType);
+          return;
+        }
+
+        // Call MCP Gateway
+        const response = await fetch(`${mcpEndpoint}?id=${id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to approve: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Approve result:', result);
+
+        // Refresh the component by re-fetching
+        const directive = detectDirective(activeQuery || '');
+        if (directive) {
+          await fetchComponentResponse(directive);
+        }
+      }
+
+      // Handle reject action
+      if (action.type === 'reject' && action.params) {
+        const { approvalType, id, reason } = action.params;
+        console.log(`Rejecting ${approvalType}:`, id, 'Reason:', reason);
+
+        // Map approval type to MCP server endpoint
+        let mcpEndpoint: string;
+        if (approvalType === 'budget') {
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/reject_budget`;
+        } else if (approvalType === 'expense') {
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/finance/reject_expense_report`;
+        } else if (approvalType === 'time-off') {
+          mcpEndpoint = `${apiConfig.mcpGatewayUrl}/api/mcp/hr/reject_time_off`;
+        } else {
+          console.error('Unknown approval type:', approvalType);
+          return;
+        }
+
+        // Call MCP Gateway
+        const response = await fetch(`${mcpEndpoint}?id=${id}&reason=${encodeURIComponent(reason || 'No reason provided')}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to reject: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Reject result:', result);
+
+        // Refresh the component by re-fetching
+        const directive = detectDirective(activeQuery || '');
+        if (directive) {
+          await fetchComponentResponse(directive);
+        }
+      }
+
+      // Handle drilldown action (view details)
+      if (action.type === 'drilldown' && action.params) {
+        const { approvalType, id } = action.params;
+        console.log(`View details for ${approvalType}:`, id);
+        // TODO: Navigate to detail page or open modal
+      }
+    } catch (error) {
+      console.error('Action handler error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to execute action');
+    }
   };
 
   return (

@@ -36,6 +36,7 @@ export interface PendingExpenseReport {
   status: 'SUBMITTED' | 'UNDER_REVIEW';
   submissionDate: string | null;
   submittedAt: string;
+  itemCount: number;
 }
 
 /**
@@ -123,14 +124,21 @@ export async function getPendingExpenses(
           er.id,
           er.report_number as "reportNumber",
           er.employee_id as "employeeId",
-          NULL as "employeeName",
+          COALESCE(e.first_name || ' ' || e.last_name, 'Unknown') as "employeeName",
           er.department_code as "departmentCode",
           er.title,
           er.total_amount::numeric as "totalAmount",
           er.status::text as status,
           er.submission_date::text as "submissionDate",
-          er.submitted_at::text as "submittedAt"
+          er.submitted_at::text as "submittedAt",
+          COALESCE(item_counts.item_count, 0)::int as "itemCount"
         FROM finance.expense_reports er
+        LEFT JOIN hr.employees e ON e.employee_id = er.employee_id
+        LEFT JOIN (
+          SELECT expense_report_id, COUNT(*) as item_count
+          FROM finance.expense_items
+          GROUP BY expense_report_id
+        ) item_counts ON item_counts.expense_report_id = er.id
         WHERE ${whereClauses.join(' AND ')}
         ORDER BY er.submitted_at DESC, er.id DESC
         LIMIT $${paramIndex}

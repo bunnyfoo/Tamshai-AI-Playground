@@ -221,23 +221,22 @@ const componentRegistry: Record<string, ComponentDefinition> = {
         reason: req.notes || req.reason || '',
       }));
 
-      // Map expense reports: totalAmount → amount, title → description, submittedAt → date
+      // Map expense reports: totalAmount → amount, title → description, submissionDate → date
       const expenseReports = ((d.expenseReports as Array<any>) || []).map((exp: any) => ({
         id: exp.id,
         employeeName: exp.employeeName || 'Unknown',
-        amount: exp.totalAmount || exp.amount || 0,
-        date: exp.submittedAt || exp.submissionDate || exp.date,
+        amount: Number(exp.totalAmount) || 0,
+        date: exp.submissionDate || exp.submittedAt?.split('T')[0] || new Date().toISOString().split('T')[0],
         description: exp.title || exp.description || 'No description',
-        itemCount: 0, // Not available from MCP response
+        itemCount: exp.itemCount || 0,
       }));
 
-      // Map budget amendments: budgetedAmount → requestedBudget
-      // Note: currentBudget not available from get_pending_budgets tool
+      // Map budget amendments: budgetedAmount → requestedBudget, currentBudget from previous year
       const budgetAmendments = ((d.budgetAmendments as Array<any>) || []).map((bud: any) => ({
         id: bud.id,
         department: bud.department || bud.departmentCode,
-        currentBudget: 0, // Not available from MCP response
-        requestedBudget: bud.budgetedAmount || bud.requestedBudget || 0,
+        currentBudget: Number(bud.currentBudget) || 0,
+        requestedBudget: Number(bud.budgetedAmount) || 0,
         reason: bud.categoryName || bud.reason || 'Budget request',
       }));
 

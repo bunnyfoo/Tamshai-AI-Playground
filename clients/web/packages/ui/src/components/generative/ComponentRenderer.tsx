@@ -145,6 +145,28 @@ export function ComponentRenderer({
       onAction,
     };
 
+    // Special handling for ApprovalsQueue - convert onAction to specific callbacks
+    if (componentType === 'ApprovalsQueue') {
+      childProps.onApprove = (type: string, id: string) => {
+        onAction({
+          type: 'approve',
+          params: { approvalType: type, id },
+        });
+      };
+      childProps.onReject = (type: string, id: string, reason?: string) => {
+        onAction({
+          type: 'reject',
+          params: { approvalType: type, id, reason: reason || '' },
+        });
+      };
+      childProps.onViewDetails = (type: string, id: string) => {
+        onAction({
+          type: 'drilldown',
+          params: { approvalType: type, id },
+        });
+      };
+    }
+
     return <Component {...childProps} />;
   };
 
