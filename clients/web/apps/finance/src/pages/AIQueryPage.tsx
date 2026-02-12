@@ -110,8 +110,8 @@ export function AIQueryPage() {
         // Use configured MCP UI URL (from VITE_MCP_UI_URL)
         mcpUiUrl = `${apiConfig.mcpUiUrl}/api/display`;
       } else {
-        // Fallback to relative URL (proxied through Nginx)
-        mcpUiUrl = '/api/mcp-ui/display';
+        // Fallback to relative URL (proxied through Caddy)
+        mcpUiUrl = '/mcp-ui/api/display';
       }
 
       const response = await fetch(mcpUiUrl, {
