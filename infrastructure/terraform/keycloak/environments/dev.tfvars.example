@@ -12,6 +12,7 @@
 #   - test_user_password
 #   - mcp_gateway_client_secret
 #   - mcp_hr_service_client_secret
+#   - mcp_integration_runner_secret
 #
 # ============================================================
 
@@ -25,9 +26,10 @@ realm_name         = "tamshai-corp"
 realm_display_name = "Tamshai Corporation - Dev"
 
 # Client secrets
-mcp_gateway_client_secret     = "SET_THIS_VALUE" # pragma: allowlist secret
-mcp_hr_service_client_secret  = "SET_THIS_VALUE" # pragma: allowlist secret
-test_user_password            = "SET_THIS_VALUE" # pragma: allowlist secret
+mcp_gateway_client_secret       = "SET_THIS_VALUE" # pragma: allowlist secret
+mcp_hr_service_client_secret    = "SET_THIS_VALUE" # pragma: allowlist secret
+mcp_integration_runner_secret   = "SET_THIS_VALUE" # pragma: allowlist secret
+test_user_password              = "SET_THIS_VALUE" # pragma: allowlist secret
 
 # Environment
 environment = "dev"

@@ -49,6 +49,13 @@ variable "mcp_hr_service_client_secret" {
   default     = "hr-service-secret"
 }
 
+variable "mcp_integration_runner_secret" {
+  description = "Client secret for MCP Integration Runner (test-only service account for token exchange). Only used in dev/CI environments."
+  type        = string
+  sensitive   = true
+  default     = "integration-runner-secret-change-in-prod"
+}
+
 variable "tls_insecure_skip_verify" {
   description = "Skip TLS verification (for local dev with self-signed certs)"
   type        = bool

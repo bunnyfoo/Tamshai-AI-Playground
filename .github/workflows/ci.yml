@@ -577,6 +577,7 @@ jobs:
           DEV_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
           DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
           DEV_MCP_GATEWAY_CLIENT_SECRET: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
+          MCP_INTEGRATION_RUNNER_SECRET: ${{ secrets.MCP_INTEGRATION_RUNNER_SECRET }}
         working-directory: infrastructure/terraform/keycloak
         run: |
           echo "=== Configuring Keycloak with Terraform ==="
@@ -593,7 +594,8 @@ jobs:
             -var='valid_redirect_uris=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/*"]' \
             -var="keycloak_admin_password=${DEV_KEYCLOAK_ADMIN_PASSWORD}" \
             -var="test_user_password=${DEV_USER_PASSWORD}" \
-            -var="mcp_gateway_client_secret=${DEV_MCP_GATEWAY_CLIENT_SECRET}"
+            -var="mcp_gateway_client_secret=${DEV_MCP_GATEWAY_CLIENT_SECRET}" \
+            -var="mcp_integration_runner_secret=${MCP_INTEGRATION_RUNNER_SECRET}"
 
           # Export client secret for integration tests
           echo "MCP_GATEWAY_CLIENT_SECRET=$(terraform output -raw mcp_gateway_client_secret)" >> $GITHUB_ENV

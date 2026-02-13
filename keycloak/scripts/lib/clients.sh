@@ -17,6 +17,7 @@
 
 # Source common utilities (always source to ensure _kcadm is defined)
 SCRIPT_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
 source "$SCRIPT_LIB_DIR/common.sh"
 
 # =============================================================================
@@ -538,12 +539,14 @@ EOF
 # T1: Creates/updates a dedicated test client so integration tests don't use mcp-gateway.
 # T3: Guarded to dev only — returns early in prod/stage.
 sync_integration_runner_client() {
-    if [ "${ENV:-dev}" != "dev" ]; then
-        log_info "Skipping mcp-integration-runner client (dev-only)"
+    # Only create in dev and CI environments (test-only client)
+    # Production environments (stage, prod) should NOT have this client
+    if [ "${ENV:-dev}" != "dev" ] && [ "${ENV:-dev}" != "ci" ]; then
+        log_info "Skipping mcp-integration-runner client (test environments only)"
         return 0
     fi
 
-    log_info "Syncing mcp-integration-runner client (integration tests)..."
+    log_info "Syncing mcp-integration-runner client (integration tests, ENV=${ENV:-dev})..."
 
     local client_json
     client_json=$(get_integration_runner_client_json)

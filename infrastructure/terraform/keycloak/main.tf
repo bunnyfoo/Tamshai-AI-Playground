@@ -348,6 +348,49 @@ resource "keycloak_openid_client_service_account_role" "mcp_hr_service_manage_us
 }
 
 # ============================================================
+# MCP Integration Runner Client (Test-Only Service Account)
+# ============================================================
+# This client is used by integration tests to authenticate via client credentials
+# and impersonate test users via token exchange. Only created in dev/CI environments.
+#
+# Security: This client should NEVER exist in production environments.
+# The environment check in variables.tf ensures it's only created when needed.
+
+resource "keycloak_openid_client" "mcp_integration_runner" {
+  count = var.environment == "dev" || var.environment == "ci" ? 1 : 0
+
+  realm_id  = keycloak_realm.tamshai_corp.id
+  client_id = "mcp-integration-runner"
+  name      = "MCP Integration Test Runner"
+  enabled   = true
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret                = var.mcp_integration_runner_secret
+  service_accounts_enabled     = true  # Enable client credentials flow
+  standard_flow_enabled        = false # No browser auth
+  direct_access_grants_enabled = false # No password grant (secure)
+
+  valid_redirect_uris = [] # Not used for service accounts
+}
+
+# Assign impersonation role to integration runner service account
+# This allows token exchange to impersonate test users
+data "keycloak_role" "impersonation" {
+  realm_id  = keycloak_realm.tamshai_corp.id
+  client_id = data.keycloak_openid_client.realm_management.id
+  name      = "impersonation"
+}
+
+resource "keycloak_openid_client_service_account_role" "integration_runner_impersonation" {
+  count = var.environment == "dev" || var.environment == "ci" ? 1 : 0
+
+  realm_id                = keycloak_realm.tamshai_corp.id
+  service_account_user_id = keycloak_openid_client.mcp_integration_runner[0].service_account_user_id
+  client_id               = data.keycloak_openid_client.realm_management.id
+  role                    = data.keycloak_role.impersonation.name
+}
+
+# ============================================================
 # Test Users
 # ============================================================
 

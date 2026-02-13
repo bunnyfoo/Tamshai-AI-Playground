@@ -6,6 +6,7 @@
 #   - keycloak_admin_password (from DEV_KEYCLOAK_ADMIN_PASSWORD)
 #   - test_user_password (from DEV_USER_PASSWORD)
 #   - mcp_gateway_client_secret (from DEV_MCP_GATEWAY_CLIENT_SECRET)
+#   - mcp_integration_runner_secret (from MCP_INTEGRATION_RUNNER_SECRET)
 #
 # ============================================================
 
@@ -22,6 +23,7 @@ realm_display_name = "Tamshai Corporation - CI"
 
 # mcp_gateway_client_secret - MUST be passed via -var flag from GitHub secret
 # test_user_password - MUST be passed via -var flag from GitHub secret
+# mcp_integration_runner_secret - MUST be passed via -var flag from GitHub secret
 
 # Environment
 environment = "ci"
