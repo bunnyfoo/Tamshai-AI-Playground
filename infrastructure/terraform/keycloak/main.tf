@@ -369,6 +369,7 @@ resource "keycloak_openid_client" "mcp_integration_runner" {
   service_accounts_enabled     = true  # Enable client credentials flow
   standard_flow_enabled        = false # No browser auth
   direct_access_grants_enabled = false # No password grant (secure)
+  full_scope_allowed           = true  # Include all user roles in exchanged tokens
 
   valid_redirect_uris = [] # Not used for service accounts
 }

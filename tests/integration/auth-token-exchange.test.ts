@@ -89,10 +89,11 @@ describe('Token Exchange Integration', () => {
 
       expect(payload.preferred_username).toBe('alice.chen');
       expect(payload.typ).toBe('Bearer');
-      // Token exchange produces realm roles (not client roles under resource_access)
+      // Roles may be in realm_access (realm roles, local dev) or resource_access (client roles, CI Terraform)
       // The MCP Gateway handles both via jwt-validator.ts merging realmRoles + clientRoles
-      expect(payload.realm_access).toBeDefined();
-      expect(payload.realm_access.roles).toBeDefined();
+      const hasRealmRoles = payload.realm_access?.roles?.length > 0;
+      const hasClientRoles = Object.keys(payload.resource_access || {}).length > 0;
+      expect(hasRealmRoles || hasClientRoles).toBe(true);
     });
 
     it('should exchange service token for bob.martinez user token', async () => {
@@ -138,11 +139,15 @@ describe('Token Exchange Integration', () => {
       const tokenParts = aliceToken.split('.');
       const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
 
-      // Alice has hr-read and hr-write roles (in realm_access for token exchange)
-      // The MCP Gateway merges realm_access + resource_access roles (jwt-validator.ts:107)
+      // Alice has hr-read and hr-write roles
+      // Local dev: realm roles in realm_access.roles
+      // CI Terraform: client roles in resource_access.mcp-gateway.roles
+      // The MCP Gateway merges both via jwt-validator.ts:107
       const realmRoles = payload.realm_access?.roles || [];
-      expect(realmRoles).toContain('hr-read');
-      expect(realmRoles).toContain('hr-write');
+      const clientRoles = payload.resource_access?.['mcp-gateway']?.roles || [];
+      const allRoles = [...realmRoles, ...clientRoles];
+      expect(allRoles).toContain('hr-read');
+      expect(allRoles).toContain('hr-write');
     });
   });
 
