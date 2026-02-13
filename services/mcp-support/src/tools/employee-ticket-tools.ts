@@ -145,7 +145,7 @@ export async function listTickets(
       .toArray();
 
     const hasMore = tickets.length > limit;
-    const resultTickets = tickets.slice(0, limit) as EmployeeTicket[];
+    const resultTickets = tickets.slice(0, limit) as unknown as EmployeeTicket[];
 
     // Build pagination metadata
     let metadata: PaginationMetadata | undefined;

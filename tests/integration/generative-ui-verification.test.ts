@@ -343,10 +343,7 @@ describe('Generative UI - Full Verification Suite', () => {
   });
 
   describe('6. Support Domain - Display Directives', () => {
-    test.skip('should render tickets list component (requires MCP UI rebuild)', async () => {
-      // Component registry entry added in commit 034be9cc
-      // Tool implemented in commit 219e2c1e (services/mcp-support/src/tools/employee-ticket-tools.ts)
-      // Requires: docker compose build mcp-ui && docker compose up -d mcp-ui
+    test('should render tickets list component', async () => {
       const response = await httpClient.post(
         '/api/display',
         {
@@ -363,10 +360,7 @@ describe('Generative UI - Full Verification Suite', () => {
   });
 
   describe('7. Payroll Domain - Display Directives', () => {
-    test.skip('should render pay stub component (requires MCP UI rebuild)', async () => {
-      // Component registry entry added in commit 034be9cc
-      // Tool exists: services/mcp-payroll/src/tools/get-pay-stub.ts
-      // Requires: docker compose build mcp-ui && docker compose up -d mcp-ui
+    test('should render pay stub component', async () => {
       const response = await httpClient.post(
         '/api/display',
         {
@@ -380,10 +374,7 @@ describe('Generative UI - Full Verification Suite', () => {
       expect(response.data.component.props).toHaveProperty('payStubId');
     });
 
-    test.skip('should render pay runs list (requires MCP UI rebuild)', async () => {
-      // Component registry entry added in commit 034be9cc
-      // Tool exists: services/mcp-payroll/src/tools/list-pay-runs.ts
-      // Requires: docker compose build mcp-ui && docker compose up -d mcp-ui
+    test('should render pay runs list', async () => {
       const response = await httpClient.post(
         '/api/display',
         {
@@ -400,10 +391,7 @@ describe('Generative UI - Full Verification Suite', () => {
   });
 
   describe('8. Tax Domain - Display Directives', () => {
-    test.skip('should render quarterly estimate component (requires MCP UI rebuild)', async () => {
-      // Component registry entry added in commit 034be9cc
-      // Tool exists: services/mcp-tax/src/tools/list-quarterly-estimates.ts
-      // Requires: docker compose build mcp-ui && docker compose up -d mcp-ui
+    test('should render quarterly estimate component', async () => {
       const response = await httpClient.post(
         '/api/display',
         {
