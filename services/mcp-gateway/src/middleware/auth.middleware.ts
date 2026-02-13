@@ -58,6 +58,15 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig) {
     const authHeader = req.headers.authorization;
     const tokenFromQuery = req.query.token as string | undefined;
 
+    // DEBUG: Log incoming request
+    logger.info('[AUTH] Request received', {
+      path: req.path,
+      method: req.method,
+      hasAuthHeader: !!authHeader,
+      authHeaderFormat: authHeader ? (authHeader.startsWith('Bearer ') ? 'Bearer' : 'Other') : 'None',
+      hasQueryToken: !!tokenFromQuery
+    });
+
     // Accept token from either Authorization header or query param
     // SECURITY NOTE: Query param tokens are DEPRECATED due to URL logging risks
     // Prefer POST /api/query with Authorization header for SSE streaming
