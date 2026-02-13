@@ -43,6 +43,7 @@ import {
   executeInviteContact,
   executeTransferLead,
 } from './tools/customer-tools';
+import { listTickets } from './tools/employee-ticket-tools';
 
 dotenv.config();
 
@@ -1020,7 +1021,7 @@ app.post('/query', async (req: Request, res: Response) => {
     return;
   }
 
-  res.json({ status: 'success', message: 'MCP Support Server ready', availableTools: ['search_tickets', 'search_knowledge_base', 'close_ticket', 'get_escalation_targets', 'escalate_ticket', 'get_sla_summary', 'get_sla_tickets', 'get_agent_metrics'], userRoles: userContext.roles });
+  res.json({ status: 'success', message: 'MCP Support Server ready', availableTools: ['search_tickets', 'list_tickets', 'search_knowledge_base', 'close_ticket', 'get_escalation_targets', 'escalate_ticket', 'get_sla_summary', 'get_sla_tickets', 'get_agent_metrics'], userRoles: userContext.roles });
 });
 
 app.post('/tools/search_tickets', async (req: Request, res: Response) => {
@@ -1042,6 +1043,20 @@ app.post('/tools/search_tickets', async (req: Request, res: Response) => {
   }
 
   const result = await searchTickets({ query, status, priority, assignedTo, limit, cursor }, userContext);
+  res.json(result);
+});
+
+app.post('/tools/list_tickets', async (req: Request, res: Response) => {
+  const { userContext, priority, status, assignedTo, limit, cursor } = req.body;
+  if (!userContext?.userId) {
+    res.status(400).json({ status: 'error', code: 'MISSING_USER_CONTEXT', message: 'User context is required' });
+    return;
+  }
+
+  // Note: listTickets handles role-based filtering internally (support, manager, user)
+  // No explicit hasSupportAccess check - all authenticated users can list their tickets
+
+  const result = await listTickets({ priority, status, assignedTo, limit, cursor }, userContext);
   res.json(result);
 });
 

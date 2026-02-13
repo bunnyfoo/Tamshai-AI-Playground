@@ -3,3 +3,4 @@
  */
 
 export * from './customer-tools';
+export * from './employee-ticket-tools';
