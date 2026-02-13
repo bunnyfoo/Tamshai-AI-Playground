@@ -9,53 +9,29 @@
  * These tests verify the MCP Gateway and MCP HR server work together
  * to handle user queries correctly.
  *
- * IMPORTANT: TOTP Configuration for Testing
- * ==========================================
- * These tests use Resource Owner Password Grant which does not support TOTP.
- * Before running tests, TOTP must be temporarily disabled in Keycloak:
- *
- * Option 1: Disable TOTP for realm (recommended for CI/CD):
- *   1. Login to Keycloak Admin Console (http://127.0.0.1:$KEYCLOAK_PORT/admin)
- *   2. Select realm 'tamshai-corp'
- *   3. Go to Authentication > Required Actions
- *   4. Disable "Configure OTP" required action
- *   5. Run tests
- *   6. RE-ENABLE "Configure OTP" after tests complete
- *
- * Option 2: Use test-specific users without TOTP:
- *   - Create test users with TOTP disabled
- *   - Never disable TOTP for production users
- *
- * WARNING: Do NOT delete existing TOTP registrations for real users!
+ * Authentication uses token exchange (service account impersonation) via
+ * TestAuthProvider, which bypasses TOTP requirements entirely.
  */
 
 import axios, { AxiosInstance } from 'axios';
 import crypto from 'crypto';
+import { getTestAuthProvider } from '../shared/auth/token-exchange';
 
 // Test configuration - all values from environment variables
 const CONFIG = {
-  keycloakUrl: process.env.KEYCLOAK_URL,
-  keycloakRealm: process.env.KEYCLOAK_REALM,
   gatewayUrl: process.env.MCP_GATEWAY_URL,
   mcpHrUrl: process.env.MCP_HR_URL,
   mcpFinanceUrl: process.env.MCP_FINANCE_URL,
-  clientId: 'mcp-gateway',
-  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
   mcpInternalSecret: process.env.MCP_INTERNAL_SECRET!,
 };
 
-// Test user password from environment variable
-const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
-
-if (!TEST_PASSWORD) {
-  console.warn('WARNING: DEV_USER_PASSWORD not set - tests may fail');
-}
+// Auth provider (singleton, token exchange)
+const authProvider = getTestAuthProvider();
 
 // Test users with role assignments matching Keycloak and HR database
 const TEST_USERS = {
   executive: {
     username: 'eve.thompson',
-    password: TEST_PASSWORD,
     email: 'eve@tamshai-playground.local',
     userId: 'e9f0a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
     roles: ['executive', 'manager', 'hr-read', 'support-read', 'sales-read', 'finance-read'],
@@ -64,7 +40,6 @@ const TEST_USERS = {
   },
   hrManager: {
     username: 'alice.chen',
-    password: TEST_PASSWORD,
     email: 'alice@tamshai-playground.local',
     userId: 'f104eddc-21ab-457c-a254-78051ad7ad67',
     roles: ['hr-read', 'hr-write', 'manager'],
@@ -73,7 +48,6 @@ const TEST_USERS = {
   },
   engineeringManager: {
     username: 'nina.patel',
-    password: TEST_PASSWORD,
     email: 'nina.p@tamshai-playground.local',
     userId: 'a5b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d',
     roles: ['manager'],
@@ -82,7 +56,6 @@ const TEST_USERS = {
   },
   intern: {
     username: 'frank.davis',
-    password: TEST_PASSWORD,
     email: 'frank@tamshai-playground.local',
     userId: 'b6c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e',
     roles: [],
@@ -91,18 +64,11 @@ const TEST_USERS = {
   },
   financeUser: {
     username: 'bob.martinez',
-    password: TEST_PASSWORD,
     email: 'bob@tamshai-playground.local',
     userId: '1e8f62b4-37a5-4e67-bb91-45d1e9e3a0f1',
     roles: ['finance-read', 'finance-write'],
   },
 };
-
-interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
 
 interface MCPQueryResponse {
   status: 'success' | 'error';
@@ -117,28 +83,6 @@ interface MCPQueryResponse {
   code?: string;
   message?: string;
   suggestedAction?: string;
-}
-
-/**
- * Get access token from Keycloak
- */
-async function getAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
-
-  const params = new URLSearchParams({
-    grant_type: 'password',
-    client_id: CONFIG.clientId,
-    client_secret: CONFIG.clientSecret,
-    username,
-    password,
-    scope: 'openid profile email',  // Removed "roles" - Keycloak includes roles in resource_access by default
-  });
-
-  const response = await axios.post<TokenResponse>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  return response.data.access_token;
 }
 
 /**
@@ -213,7 +157,7 @@ describe('My Team Members Query', () => {
     let hrClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+      token = await authProvider.getUserToken(TEST_USERS.executive.username);
       hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
@@ -290,7 +234,7 @@ describe('My Team Members Query', () => {
     let hrClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.hrManager.username, TEST_USERS.hrManager.password);
+      token = await authProvider.getUserToken(TEST_USERS.hrManager.username);
       hrClient = createMcpHrClient(token, TEST_USERS.hrManager.userId, TEST_USERS.hrManager.roles);
     });
 
@@ -320,7 +264,7 @@ describe('My Team Members Query', () => {
     let hrClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.engineeringManager.username, TEST_USERS.engineeringManager.password);
+      token = await authProvider.getUserToken(TEST_USERS.engineeringManager.username);
       hrClient = createMcpHrClient(token, TEST_USERS.engineeringManager.userId, TEST_USERS.engineeringManager.roles);
     });
 
@@ -348,7 +292,7 @@ describe('My Team Members Query', () => {
     let hrClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.intern.username, TEST_USERS.intern.password);
+      token = await authProvider.getUserToken(TEST_USERS.intern.username);
       hrClient = createMcpHrClient(token, TEST_USERS.intern.userId, TEST_USERS.intern.roles);
     });
 
@@ -382,7 +326,7 @@ describe('List All Employees Query', () => {
     let hrClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+      token = await authProvider.getUserToken(TEST_USERS.executive.username);
       hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
@@ -493,7 +437,7 @@ describe('List All Employees Query', () => {
     let gatewayClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+      token = await authProvider.getUserToken(TEST_USERS.executive.username);
       gatewayClient = createGatewayClient(token);
     });
 
@@ -521,7 +465,7 @@ describe('Query Routing', () => {
   let hrClient: AxiosInstance;
 
   beforeAll(async () => {
-    token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    token = await authProvider.getUserToken(TEST_USERS.executive.username);
     hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
   });
 
@@ -590,7 +534,7 @@ describe('Budget Status Query', () => {
     let financeClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
+      token = await authProvider.getUserToken(TEST_USERS.financeUser.username);
       financeClient = createMcpFinanceClient(token, TEST_USERS.financeUser.userId, TEST_USERS.financeUser.roles);
     });
 
@@ -722,7 +666,7 @@ describe('Budget Status Query', () => {
     let financeClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+      token = await authProvider.getUserToken(TEST_USERS.executive.username);
       financeClient = createMcpFinanceClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 
@@ -761,7 +705,7 @@ describe('Query Error Handling', () => {
     let hrClient: AxiosInstance;
 
     beforeAll(async () => {
-      token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+      token = await authProvider.getUserToken(TEST_USERS.executive.username);
       hrClient = createMcpHrClient(token, TEST_USERS.executive.userId, TEST_USERS.executive.roles);
     });
 

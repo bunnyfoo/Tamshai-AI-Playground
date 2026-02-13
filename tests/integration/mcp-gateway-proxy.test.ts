@@ -18,6 +18,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import { getTestAuthProvider } from '../shared/auth/token-exchange';
 
 // CI Environment Check
 // Skip all tests in CI - proxy routes require full Docker network setup
@@ -25,6 +26,9 @@ import axios, { AxiosInstance } from 'axios';
 // which isn't available in the CI environment
 const isCI = process.env.CI === 'true';
 const describeProxy = isCI ? describe.skip : describe;
+
+// Auth provider (singleton, token exchange)
+const authProvider = getTestAuthProvider();
 
 // Import shared endpoint constants
 // Note: In a real setup, this would be: import { MCP_ENDPOINTS } from '@tamshai/mcp-endpoints';
@@ -73,66 +77,16 @@ const MCP_ENDPOINTS = {
 // Test configuration - all values from environment variables
 const CONFIG = {
   mcpGatewayUrl: process.env.MCP_GATEWAY_URL,
-  keycloakUrl: process.env.KEYCLOAK_URL,
-  keycloakRealm: process.env.KEYCLOAK_REALM,
-  clientId: 'mcp-gateway',
-  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
 };
-
-const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
 
 // Test users matching frontend role requirements
 const TEST_USERS = {
-  executive: {
-    username: 'eve.thompson',
-    password: TEST_PASSWORD,
-    // Executive has composite role that includes all read roles
-  },
-  hrUser: {
-    username: 'alice.chen',
-    password: TEST_PASSWORD,
-  },
-  financeUser: {
-    username: 'bob.martinez',
-    password: TEST_PASSWORD,
-  },
-  salesUser: {
-    username: 'carol.johnson',
-    password: TEST_PASSWORD,
-  },
-  supportUser: {
-    username: 'dan.williams',
-    password: TEST_PASSWORD,
-  },
+  executive: { username: 'eve.thompson' },
+  hrUser: { username: 'alice.chen' },
+  financeUser: { username: 'bob.martinez' },
+  salesUser: { username: 'carol.johnson' },
+  supportUser: { username: 'dan.williams' },
 };
-
-interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
-
-/**
- * Get access token from Keycloak
- */
-async function getAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
-
-  const params = new URLSearchParams({
-    grant_type: 'password',
-    client_id: CONFIG.clientId,
-    client_secret: CONFIG.clientSecret,
-    username,
-    password,
-    scope: 'openid profile email',
-  });
-
-  const response = await axios.post<TokenResponse>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  return response.data.access_token;
-}
 
 /**
  * Create authenticated gateway client
@@ -172,7 +126,7 @@ describeProxy('MCP Gateway - HR Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.hrUser.username);
     client = createGatewayClient(token);
   });
 
@@ -221,7 +175,7 @@ describeProxy('MCP Gateway - Finance Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.financeUser.username);
     client = createGatewayClient(token);
   });
 
@@ -272,7 +226,7 @@ describeProxy('MCP Gateway - Sales Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.salesUser.username, TEST_USERS.salesUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.salesUser.username);
     client = createGatewayClient(token);
   });
 
@@ -301,7 +255,7 @@ describeProxy('MCP Gateway - Support Endpoints', () => {
   let client: AxiosInstance;
 
   beforeAll(async () => {
-    const token = await getAccessToken(TEST_USERS.supportUser.username, TEST_USERS.supportUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.supportUser.username);
     client = createGatewayClient(token);
   });
 
@@ -331,7 +285,7 @@ describeProxy('MCP Gateway - Payroll Endpoints', () => {
 
   beforeAll(async () => {
     // Use executive user who has payroll-read role
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     client = createGatewayClient(token);
   });
 
@@ -411,7 +365,7 @@ describeProxy('MCP Gateway - Payroll Endpoints', () => {
 
 describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('Executive can access payroll endpoints', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.PAYROLL.GET_PAYROLL_SUMMARY);
@@ -420,7 +374,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   });
 
   test('Executive can access all department data', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     // Test access to each service
@@ -440,7 +394,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('HR user can access expense reports via employee role (self-access)', async () => {
     // v1.5: TIER 1 - All employees can access expense reports
     // Data filtering (self vs all) is enforced by PostgreSQL RLS
-    const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.hrUser.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_EXPENSE_REPORTS);
@@ -451,7 +405,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('HR manager can access budgets (manager role satisfies TIER 2)', async () => {
     // v1.5: TIER 2 - Budgets require manager, finance, or executive role
     // alice.chen has manager role via /Managers group — RLS scopes to her department
-    const token = await getAccessToken(TEST_USERS.hrUser.username, TEST_USERS.hrUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.hrUser.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.FINANCE.LIST_BUDGETS);
@@ -462,7 +416,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
   test('Finance user can access HR endpoints via employee role (self-access)', async () => {
     // All employees have self-access to HR for their own profile
     // Data filtering (self vs all) is enforced by PostgreSQL RLS
-    const token = await getAccessToken(TEST_USERS.financeUser.username, TEST_USERS.financeUser.password);
+    const token = await authProvider.getUserToken(TEST_USERS.financeUser.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.HR.LIST_EMPLOYEES);
@@ -477,7 +431,7 @@ describeProxy('MCP Gateway - Cross-Role Access Control', () => {
 
 describeProxy('MCP Gateway - Response Field Validation', () => {
   test('Payroll summary has fields expected by DashboardPage', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.PAYROLL.GET_PAYROLL_SUMMARY);
@@ -497,7 +451,7 @@ describeProxy('MCP Gateway - Response Field Validation', () => {
   });
 
   test('Pay runs have fields expected by PayRunsPage', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(`${MCP_ENDPOINTS.PAYROLL.LIST_PAY_RUNS}?year=2026`);
@@ -520,7 +474,7 @@ describeProxy('MCP Gateway - Response Field Validation', () => {
   });
 
   test('Benefits have fields expected by BenefitsPage', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get(MCP_ENDPOINTS.PAYROLL.GET_BENEFITS);
@@ -556,7 +510,7 @@ describeProxy('MCP Gateway - Error Handling', () => {
   });
 
   test('Returns 404 for non-existent endpoints', async () => {
-    const token = await getAccessToken(TEST_USERS.executive.username, TEST_USERS.executive.password);
+    const token = await authProvider.getUserToken(TEST_USERS.executive.username);
     const client = createGatewayClient(token);
 
     const response = await client.get('/api/mcp/nonexistent/tool');

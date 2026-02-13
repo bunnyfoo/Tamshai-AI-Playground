@@ -2,7 +2,7 @@
  * Tamshai Corp - SSE Streaming Integration Tests
  *
  * These tests simulate the TamshaiAI Windows app behavior by:
- * 1. Authenticating via Keycloak (like the PKCE flow)
+ * 1. Authenticating via token exchange (service account impersonation)
  * 2. Calling POST /api/query with JWT token
  * 3. Processing SSE streaming responses
  * 4. Verifying error handling for connection failures
@@ -14,35 +14,24 @@
 import axios from 'axios';
 import http from 'http';
 import { fail } from 'assert';
+import { getTestAuthProvider } from '../shared/auth/token-exchange';
 
 // Test configuration - all values from environment variables
 const CONFIG = {
   keycloakUrl: process.env.KEYCLOAK_URL,
   keycloakRealm: process.env.KEYCLOAK_REALM,
   gatewayUrl: process.env.MCP_GATEWAY_URL,
-  clientId: 'mcp-gateway',
-  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
 };
-
-// Test user password from environment variable
-const TEST_PASSWORD = process.env.DEV_USER_PASSWORD || '';
-
-if (!TEST_PASSWORD) {
-  console.warn('WARNING: DEV_USER_PASSWORD not set - tests may fail');
-}
 
 // Test users
 const TEST_USERS = {
-  executive: { username: 'eve.thompson', password: TEST_PASSWORD },
-  hrUser: { username: 'alice.chen', password: TEST_PASSWORD },
-  intern: { username: 'frank.davis', password: TEST_PASSWORD },
+  executive: { username: 'eve.thompson' },
+  hrUser: { username: 'alice.chen' },
+  intern: { username: 'frank.davis' },
 };
 
-interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-}
+// Auth provider (singleton, token exchange)
+const authProvider = getTestAuthProvider();
 
 interface SSEEvent {
   type: 'text' | 'error' | 'pagination';
@@ -51,29 +40,6 @@ interface SSEEvent {
   hasMore?: boolean;
   cursors?: Array<{ server: string; cursor: string }>;
   hint?: string;
-}
-
-/**
- * Get access token from Keycloak using Resource Owner Password Grant
- * Note: This is only for testing - real apps use Authorization Code + PKCE
- */
-async function getAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
-
-  const params = new URLSearchParams({
-    grant_type: 'password',
-    client_id: CONFIG.clientId,
-    client_secret: CONFIG.clientSecret,
-    username,
-    password,
-    scope: 'openid profile email',  // Removed "roles" - Keycloak includes roles in resource_access by default
-  });
-
-  const response = await axios.post<TokenResponse>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  return response.data.access_token;
 }
 
 /**
@@ -193,10 +159,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
 
   describe('POST /api/query Endpoint', () => {
     test('Executive user can stream AI query about reports', async () => {
-      const token = await getAccessToken(
-        TEST_USERS.executive.username,
-        TEST_USERS.executive.password
-      );
+      const token = await authProvider.getUserToken(TEST_USERS.executive.username);
 
       const result = await streamSSEQuery(
         'How many people report to me?',
@@ -219,10 +182,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
     }, 90000); // 90 second timeout for Claude response
 
     test('HR user can query employee data via SSE', async () => {
-      const token = await getAccessToken(
-        TEST_USERS.hrUser.username,
-        TEST_USERS.hrUser.password
-      );
+      const token = await authProvider.getUserToken(TEST_USERS.hrUser.username);
 
       const result = await streamSSEQuery(
         'List the departments in the company',
@@ -240,10 +200,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
     }, 90000);
 
     test('Intern receives response but with limited data access', async () => {
-      const token = await getAccessToken(
-        TEST_USERS.intern.username,
-        TEST_USERS.intern.password
-      );
+      const token = await authProvider.getUserToken(TEST_USERS.intern.username);
 
       const result = await streamSSEQuery(
         'What data can I access?',
@@ -289,10 +246,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
     });
 
     test('Chunks are received progressively during streaming', async () => {
-      const token = await getAccessToken(
-        TEST_USERS.executive.username,
-        TEST_USERS.executive.password
-      );
+      const token = await authProvider.getUserToken(TEST_USERS.executive.username);
 
       const result = await streamSSEQuery(
         'Write a short paragraph about enterprise AI.',
@@ -357,10 +311,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
     });
 
     test('Request with missing query returns 400', async () => {
-      const token = await getAccessToken(
-        TEST_USERS.executive.username,
-        TEST_USERS.executive.password
-      );
+      const token = await authProvider.getUserToken(TEST_USERS.executive.username);
 
       try {
         await axios.post(
@@ -388,10 +339,7 @@ describe('SSE Streaming Tests - Simulating TamshaiAI App', () => {
 
   describe('GET /api/query Endpoint (EventSource compatible)', () => {
     test('GET endpoint works with query parameter', async () => {
-      const token = await getAccessToken(
-        TEST_USERS.executive.username,
-        TEST_USERS.executive.password
-      );
+      const token = await authProvider.getUserToken(TEST_USERS.executive.username);
 
       const result = await new Promise<{ fullContent: string; error?: string }>(
         (resolve) => {

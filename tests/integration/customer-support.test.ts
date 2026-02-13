@@ -25,7 +25,6 @@ import { fail } from 'assert';
 const CONFIG = {
   keycloakUrl: process.env.KEYCLOAK_URL,
   keycloakCustomerRealm: process.env.KEYCLOAK_CUSTOMER_REALM,
-  keycloakInternalRealm: process.env.KEYCLOAK_REALM,
   mcpSupportUrl: process.env.MCP_SUPPORT_URL,
   clientId: 'customer-portal',
   mcpInternalSecret: process.env.MCP_INTERNAL_SECRET!,
@@ -85,14 +84,6 @@ const CUSTOMER_USERS = {
   },
 };
 
-// Internal user for testing dual-realm scenario
-const INTERNAL_USERS = {
-  supportAgent: {
-    username: 'dan.williams',
-    password: process.env.DEV_USER_PASSWORD || '',
-  },
-};
-
 interface TokenResponse {
   access_token: string;
   refresh_token: string;
@@ -112,28 +103,6 @@ async function getCustomerAccessToken(username: string, password: string): Promi
     username,
     password,
     scope: 'openid profile email organization',
-  });
-
-  const response = await axios.post<TokenResponse>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  return response.data.access_token;
-}
-
-/**
- * Get access token from internal Keycloak realm
- */
-async function getInternalAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakInternalRealm}/protocol/openid-connect/token`;
-
-  const params = new URLSearchParams({
-    grant_type: 'password',
-    client_id: 'mcp-gateway',
-    client_secret: process.env.MCP_GATEWAY_CLIENT_SECRET!,
-    username,
-    password,
-    scope: 'openid profile email',
   });
 
   const response = await axios.post<TokenResponse>(tokenUrl, params, {
