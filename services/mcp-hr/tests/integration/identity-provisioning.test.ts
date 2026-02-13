@@ -67,7 +67,7 @@ class TestKcAdminClient implements KcAdminClient {
     clientSecret: string;
   }): Promise<void> {
     const adminClientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
-    const params = adminClientSecret
+    const params: Record<string, string> = adminClientSecret
       ? { grant_type: 'client_credentials', client_id: 'admin-cli', client_secret: adminClientSecret }
       : { grant_type: 'password', client_id: 'admin-cli', username: config.keycloak.adminUsername, password: config.keycloak.adminPassword };
 

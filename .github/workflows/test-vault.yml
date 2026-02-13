@@ -33,8 +33,7 @@ on:
   workflow_dispatch:
 
 env:
-  # Port 8210 is the playground port mapping (8210:8200)
-  VAULT_ADDR: http://localhost:8210
+  VAULT_ADDR: http://localhost:${{ vars.DEV_PG_VAULT }}
   VAULT_TOKEN: dev-root-token
   CLAUDE_API_KEY: sk-ant-test-key-for-ci  # pragma: allowlist secret
 
@@ -86,37 +85,37 @@ jobs:
           MCP_HR_SERVICE_CLIENT_SECRET=${DEV_MCP_HR_SERVICE_CLIENT_SECRET}
           MCP_GATEWAY_CLIENT_SECRET=${DEV_MCP_GATEWAY_CLIENT_SECRET}
 
-          # Port Configuration (required by docker-compose.yml)
-          PORT_CADDY_HTTP=80
-          PORT_CADDY_HTTPS=443
-          PORT_KEYCLOAK=8180
-          PORT_KONG_PROXY=8100
-          PORT_KONG_ADMIN=8101
-          PORT_VAULT=8210
-          PORT_POSTGRES=5432
-          PORT_MONGODB=27017
-          PORT_REDIS=6379
-          PORT_ELASTICSEARCH=9200
-          PORT_MINIO_API=9000
-          PORT_MINIO_CONSOLE=9001
-          PORT_MCP_GATEWAY=3100
-          PORT_MCP_HR=3101
-          PORT_MCP_FINANCE=3102
-          PORT_MCP_SALES=3103
-          PORT_MCP_SUPPORT=3104
-          PORT_MCP_JOURNEY=3105
-          PORT_MCP_PAYROLL=3106
-          PORT_MCP_TAX=3107
-          PORT_MCP_UI=3108
-          PORT_WEB_PORTAL=4000
-          PORT_WEB_HR=4001
-          PORT_WEB_FINANCE=4002
-          PORT_WEB_SALES=4003
-          PORT_WEB_SUPPORT=4004
-          PORT_WEB_PAYROLL=4005
-          PORT_WEB_TAX=4006
-          PORT_WEB_CUSTOMER_SUPPORT=4007
-          PORT_WEBSITE=8080
+          # Port Configuration (from GitHub Variables - single source of truth)
+          PORT_CADDY_HTTP=${{ vars.DEV_PG_CADDY_HTTP }}
+          PORT_CADDY_HTTPS=${{ vars.DEV_PG_CADDY_HTTPS }}
+          PORT_KEYCLOAK=${{ vars.DEV_PG_KEYCLOAK }}
+          PORT_KONG_PROXY=${{ vars.DEV_PG_KONG_PROXY }}
+          PORT_KONG_ADMIN=${{ vars.DEV_PG_KONG_ADMIN }}
+          PORT_VAULT=${{ vars.DEV_PG_VAULT }}
+          PORT_POSTGRES=${{ vars.DEV_PG_POSTGRES }}
+          PORT_MONGODB=${{ vars.DEV_PG_MONGODB }}
+          PORT_REDIS=${{ vars.DEV_PG_REDIS }}
+          PORT_ELASTICSEARCH=${{ vars.DEV_PG_ELASTICSEARCH }}
+          PORT_MINIO_API=${{ vars.DEV_PG_MINIO_API }}
+          PORT_MINIO_CONSOLE=${{ vars.DEV_PG_MINIO_CONSOLE }}
+          PORT_MCP_GATEWAY=${{ vars.DEV_PG_MCP_GATEWAY }}
+          PORT_MCP_HR=${{ vars.DEV_PG_MCP_HR }}
+          PORT_MCP_FINANCE=${{ vars.DEV_PG_MCP_FINANCE }}
+          PORT_MCP_SALES=${{ vars.DEV_PG_MCP_SALES }}
+          PORT_MCP_SUPPORT=${{ vars.DEV_PG_MCP_SUPPORT }}
+          PORT_MCP_JOURNEY=${{ vars.DEV_PG_MCP_JOURNEY }}
+          PORT_MCP_PAYROLL=${{ vars.DEV_PG_MCP_PAYROLL }}
+          PORT_MCP_TAX=${{ vars.DEV_PG_MCP_TAX }}
+          PORT_MCP_UI=${{ vars.DEV_PG_MCP_UI }}
+          PORT_WEB_PORTAL=${{ vars.DEV_PG_WEB_PORTAL }}
+          PORT_WEB_HR=${{ vars.DEV_PG_WEB_HR }}
+          PORT_WEB_FINANCE=${{ vars.DEV_PG_WEB_FINANCE }}
+          PORT_WEB_SALES=${{ vars.DEV_PG_WEB_SALES }}
+          PORT_WEB_SUPPORT=${{ vars.DEV_PG_WEB_SUPPORT }}
+          PORT_WEB_PAYROLL=${{ vars.DEV_PG_WEB_PAYROLL }}
+          PORT_WEB_TAX=${{ vars.DEV_PG_WEB_TAX }}
+          PORT_WEB_CUSTOMER_SUPPORT=${{ vars.DEV_PG_WEB_CUSTOMER_SUPPORT }}
+          PORT_WEBSITE=${{ vars.DEV_PG_WEBSITE }}
           EOF
 
       - name: Start Vault and vault-init only

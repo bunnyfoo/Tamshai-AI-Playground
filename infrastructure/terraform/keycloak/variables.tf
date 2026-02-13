@@ -72,20 +72,13 @@ variable "environment" {
 }
 
 variable "valid_redirect_uris" {
-  description = "Valid redirect URIs for MCP Gateway client"
+  description = "Valid redirect URIs for MCP Gateway client. Must be passed via -var flag (no default - ports come from GitHub Variables)."
   type        = list(string)
-  default     = ["http://localhost:3100/*"]
 }
 
 variable "web_origins" {
-  description = "Allowed CORS origins for Keycloak clients (explicit, no wildcards)"
+  description = "Allowed CORS origins for Keycloak clients (explicit, no wildcards). Must be passed via -var flag (no default - ports come from GitHub Variables)."
   type        = list(string)
-  default = [
-    "http://localhost:3100",
-    "http://localhost:4010",
-    "http://localhost:4011",
-    "http://localhost:4012",
-  ]
 }
 
 variable "direct_access_grants_enabled" {

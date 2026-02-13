@@ -619,7 +619,8 @@ jobs:
           terraform apply -auto-approve \
             -var-file=environments/ci.tfvars \
             -var='keycloak_url=http://localhost:${{ vars.DEV_PG_KEYCLOAK }}' \
-            -var='valid_redirect_uris=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/*"]'
+            -var='valid_redirect_uris=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/*"]' \
+            -var='web_origins=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}"]'
 
           # Export client secret for integration tests
           echo "MCP_GATEWAY_CLIENT_SECRET=$(terraform output -raw mcp_gateway_client_secret)" >> $GITHUB_ENV
