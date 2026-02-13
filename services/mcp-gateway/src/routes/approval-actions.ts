@@ -25,7 +25,7 @@ async function confirmAction(
   approved: boolean,
   gatewayUrl: string,
   authToken: string
-): Promise<any> {
+): Promise<unknown> {
   const confirmUrl = `${gatewayUrl}/api/confirm/${confirmationId}`;
 
   logger.info('[APPROVAL] Executing confirmation', { confirmationId, approved });
@@ -97,14 +97,24 @@ router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedReque
     }
 
     return res.json(mcpResponse.data);
-  } catch (error: any) {
-    logger.error('[APPROVAL] Time-off approval failed', { error: error.message });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const statusCode = error && typeof error === 'object' && 'response' in error &&
+                       error.response && typeof error.response === 'object' &&
+                       'status' in error.response ?
+                       (error.response.status as number) : 500;
+    const details = error && typeof error === 'object' && 'response' in error &&
+                    error.response && typeof error.response === 'object' &&
+                    'data' in error.response ?
+                    error.response.data : errorMessage;
 
-    return res.status(error.response?.status || 500).json({
+    logger.error('[APPROVAL] Time-off approval failed', { error: errorMessage });
+
+    return res.status(statusCode).json({
       status: 'error',
       code: 'APPROVAL_FAILED',
       message: 'Failed to approve time-off request',
-      details: error.response?.data || error.message,
+      details,
     });
   }
 });
@@ -162,14 +172,24 @@ router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRe
     }
 
     return res.json(mcpResponse.data);
-  } catch (error: any) {
-    logger.error('[APPROVAL] Expense approval failed', { error: error.message });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const statusCode = error && typeof error === 'object' && 'response' in error &&
+                       error.response && typeof error.response === 'object' &&
+                       'status' in error.response ?
+                       (error.response.status as number) : 500;
+    const details = error && typeof error === 'object' && 'response' in error &&
+                    error.response && typeof error.response === 'object' &&
+                    'data' in error.response ?
+                    error.response.data : errorMessage;
 
-    return res.status(error.response?.status || 500).json({
+    logger.error('[APPROVAL] Expense approval failed', { error: errorMessage });
+
+    return res.status(statusCode).json({
       status: 'error',
       code: 'APPROVAL_FAILED',
       message: 'Failed to approve expense report',
-      details: error.response?.data || error.message,
+      details,
     });
   }
 });

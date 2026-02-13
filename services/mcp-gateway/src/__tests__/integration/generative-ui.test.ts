@@ -449,7 +449,7 @@ describeIntegration('MCP UI - User Context Propagation', () => {
 
   test('User context is passed correctly via X-User-ID header', async () => {
     const customUserId = 'test-user-id-12345';
-    const { status, data } = await postDisplay(
+    const { status } = await postDisplay(
       client,
       'display:hr:org_chart:userId=me,depth=1',
       {
