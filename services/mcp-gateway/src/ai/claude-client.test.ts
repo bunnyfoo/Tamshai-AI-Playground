@@ -23,7 +23,7 @@ describe('ClaudeClient', () => {
     config = {
       model: 'claude-sonnet-4-20250514',
       maxTokens: 4096,
-      apiKey: 'sk-ant-api03-real-key', // Real key format (not test key)
+      apiKey: 'sk-ant-api03-test-DUMMY-KEY-NOT-REAL', // pragma: allowlist secret - Test dummy value
     };
 
     // Mock Anthropic instance
@@ -45,7 +45,7 @@ describe('ClaudeClient', () => {
     it('should initialize with default maxTokens if not provided', () => {
       const configWithoutMaxTokens = {
         model: 'claude-sonnet-4-20250514',
-        apiKey: 'sk-ant-api03-real-key',
+        apiKey: 'sk-ant-api03-test-DUMMY-KEY-NOT-REAL', // pragma: allowlist secret
       };
       const clientWithDefaults = new ClaudeClient(mockAnthropic, configWithoutMaxTokens, mockLogger);
       expect(clientWithDefaults).toBeDefined();
@@ -374,7 +374,7 @@ describe('ClaudeClient', () => {
       const customConfig = {
         model: 'claude-opus-4',
         maxTokens: 8192,
-        apiKey: 'sk-ant-api03-real-key',
+        apiKey: 'sk-ant-api03-test-DUMMY-KEY-NOT-REAL', // pragma: allowlist secret
       };
       const customClient = new ClaudeClient(mockAnthropic, customConfig, mockLogger);
       jest.spyOn(customClient, 'isMockMode').mockReturnValue(false);

@@ -170,6 +170,7 @@ npx playwright test specs/login-journey.ui.spec.ts specs/customer-login-journey.
 On Windows with Git Bash, `export VAR=value` works correctly (unlike `set` in cmd.exe). The commands above work as-is in Git Bash.
 
 **Alternative: Use .env file** — Create `tests/e2e/.env` with credentials. The Playwright config loads it via `dotenv`:
+
 ```bash
 TEST_USER_PASSWORD=<from-github-secrets>
 TEST_USER_TOTP_SECRET=<from-github-secrets>
@@ -182,10 +183,12 @@ CUSTOMER_USER_PASSWORD=<from-infrastructure-docker-env>
 ### Windows Insight: oathtool Fallback
 
 On Windows Git Bash, `oathtool` is not available (it's a Linux/macOS tool). The test framework automatically falls back to **otplib** (JavaScript) for TOTP code generation. You'll see this in the test output:
-```
+
+```text
 oathtool failed, falling back to otplib: spawnSync /bin/bash ENOENT
 Generated TOTP code using otplib (SHA1 fallback)
 ```
+
 This is normal and expected on Windows.
 
 ### Environment Variables
@@ -199,9 +202,12 @@ This is normal and expected on Windows.
 | `CUSTOMER_USER_PASSWORD` | For customer tests | `.env` file / GitHub Secret | Password for customer realm users |
 | `TEST_USERNAME` | No | N/A | Override username (default: `test-user.journey`) |
 
+<!-- Note: TEST_USER_PASSWORD and TEST_USER_TOTP_SECRET are GitHub Secrets - pragma: allowlist secret -->
+
 *Required for full employee login journey test. Without `TEST_USER_PASSWORD`, the TOTP login test is skipped. Without `TEST_USER_TOTP_SECRET`, globalSetup is skipped (tests fall back to auto-capture).
 
 **Loading secrets from .env** (Terraform-generated, contains all passwords):
+
 ```bash
 export DEV_USER_PASSWORD=$(grep '^DEV_USER_PASSWORD=' ../../infrastructure/docker/.env | cut -d= -f2)
 export CUSTOMER_USER_PASSWORD=$(grep '^CUSTOMER_USER_PASSWORD=' ../../infrastructure/docker/.env | cut -d= -f2)
@@ -292,6 +298,7 @@ Tamshai uses browser authentication with OTP:
 2. Verify system clock is synchronized
 3. Wait for new 30-second window before retrying
 4. **After fresh deployment**: Delete cached secrets and run WITHOUT `TEST_USER_TOTP_SECRET` env var:
+
    ```bash
    rm -rf tests/e2e/.totp-secrets/
    cd tests/e2e
@@ -299,6 +306,7 @@ Tamshai uses browser authentication with OTP:
    export TEST_USER_PASSWORD="<from-github-secrets>"
    npx playwright test specs/login-journey.ui.spec.ts --reporter=list
    ```
+
    The test will auto-capture the new secret.
 
 **Common Cause (Stage)**: The `deploy-vps.yml` workflow clears TOTP credentials on each deployment. If you pass an old `TEST_USER_TOTP_SECRET` from GitHub Secrets, it won't match the newly captured TOTP in Keycloak.
@@ -314,6 +322,7 @@ Tamshai uses browser authentication with OTP:
 **Cause**: Cached secret file doesn't exist or doesn't match
 
 **Solution**: Delete `.totp-secrets/` directory and let test re-capture:
+
 ```bash
 rm -rf tests/e2e/.totp-secrets/
 ```
@@ -359,6 +368,7 @@ The exclamation mark (`!`) character causes issues across multiple layers:
 - `\` - Escape character
 
 **Example:**
+
 ```bash
 # BAD - ! will cause issues
 TEST_USER_PASSWORD="MyPass!123"
@@ -417,7 +427,7 @@ jobs:
 
 ## File Structure
 
-```
+```text
 tests/e2e/
 ├── specs/
 │   ├── login-journey.ui.spec.ts           # Employee login journey (6 tests)
@@ -463,6 +473,7 @@ done
 4. Subsequent tests use cached secret
 
 **Verified Working Command** (January 16, 2026):
+
 ```bash
 # After fresh deployment - let test auto-capture TOTP
 cd tests/e2e
@@ -485,6 +496,7 @@ E2E tests verified working on prod with all 6 tests passing:
 - No 404 errors for assets
 
 **Verified Working Command** (January 16, 2026):
+
 ```bash
 cd tests/e2e
 export TEST_ENV=prod
@@ -502,6 +514,7 @@ All tests verified working after full infrastructure rebuild:
 - Customer login: 13/13 passed (~16s)
 
 **Verified Working Commands** (February 9, 2026):
+
 ```bash
 cd tests/e2e
 

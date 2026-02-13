@@ -7,6 +7,8 @@ dist/
 build/
 *.js.map
 .turbo/
+*.tsbuildinfo
+**/*.tsbuildinfo
 
 # Environment files (contain secrets)
 .env
@@ -33,6 +35,10 @@ npm-debug.log*
 # Test coverage
 coverage/
 .nyc_output/
+
+# Performance test results (contain test data/tokens)
+tests/performance/*-results.json
+tests/performance/summary.json
 
 # Terraform
 .terraform/
