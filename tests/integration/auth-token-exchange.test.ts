@@ -42,7 +42,8 @@ describe('Token Exchange Integration', () => {
       const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
 
       expect(payload.azp).toBe('mcp-integration-runner'); // Authorized party
-      expect(payload.iss).toBe(`${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`);
+      // Keycloak issuer uses its configured frontend URL, not the URL used to connect
+      expect(payload.iss).toContain(`/realms/${KEYCLOAK_REALM}`);
       expect(payload.typ).toBe('Bearer');
     });
 
@@ -88,7 +89,10 @@ describe('Token Exchange Integration', () => {
 
       expect(payload.preferred_username).toBe('alice.chen');
       expect(payload.typ).toBe('Bearer');
-      expect(payload.resource_access).toBeDefined();
+      // Token exchange produces realm roles (not client roles under resource_access)
+      // The MCP Gateway handles both via jwt-validator.ts merging realmRoles + clientRoles
+      expect(payload.realm_access).toBeDefined();
+      expect(payload.realm_access.roles).toBeDefined();
     });
 
     it('should exchange service token for bob.martinez user token', async () => {
@@ -134,10 +138,11 @@ describe('Token Exchange Integration', () => {
       const tokenParts = aliceToken.split('.');
       const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
 
-      // Alice has hr-read and hr-write roles
-      const mcpGatewayRoles = payload.resource_access?.['mcp-gateway']?.roles || [];
-      expect(mcpGatewayRoles).toContain('hr-read');
-      expect(mcpGatewayRoles).toContain('hr-write');
+      // Alice has hr-read and hr-write roles (in realm_access for token exchange)
+      // The MCP Gateway merges realm_access + resource_access roles (jwt-validator.ts:107)
+      const realmRoles = payload.realm_access?.roles || [];
+      expect(realmRoles).toContain('hr-read');
+      expect(realmRoles).toContain('hr-write');
     });
   });
 
@@ -162,21 +167,21 @@ describe('Token Exchange Integration', () => {
       const aliceToken = await authProvider.getUserToken('alice.chen');
 
       // Call MCP Gateway to list available tools
-      const response = await axios.get(`${MCP_GATEWAY_URL}/mcp/tools`, {
+      const response = await axios.get(`${MCP_GATEWAY_URL}/api/mcp/tools`, {
         headers: {
           Authorization: `Bearer ${aliceToken}`,
         },
       });
 
       expect(response.status).toBe(200);
-      expect(response.data.tools).toBeDefined();
-      expect(Array.isArray(response.data.tools)).toBe(true);
+      expect(response.data.accessibleDataSources).toBeDefined();
+      expect(Array.isArray(response.data.accessibleDataSources)).toBe(true);
 
-      // Alice should have access to HR tools
-      const hrTools = response.data.tools.filter((tool: any) =>
-        tool.name.startsWith('hr.')
+      // Alice should have access to HR data source
+      const hrSources = response.data.accessibleDataSources.filter((ds: any) =>
+        ds.name === 'mcp-hr'
       );
-      expect(hrTools.length).toBeGreaterThan(0);
+      expect(hrSources.length).toBeGreaterThan(0);
     });
 
     it('should enforce RBAC with impersonated token', async () => {
@@ -185,19 +190,21 @@ describe('Token Exchange Integration', () => {
       // Frank Davis (intern) has minimal access
       const frankToken = await authProvider.getUserToken('frank.davis');
 
-      const response = await axios.get(`${MCP_GATEWAY_URL}/mcp/tools`, {
+      const response = await axios.get(`${MCP_GATEWAY_URL}/api/mcp/tools`, {
         headers: {
           Authorization: `Bearer ${frankToken}`,
         },
       });
 
       expect(response.status).toBe(200);
+      expect(response.data.accessibleDataSources).toBeDefined();
 
-      // Frank should NOT have access to finance tools
-      const financeTools = response.data.tools.filter((tool: any) =>
-        tool.name.startsWith('finance.')
+      // Frank (intern, employee role) should NOT have access to sales data source
+      // Sales requires sales-read, sales-write, or executive role
+      const salesSources = response.data.accessibleDataSources.filter((ds: any) =>
+        ds.name === 'mcp-sales'
       );
-      expect(financeTools.length).toBe(0);
+      expect(salesSources.length).toBe(0);
     });
 
     it('should reject expired tokens', async () => {
