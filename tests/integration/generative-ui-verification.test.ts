@@ -159,7 +159,7 @@ describe('Generative UI - Full Verification Suite', () => {
         data.budgetAmendments.length;
     });
 
-    test.skip('should approve time-off request and persist to database (API endpoints pending)', async () => {
+    test('should approve time-off request and persist to database', async () => {
       // Get a pending time-off request
       const approvalsResponse = await httpClient.post(
         '/api/display',
@@ -214,7 +214,7 @@ describe('Generative UI - Full Verification Suite', () => {
       expect(stillExists).toBe(false);
     });
 
-    test.skip('should approve expense report and persist to database (API endpoints pending)', async () => {
+    test('should approve expense report and persist to database', async () => {
       const approvalsResponse = await httpClient.post(
         '/api/display',
         { directive: 'display:approvals:pending:userId=me' },
@@ -377,9 +377,8 @@ describe('Generative UI - Full Verification Suite', () => {
       expect(response.data.component.props).toHaveProperty('grossPay');
     });
 
-    test.skip('should render pay runs list (requires valid status value)', async () => {
-      // Tool returns INVALID_INPUT for status=COMPLETED
-      // Need to check MCP payroll tool for valid status enum values
+    test('should render pay runs list', async () => {
+      // Valid status values: DRAFT, PENDING, APPROVED, PROCESSED, CANCELLED
       const response = await httpClient.post(
         '/api/display',
         {
@@ -396,16 +395,15 @@ describe('Generative UI - Full Verification Suite', () => {
   });
 
   describe('8. Tax Domain - Display Directives', () => {
-    test.skip('should render quarterly estimate component (user lacks tax-read role)', async () => {
-      // Alice Chen has roles: hr-write, manager, hr-read, employee
-      // Missing required role: tax-read (MCP Gateway returns 403 Forbidden)
-      // TODO: Either assign tax-read role to test user or use different user (e.g., Bob with finance-read)
+    test('should render quarterly estimate component', async () => {
+      // Use Bob Martinez (finance-read role) instead of Alice (hr-read only)
+      // Bob has finance-read which includes tax data access
       const response = await httpClient.post(
         '/api/display',
         {
           directive: 'display:tax:quarterly_estimate:quarter=1&year=2026',
         },
-        { headers: { Authorization: `Bearer ${aliceToken}` } }
+        { headers: { Authorization: `Bearer ${bobToken}` } }
       );
 
       expect(response.status).toBe(200);

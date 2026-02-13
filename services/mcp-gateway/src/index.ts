@@ -43,6 +43,7 @@ import gdprRoutes from './routes/gdpr';
 import healthRoutes from './routes/health.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
+import approvalActionsRouter from './routes/approval-actions';
 import { JWTValidator } from './auth/jwt-validator';
 import { createAuthMiddleware } from './middleware/auth.middleware';
 import { createStreamingRoutes, drainConnections, getActiveConnectionCount } from './routes/streaming.routes';
@@ -544,6 +545,14 @@ const confirmationRouter = createConfirmationRoutes({
 
 // Mount confirmation routes at /api with auth
 app.use('/api', authMiddleware, confirmationRouter);
+
+// =============================================================================
+// APPROVAL WORKFLOW ROUTES (v1.5 - Generative UI)
+// =============================================================================
+// Gateway endpoints for approval workflows with auto-confirmation
+// Wraps MCP server approval tools for simplified approve/reject actions
+
+app.use('/api', authMiddleware, approvalActionsRouter);
 
 // =============================================================================
 // MCP PROXY ROUTES (Extracted for testability - Phase 7 Refactoring)

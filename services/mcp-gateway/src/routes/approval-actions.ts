@@ -1,0 +1,177 @@
+/**
+ * Approval Actions Routes
+ *
+ * Gateway endpoints for approval workflows with auto-confirmation.
+ * Wraps MCP server confirmation flows to provide simplified approve/reject actions.
+ */
+import { Router, Response } from 'express';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import axios from 'axios';
+import winston from 'winston';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [new winston.transports.Console()],
+});
+
+const router = Router();
+
+/**
+ * Helper function to execute confirmation
+ */
+async function confirmAction(
+  confirmationId: string,
+  approved: boolean,
+  gatewayUrl: string,
+  authToken: string
+): Promise<any> {
+  const confirmUrl = `${gatewayUrl}/api/confirm/${confirmationId}`;
+
+  logger.info('[APPROVAL] Executing confirmation', { confirmationId, approved });
+
+  const response = await axios.post(
+    confirmUrl,
+    { approved },
+    {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  return response.data;
+}
+
+/**
+ * POST /api/mcp/hr/tools/approve_time_off_request
+ *
+ * Approve or reject a time-off request with auto-confirmation
+ * Auth middleware applied at app level in index.ts
+ */
+router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedRequest, res: Response) => {
+  const { requestId, approved } = req.body;
+  const authToken = req.headers.authorization?.replace('Bearer ', '') || '';
+
+  if (!requestId) {
+    return res.status(400).json({
+      status: 'error',
+      code: 'MISSING_FIELD',
+      message: 'Missing required field: requestId',
+    });
+  }
+
+  try {
+    const mcpHrUrl = process.env.MCP_HR_URL || 'http://localhost:3101';
+    const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+
+    logger.info('[APPROVAL] Approving time-off request', { requestId, approved });
+
+    // Call MCP HR tool
+    const mcpResponse = await axios.post(
+      `${mcpHrUrl}/tools/approve_time_off_request`,
+      { requestId, approved: approved !== false },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // If pending_confirmation, auto-confirm immediately
+    if (mcpResponse.data.status === 'pending_confirmation' && mcpResponse.data.confirmationId) {
+      const confirmResult = await confirmAction(
+        mcpResponse.data.confirmationId,
+        true,
+        gatewayUrl,
+        authToken!
+      );
+
+      return res.json({
+        status: 'success',
+        message: 'Time-off request approved successfully',
+        data: confirmResult,
+      });
+    }
+
+    return res.json(mcpResponse.data);
+  } catch (error: any) {
+    logger.error('[APPROVAL] Time-off approval failed', { error: error.message });
+
+    return res.status(error.response?.status || 500).json({
+      status: 'error',
+      code: 'APPROVAL_FAILED',
+      message: 'Failed to approve time-off request',
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/mcp/finance/tools/approve_expense_report
+ *
+ * Approve an expense report with auto-confirmation
+ * Auth middleware applied at app level in index.ts
+ */
+router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRequest, res: Response) => {
+  const { reportId, approved } = req.body;
+  const authToken = req.headers.authorization?.replace('Bearer ', '') || '';
+
+  if (!reportId) {
+    return res.status(400).json({
+      status: 'error',
+      code: 'MISSING_FIELD',
+      message: 'Missing required field: reportId',
+    });
+  }
+
+  try {
+    const mcpFinanceUrl = process.env.MCP_FINANCE_URL || 'http://localhost:3102';
+    const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+
+    logger.info('[APPROVAL] Approving expense report', { reportId, approved });
+
+    // Call MCP Finance tool
+    const mcpResponse = await axios.post(
+      `${mcpFinanceUrl}/tools/approve_expense_report`,
+      { reportId, approved: approved !== false },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // If pending_confirmation, auto-confirm immediately
+    if (mcpResponse.data.status === 'pending_confirmation' && mcpResponse.data.confirmationId) {
+      const confirmResult = await confirmAction(
+        mcpResponse.data.confirmationId,
+        true,
+        gatewayUrl,
+        authToken!
+      );
+
+      return res.json({
+        status: 'success',
+        message: 'Expense report approved successfully',
+        data: confirmResult,
+      });
+    }
+
+    return res.json(mcpResponse.data);
+  } catch (error: any) {
+    logger.error('[APPROVAL] Expense approval failed', { error: error.message });
+
+    return res.status(error.response?.status || 500).json({
+      status: 'error',
+      code: 'APPROVAL_FAILED',
+      message: 'Failed to approve expense report',
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
+export default router;
