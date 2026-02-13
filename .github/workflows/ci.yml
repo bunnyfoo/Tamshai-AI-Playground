@@ -1125,8 +1125,8 @@ jobs:
           KEYCLOAK_URL: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp
-          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/certs
+          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp
+          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp/protocol/openid-connect/certs
           TOKEN_REVOCATION_FAIL_OPEN: 'true'
           LOG_LEVEL: warn
           MCP_HR_URL: http://localhost:${{ vars.DEV_PG_MCP_HR }}
@@ -1232,8 +1232,8 @@ jobs:
           KEYCLOAK_URL: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp
-          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/certs
+          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp
+          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp/protocol/openid-connect/certs
           LOG_LEVEL: warn
           MCP_HR_URL: http://localhost:${{ vars.DEV_PG_MCP_HR }}
           MCP_FINANCE_URL: http://localhost:${{ vars.DEV_PG_MCP_FINANCE }}
