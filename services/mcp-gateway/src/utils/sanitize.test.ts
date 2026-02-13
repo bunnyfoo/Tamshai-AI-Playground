@@ -271,14 +271,14 @@ describe('sanitizeForLogging', () => {
     test('returns [max depth exceeded] beyond MAX_LOG_DEPTH (3)', () => {
       // depth 0: root, depth 1: a, depth 2: b, depth 3: c, depth 4: d (exceeds 3)
       const deep = { a: { b: { c: { d: { e: 'too deep' } } } } };
-      const result = sanitizeForLogging(deep) as any;
+      const result = sanitizeForLogging(deep) as Record<string, Record<string, Record<string, Record<string, unknown>>>>;
       expect(result.a.b.c.d).toBe('[max depth exceeded]');
     });
 
     test('allows objects up to depth 3', () => {
       // depth 0: root, depth 1: a, depth 2: b, depth 3: c (string, no deeper recursion)
       const nested = { a: { b: { c: 'ok' } } };
-      const result = sanitizeForLogging(nested) as any;
+      const result = sanitizeForLogging(nested) as Record<string, Record<string, Record<string, unknown>>>;
       expect(result.a.b.c).toBe('ok');
     });
   });
@@ -315,7 +315,7 @@ describe('buildSafeQueryParams', () => {
   });
 
   test('filters arrays to string elements only', () => {
-    const result = buildSafeQueryParams({ tags: ['hr', 'finance', 42 as any] });
+    const result = buildSafeQueryParams({ tags: ['hr', 'finance', 42 as unknown as string] });
     expect(result.tags).toEqual(['hr', 'finance']);
   });
 
@@ -339,8 +339,8 @@ describe('buildSafeQueryParams', () => {
   test('skips non-string non-array values', () => {
     const result = buildSafeQueryParams({
       name: 'alice',
-      nested: { a: 1 } as any,
-      count: 42 as any,
+      nested: { a: 1 } as unknown as string,
+      count: 42 as unknown as string,
     });
     expect(result).toHaveProperty('name');
     expect(result).not.toHaveProperty('nested');
