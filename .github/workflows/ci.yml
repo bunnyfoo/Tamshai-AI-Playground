@@ -923,13 +923,13 @@ jobs:
 
       - name: Debug Keycloak and Authentication
         env:
-          DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
           MCP_GATEWAY_CLIENT_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
+          MCP_INTEGRATION_RUNNER_SECRET: ${{ secrets.MCP_INTEGRATION_RUNNER_SECRET }}
         run: |
           echo "=== Environment Variables ==="
           echo "MCP_GATEWAY_CLIENT_SECRET is set: ${MCP_GATEWAY_CLIENT_SECRET:+YES}"
           echo "MCP_GATEWAY_CLIENT_SECRET length: $(echo -n "${MCP_GATEWAY_CLIENT_SECRET}" | wc -c)"
-          echo "DEV_USER_PASSWORD is set: ${DEV_USER_PASSWORD:+YES}"
+          echo "MCP_INTEGRATION_RUNNER_SECRET is set: ${MCP_INTEGRATION_RUNNER_SECRET:+YES}"
           echo ""
 
           echo "=== Keycloak Health Check ==="
@@ -940,14 +940,35 @@ jobs:
           curl -sf http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/health && echo "✅ Gateway is healthy" || echo "❌ Gateway not healthy"
           echo ""
 
-          echo "=== Test Token Acquisition ==="
+          echo "=== Test Token Acquisition (Token Exchange) ==="
+          # Step 1: Get service account token via client credentials
+          echo "Step 1: Acquiring mcp-integration-runner service token..."
+          SVC_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
+            -d "grant_type=client_credentials" \
+            -d "client_id=mcp-integration-runner" \
+            -d "client_secret=${MCP_INTEGRATION_RUNNER_SECRET}")
+
+          SVC_HTTP_CODE=$(echo "$SVC_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+          SVC_BODY=$(echo "$SVC_RESPONSE" | grep -v "HTTP_CODE:")
+
+          if [ "$SVC_HTTP_CODE" != "200" ]; then
+            echo "❌ Service token acquisition failed with HTTP $SVC_HTTP_CODE"
+            echo "Response: $SVC_BODY"
+            exit 1
+          fi
+
+          SVC_TOKEN=$(echo "$SVC_BODY" | jq -r '.access_token')
+          echo "✅ Service token acquired"
+
+          # Step 2: Exchange service token for user token (alice.chen)
+          echo "Step 2: Exchanging for alice.chen user token..."
           TOKEN_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
-            -d "grant_type=password" \
-            -d "client_id=mcp-gateway" \
-            -d "client_secret=${MCP_GATEWAY_CLIENT_SECRET}" \
-            -d "username=alice.chen" \
-            -d "password=${DEV_USER_PASSWORD}" \
-            -d "scope=openid profile email")
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "client_id=mcp-integration-runner" \
+            -d "client_secret=${MCP_INTEGRATION_RUNNER_SECRET}" \
+            -d "subject_token=${SVC_TOKEN}" \
+            -d "requested_subject=alice.chen" \
+            -d "scope=openid profile roles")
 
           HTTP_CODE=$(echo "$TOKEN_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
           RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | grep -v "HTTP_CODE:")
@@ -956,7 +977,7 @@ jobs:
 
           if [ "$HTTP_CODE" = "200" ]; then
             if echo "$RESPONSE_BODY" | jq -e '.access_token' > /dev/null 2>&1; then
-              echo "✅ Token acquisition successful"
+              echo "✅ Token exchange successful"
               TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token')
               echo "Token preview (first 50 chars): ${TOKEN:0:50}..."
               echo ""
@@ -968,7 +989,7 @@ jobs:
               exit 1
             fi
           else
-            echo "❌ Token acquisition failed with HTTP $HTTP_CODE"
+            echo "❌ Token exchange failed with HTTP $HTTP_CODE"
             echo "Response: $RESPONSE_BODY"
             exit 1
           fi
