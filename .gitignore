@@ -36,9 +36,10 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
-# Performance test results (contain test data/tokens)
+# Performance test results and tokens (contain secrets/test data)
 tests/performance/*-results.json
 tests/performance/summary.json
+tests/performance/tokens.json
 
 # Terraform
 .terraform/

@@ -262,6 +262,7 @@ describe('Confirmation Routes', () => {
           userContext: {
             userId: TEST_USERS.hrManager.userId,
             username: TEST_USERS.hrManager.username,
+            email: TEST_USERS.hrManager.email,  // Required for RLS policies
             roles: TEST_USERS.hrManager.roles,
           },
         },
