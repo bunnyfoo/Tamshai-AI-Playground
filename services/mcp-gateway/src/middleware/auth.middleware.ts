@@ -58,8 +58,8 @@ export function createAuthMiddleware(config: AuthMiddlewareConfig) {
     const authHeader = req.headers.authorization;
     const tokenFromQuery = req.query.token as string | undefined;
 
-    // DEBUG: Log incoming request
-    logger.info('[AUTH] Request received', {
+    // DEBUG: Log incoming request (using warn level to appear in CI logs)
+    logger.warn('[AUTH-DEBUG] Request received', {
       path: req.path,
       method: req.method,
       hasAuthHeader: !!authHeader,
