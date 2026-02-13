@@ -93,7 +93,7 @@ function saveTotpSecretToCache(username: string, environment: string, secret: st
     }
     const secretFile = path.join(TOTP_SECRETS_DIR, `${username}-${environment}.secret`);
     fs.writeFileSync(secretFile, secret, 'utf-8');
-    console.log(`[globalSetup] Saved TOTP cache: ${secretFile} ([REDACTED])`);
+    console.log('[globalSetup] Saved TOTP cache file successfully');
   } catch (error: any) {
     console.warn(`[globalSetup] Failed to save TOTP cache: ${error.message}`);
   }
