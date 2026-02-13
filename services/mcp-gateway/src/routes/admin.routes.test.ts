@@ -323,3 +323,205 @@ describe('Admin Routes Module', () => {
     expect(typeof actualAdminRoutes).toBe('function'); // Express router is a function
   });
 });
+
+/**
+ * Tests using the ACTUAL admin routes module (not the mock).
+ * These test the real middleware, helper functions, and route handlers.
+ */
+describe('Actual Admin Routes - Middleware', () => {
+  let app: Express;
+
+  describe('adminRoutesEnabled middleware', () => {
+    beforeEach(() => {
+      app = express();
+      app.use(express.json());
+      // Use actual router from the module
+      app.use('/api/admin', actualAdminRoutes);
+    });
+
+    test('rejects requests in production environment', async () => {
+      const origEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      try {
+        const response = await request(app)
+          .get('/api/admin/health')
+          .set('X-Admin-Key', 'any-key');
+
+        expect(response.status).toBe(403);
+        expect(response.body.code).toBe('ADMIN_DISABLED');
+        expect(response.body.message).toContain('production');
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
+
+    test('returns 503 when ADMIN_API_KEY is not configured (fail-closed)', async () => {
+      // ADMIN_API_KEY is read at module load time, so if it's not set
+      // in the test environment, the actual middleware returns 503
+      if (ACTUAL_ADMIN_API_KEY) {
+        // If ADMIN_API_KEY happens to be set in the test env, skip this test
+        return;
+      }
+
+      const origEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'test';
+
+      try {
+        const response = await request(app)
+          .get('/api/admin/health')
+          .set('X-Admin-Key', 'any-key');
+
+        expect(response.status).toBe(503);
+        expect(response.body.code).toBe('ADMIN_NOT_CONFIGURED');
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
+
+    test('rejects invalid admin key with 401', async () => {
+      if (!ACTUAL_ADMIN_API_KEY) {
+        // Without ADMIN_API_KEY configured, middleware returns 503 before key check
+        return;
+      }
+
+      const origEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'test';
+
+      try {
+        const response = await request(app)
+          .get('/api/admin/health')
+          .set('X-Admin-Key', 'definitely-wrong-key');
+
+        expect(response.status).toBe(401);
+        expect(response.body.code).toBe('INVALID_ADMIN_KEY');
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
+  });
+});
+
+/**
+ * Tests for actual admin route handlers that DON'T require database operations.
+ * These test the real seed, clear, and health endpoints.
+ */
+describe('Actual Admin Routes - Handlers (isolated via jest.isolateModules)', () => {
+  const TEST_ADMIN_KEY = 'test-admin-key-for-ci';
+  let app: Express;
+  let adminRoutes: typeof actualAdminRoutes;
+
+  beforeAll(() => {
+    // Set ADMIN_API_KEY before importing the module
+    process.env.ADMIN_API_KEY = TEST_ADMIN_KEY;
+    process.env.NODE_ENV = 'test';
+  });
+
+  beforeEach(async () => {
+    // Re-import the module to pick up env vars
+    // (ADMIN_API_KEY is read at module load, so we use dynamic import with cache bust)
+    jest.resetModules();
+    const mod = await import('./admin.routes');
+    adminRoutes = mod.default;
+
+    app = express();
+    app.use(express.json());
+    app.use('/api/admin', adminRoutes);
+  });
+
+  afterAll(() => {
+    delete process.env.ADMIN_API_KEY;
+  });
+
+  describe('GET /api/admin/health', () => {
+    test('returns health status with snapshot metadata', async () => {
+      const response = await request(app)
+        .get('/api/admin/health')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('healthy');
+      expect(response.body.timestamp).toBeDefined();
+      expect(response.body.snapshotDir).toBeDefined();
+      expect(response.body.snapshotCount).toBeDefined();
+    });
+  });
+
+  describe('POST /api/admin/seed/:scenario', () => {
+    test('returns success for any scenario', async () => {
+      const response = await request(app)
+        .post('/api/admin/seed/invoice-bulk-approval')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.scenario).toBe('invoice-bulk-approval');
+      expect(response.body.timestamp).toBeDefined();
+    });
+
+    test('echoes scenario name in response', async () => {
+      const response = await request(app)
+        .post('/api/admin/seed/payroll-reset')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(200);
+
+      expect(response.body.message).toContain('payroll-reset');
+    });
+  });
+
+  describe('POST /api/admin/clear/:domain', () => {
+    test('returns success for any domain', async () => {
+      const response = await request(app)
+        .post('/api/admin/clear/finance')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.domain).toBe('finance');
+      expect(response.body.timestamp).toBeDefined();
+    });
+
+    test('echoes domain name in response', async () => {
+      const response = await request(app)
+        .post('/api/admin/clear/hr')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(200);
+
+      expect(response.body.message).toContain('hr');
+    });
+  });
+
+  describe('GET /api/admin/snapshots', () => {
+    test('returns empty list initially', async () => {
+      const response = await request(app)
+        .get('/api/admin/snapshots')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.data).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('POST /api/admin/snapshots/:snapshotId/rollback', () => {
+    test('returns 404 for non-existent snapshot', async () => {
+      const response = await request(app)
+        .post('/api/admin/snapshots/non-existent-id/rollback')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(404);
+
+      expect(response.body.code).toBe('SNAPSHOT_NOT_FOUND');
+    });
+  });
+
+  describe('DELETE /api/admin/snapshots/:snapshotId', () => {
+    test('returns 404 for non-existent snapshot', async () => {
+      const response = await request(app)
+        .delete('/api/admin/snapshots/non-existent-id')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
+        .expect(404);
+
+      expect(response.body.code).toBe('SNAPSHOT_NOT_FOUND');
+    });
+  });
+});
