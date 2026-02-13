@@ -19,7 +19,7 @@ Environment variables are automatically derived from `infrastructure/docker/.env
 
 > **Important**: Tests must run sequentially with `--runInBand` (configured in jest config).  
 > Parallel test execution causes race conditions on shared Keycloak and database state.  
-> See [Parallel Test Isolation Issues](#parallel-test-isolation-issues) for details. 
+> See [Parallel Test Isolation Issues](#parallel-test-isolation-issues) for details.
 
 ---
 
@@ -38,6 +38,7 @@ Comprehensive integration test suite for the Tamshai Enterprise AI system, cover
 ## Test Coverage
 
 ### Test Files
+
 File
 Tests
 Coverage
@@ -97,8 +98,8 @@ All 19 MCP tools, Multi-role access, Confirmations, Performance
 * ✅ Filtering by department/status/stage
 * ✅ Query parameter validation
 
-**Example**: 
-    
+**Example**:
+
     `// Test: list_employees returns pagination metadata  
     const response = await hrClient.post('/tools/list_employees', {  
     userContext: { userId, roles },  
@@ -124,8 +125,8 @@ All 19 MCP tools, Multi-role access, Confirmations, Performance
 * ✅ Stores confirmation in Redis with 5-minute TTL
 * ✅ Includes `confirmationData` for UI display
 
-**Example**: 
-    
+**Example**:
+
     `// Test: delete_employee requires confirmation  
     const response = await hrClient.post('/tools/delete_employee', {  
     userContext: { userId, roles },  
@@ -175,8 +176,8 @@ No MCP access (401/403)
 * ✅ Intern role has no MCP access
 * ✅ Manager sees filtered data (RLS)
 
-**Example**: 
-    
+**Example**:
+
     `// Test: HR user cannot access Finance data  
     const hrToken = await getAccessToken('alice.chen', '[REDACTED-DEV-PASSWORD]');  
     const financeClient = createMcpClient(financeUrl, hrToken, userId);  
@@ -193,8 +194,8 @@ No MCP access (401/403)
 
 **Coverage**: All read tools
 
-**Error Schema**: 
-    
+**Error Schema**:
+
     `{  
     status: 'error',  
     code: 'EMPLOYEE_NOT_FOUND',  // Machine-readable code  
@@ -214,8 +215,8 @@ No MCP access (401/403)
 
 **Coverage**: All list/search tools
 
-**Metadata Schema** (cursor-based pagination): 
-    
+**Metadata Schema** (cursor-based pagination):
+
     `{  
     metadata: {  
     hasMore: true,            // More records available  
@@ -256,8 +257,8 @@ No MCP access (401/403)
 
 ### 1\. Backend Services Running
 
-All services must be up and healthy: 
-    
+All services must be up and healthy:
+
     `cd infrastructure/docker  
     docker compose up -d  
       
@@ -295,10 +296,10 @@ npm test
 ```
 
 **Service Account Details**:
-- **Client ID**: `mcp-integration-runner`
-- **Client Secret**: From `MCP_INTEGRATION_RUNNER_SECRET` environment variable
-- **Authentication Flow**: Client Credentials → Token Exchange (impersonate test users)
-- **Environment**: Dev and CI only (not created in stage/prod)
+* **Client ID**: `mcp-integration-runner`
+* **Client Secret**: From `MCP_INTEGRATION_RUNNER_SECRET` environment variable
+* **Authentication Flow**: Client Credentials → Token Exchange (impersonate test users)
+* **Environment**: Dev and CI only (not created in stage/prod)
 
 **Fallback Method: ROPC (Deprecated)**
 
@@ -327,8 +328,8 @@ export DEV_USER_PASSWORD=$(grep '^DEV_USER_PASSWORD=' ../../infrastructure/docke
 
 ### 3\. Sample Data Loaded
 
-Databases must contain sample data: 
-    
+Databases must contain sample data:
+
     `# PostgreSQL - HR & Finance  
     docker compose exec postgres psql -U tamshai -d tamshai_hr -c "SELECT COUNT(*) FROM hr.employees;"  
     # Expected: 59 employees (as of Jan 2026)  
@@ -346,8 +347,8 @@ Databases must contain sample data:
 
 ## Running Tests
 
-### Install Dependencies 
-    
+### Install Dependencies
+
     `cd tests/integration  
     npm install  
     `
@@ -359,8 +360,8 @@ Databases must contain sample data:
 * `axios` - HTTP client
 * `@types/jest` - Type definitions
 
-### Run All Tests 
-    
+### Run All Tests
+
     `# Run all integration tests  
     npm test  
       
@@ -372,8 +373,8 @@ Databases must contain sample data:
     npm test mcp-tools.test.ts  
     `
 
-### Run Specific Test Suites 
-    
+### Run Specific Test Suites
+
     `# RBAC tests only  
     npm test -- --testNamePattern="Authorization Tests"  
       
@@ -387,8 +388,8 @@ Databases must contain sample data:
     npm test -- --testNamePattern="Performance Tests"  
     `
 
-### Watch Mode (Development) 
-    
+### Watch Mode (Development)
+
     `# Re-run tests on file changes  
     npm test -- --watch  
       
@@ -415,8 +416,8 @@ Databases must contain sample data:
 
 **Error**: `401 Unauthorized` on Keycloak token requests
 
-**Fix**: 
-    
+**Fix**:
+
 ```bash
 # Verify Keycloak is running (note: /auth prefix required for local dev)
 curl http://localhost:$PORT_KEYCLOAK/auth/health/ready
@@ -463,7 +464,7 @@ curl -s "http://localhost:$PORT_KEYCLOAK/auth/admin/realms/tamshai-corp/users" \
 **Fix**:
 
 * Ensure MCP server implements LIMIT+1 pattern with cursor-based pagination:
-    
+
     `const result = await db.query('SELECT * FROM employees LIMIT $1', [limit + 1]);  
     const hasMore = result.rows.length > limit;  
     const data = result.rows.slice(0, limit);  
@@ -471,7 +472,7 @@ curl -s "http://localhost:$PORT_KEYCLOAK/auth/admin/realms/tamshai-corp/users" \
     `
 
 * Add pagination metadata to response:
-    
+
     `return {  
     status: 'success',  
     data: data,  
@@ -491,14 +492,14 @@ curl -s "http://localhost:$PORT_KEYCLOAK/auth/admin/realms/tamshai-corp/users" \
 **Fix**:
 
 * Ensure write tools store confirmation in Redis:
-    
+
     `const confirmationId = crypto.randomUUID();  
     await redis.setex(\`pending:${confirmationId}\`, 300, JSON.stringify({  
     action: 'delete_employee',  
     employeeId,  
     userId  
     }));  
-      
+
     return {  
     status: 'pending_confirmation',  
     confirmationId,  
@@ -513,8 +514,8 @@ curl -s "http://localhost:$PORT_KEYCLOAK/auth/admin/realms/tamshai-corp/users" \
 
 ### GitHub Actions Workflow
 
-Add to `.github/workflows/integration-tests.yml`: 
-    
+Add to `.github/workflows/integration-tests.yml`:
+
     `name: Integration Tests  
       
     on:  
@@ -573,7 +574,7 @@ When adding new MCP tools, update `mcp-tools.test.ts`:
     userContext: { userId, roles },  
     // ... tool input  
     });  
-      
+
     expect(response.data.status).toBe('success');  
     // ... assertions  
     });  
@@ -604,6 +605,7 @@ If user UUIDs change:
 ## Performance Benchmarks
 
 ### Current Performance (as of Dec 2025)
+
 Operation
 Target
 Actual
@@ -627,13 +629,13 @@ Health check
 
 ### Monitoring Performance
 
-Run performance tests separately: 
-    
+Run performance tests separately:
+
     `npm test -- --testNamePattern="Performance Tests" --verbose  
     `
 
-Look for timing information in test output: 
-    
+Look for timing information in test output:
+
     ` ✓ list_employees completes within 2 seconds for 50 records (823 ms)  
     ✓ Truncation detection adds minimal overhead (<100ms) (67 ms)  
     ✓ Concurrent tool calls complete successfully (1234 ms)  
@@ -645,8 +647,8 @@ Look for timing information in test output:
 
 ### Debug Mode
 
-Enable verbose logging: 
-    
+Enable verbose logging:
+
     `# Set DEBUG environment variable  
     DEBUG=* npm test  
       
@@ -656,8 +658,8 @@ Enable verbose logging:
 
 ### Inspect HTTP Requests
 
-Add request/response logging to test file: 
-    
+Add request/response logging to test file:
+
     `axios.interceptors.request.use(request => {  
     console.log('Request:', request.method, request.url, request.data);  
     return request;  
@@ -671,8 +673,8 @@ Add request/response logging to test file:
 
 ### Check Redis Confirmations
 
-Verify confirmations are being stored: 
-    
+Verify confirmations are being stored:
+
     `# List all pending confirmations  
     docker compose exec redis redis-cli KEYS "pending:*"  
       
@@ -685,8 +687,8 @@ Verify confirmations are being stored:
 
 ### Database Query Verification
 
-Test RLS policies directly: 
-    
+Test RLS policies directly:
+
     `# Connect as specific user  
     docker compose exec postgres psql -U tamshai -d tamshai_hr  
       
@@ -746,8 +748,8 @@ When one test file's `afterAll` closes these pools, other running tests lose the
 
 ### Solution
 
-The Jest configuration uses `--runInBand` to run tests sequentially: 
-    
+The Jest configuration uses `--runInBand` to run tests sequentially:
+
     `{  
     "testTimeout": 30000,  
     "maxWorkers": 1  
@@ -774,4 +776,4 @@ Do not attempt to parallelize integration tests without first:
 **Last Updated**: February 8, 2026  
 **Test Count**: 96 tests (89 passed, 7 skipped in CI)  
 **Coverage**: All 19 MCP tools, 5 user roles, 4 v1.4 features, cursor-based pagination  
-**Related**: See `.specify/specs/011-qa-testing/TEST_COVERAGE_STRATEGY.md` for overall project coverage (80.8%) 
+**Related**: See `.specify/specs/011-qa-testing/TEST_COVERAGE_STRATEGY.md` for overall project coverage (80.8%)

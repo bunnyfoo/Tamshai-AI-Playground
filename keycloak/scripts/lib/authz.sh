@@ -28,26 +28,60 @@ source "$SCRIPT_LIB_DIR/common.sh"
 
 # Get admin access token for REST API calls
 # Returns: Access token (stdout)
+# NOTE: Currently not used - token acquisition is inlined in sync_token_exchange_permissions()
+#       to avoid nested subshell issues. Kept for reference.
 get_admin_token() {
-    local token_url="${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token"
+    log_info "  [DEBUG] Entering get_admin_token function"
 
+    local token_url="${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token"
+    log_info "  [DEBUG] Token URL: $token_url"
+
+    # Test if curl exists
+    if curl --version >/dev/null 2>&1; then
+        log_info "  [DEBUG] curl is available"
+    else
+        log_error "curl is NOT available"
+        return 1
+    fi
+
+    # Test if jq exists
+    if /usr/local/bin/jq --version >/dev/null 2>&1; then
+        log_info "  [DEBUG] jq is available at /usr/local/bin/jq"
+    else
+        log_error "jq is NOT available at /usr/local/bin/jq"
+        return 1
+    fi
+
+    log_info "  [DEBUG] ADMIN_USER=${ADMIN_USER:-NOT_SET}"
+    log_info "  [DEBUG] ADMIN_PASS is ${ADMIN_PASS:+SET}"
+
+    log_info "  [DEBUG] Calling curl to get admin token..."
     local token_response
     token_response=$(curl -s -X POST "$token_url" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=${ADMIN_USER}" \
         -d "password=${ADMIN_PASS}" \
         -d "grant_type=password" \
-        -d "client_id=admin-cli" 2>/dev/null)
+        -d "client_id=admin-cli" 2>&1) || {
+        log_error "curl command failed"
+        return 1
+    }
 
+    log_info "  [DEBUG] curl completed, parsing with jq..."
     local token
-    token=$(echo "$token_response" | jq -r '.access_token // empty')
+    token=$(echo "$token_response" | /usr/local/bin/jq -r '.access_token // empty' 2>&1) || {
+        log_error "jq command failed"
+        log_error "Response was: $token_response"
+        return 1
+    }
 
-    if [ -z "$token" ]; then
-        log_error "Failed to get admin token"
-        echo "$token_response" | jq '.' >&2
+    if [ -z "$token" ] || [ "$token" = "null" ]; then
+        log_error "Failed to get admin token (empty or null)"
+        log_error "Full response: $token_response"
         return 1
     fi
 
+    log_info "  [DEBUG] Admin token acquired successfully (length: ${#token})"
     echo "$token"
 }
 
@@ -133,14 +167,36 @@ sync_token_exchange_permissions() {
 
     log_info "Syncing token exchange permissions for mcp-integration-runner..."
 
-    # Get admin token for REST API calls
+    # Get admin token for REST API calls (inline to avoid subshell issues)
     log_info "  Authenticating for REST API access..."
-    local ADMIN_TOKEN
-    ADMIN_TOKEN=$(get_admin_token)
-    if [ -z "$ADMIN_TOKEN" ]; then
+
+    # Set admin credentials from environment
+    local ADMIN_USER="${KEYCLOAK_ADMIN:-admin}"
+    local ADMIN_PASS="${KEYCLOAK_ADMIN_PASSWORD}"
+
+    if [ -z "$ADMIN_PASS" ]; then
+        log_error "  KEYCLOAK_ADMIN_PASSWORD not set"
+        return 1
+    fi
+
+    # Acquire admin token (inline pattern from configure-token-exchange.sh)
+    local token_url="${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token"
+    log_info "  Token URL: $token_url"
+
+    # Note: ADMIN_TOKEN must be non-local so rest_api_call() can access it
+    ADMIN_TOKEN=$(curl -s -X POST "$token_url" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username=${ADMIN_USER}" \
+        -d "password=${ADMIN_PASS}" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli" | /usr/local/bin/jq -r '.access_token // empty')
+
+    if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "null" ]; then
         log_error "  Failed to get admin token"
         return 1
     fi
+
+    log_info "  Admin token acquired successfully"
 
     # Step 1: Get realm-management client UUID
     log_info "  Looking up realm-management client..."
@@ -222,9 +278,13 @@ EOF
     # Step 5: Read-Modify-Write - Bind policy to impersonate permission
     log_info "  Binding policy to impersonate permission (read-modify-write)..."
 
-    # READ: Get current permission state
+    # READ: Get current permission state (from scope endpoint to match where we write)
     local current_perm
-    current_perm=$(rest_api_call GET "clients/${rm_client_uuid}/authz/resource-server/permission/${impersonate_perm_id}")
+    current_perm=$(rest_api_call GET "clients/${rm_client_uuid}/authz/resource-server/permission/scope/${impersonate_perm_id}")
+
+    # DEBUG: Log what we read (full object to see all fields)
+    log_info "  Current permission state (before modification - FULL):"
+    echo "$current_perm" | /usr/local/bin/jq '.' >&2
 
     # Check if policy is already bound
     local existing_policies
@@ -245,6 +305,10 @@ EOF
         end
     ')
 
+    # DEBUG: Log what we're sending (full object)
+    log_info "  Modified permission payload (FULL):"
+    echo "$modified_perm" | /usr/local/bin/jq '.' >&2
+
     # WRITE: Send complete modified object back
     rest_api_call PUT "clients/${rm_client_uuid}/authz/resource-server/permission/scope/${impersonate_perm_id}" "$modified_perm" > /dev/null
 
@@ -258,10 +322,11 @@ EOF
 
     # Step 6: Verify the binding persisted
     log_info "  Verifying policy binding persisted..."
-    sleep 1  # Give Keycloak a moment to persist
+    sleep 2  # Give Keycloak a moment to persist
 
     local verify_perm
-    verify_perm=$(rest_api_call GET "clients/${rm_client_uuid}/authz/resource-server/permission/${impersonate_perm_id}")
+    # Read from scope endpoint to match where we wrote
+    verify_perm=$(rest_api_call GET "clients/${rm_client_uuid}/authz/resource-server/permission/scope/${impersonate_perm_id}")
 
     local verify_policies
     verify_policies=$(echo "$verify_perm" | jq -r '.policies // null')

@@ -12,11 +12,18 @@
 
 FROM quay.io/keycloak/keycloak:24.0
 
-# Install jq for realm sync scripts (Authorization Services configuration)
-# Download jq as a static binary (ADD supports URLs, works with minimal base images)
+# Install jq and curl for realm sync scripts (Authorization Services configuration)
+# Download as static binaries (ADD supports URLs, works with minimal base images)
 USER root
+
+# Install jq (JSON processor)
 ADD https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 /usr/local/bin/jq
 RUN chmod +x /usr/local/bin/jq
+
+# Install curl (HTTP client for REST API calls)
+# Using static binary from GitHub mirror
+ADD https://github.com/moparisthebest/static-curl/releases/download/v8.4.0/curl-amd64 /usr/local/bin/curl
+RUN chmod +x /usr/local/bin/curl
 
 # Copy realm exports into the image (not mounted as volume)
 # This ensures terraform destroy + apply always uses the latest files
