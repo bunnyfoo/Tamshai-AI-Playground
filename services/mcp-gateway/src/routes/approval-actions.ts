@@ -73,8 +73,8 @@ router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedReque
   }
 
   try {
-    const mcpHrUrl = process.env.MCP_HR_URL || `http://localhost:${process.env.DEV_PG_MCP_HR || '3111'}`;
-    const gatewayUrl = `http://localhost:${process.env.PORT || process.env.DEV_PG_MCP_GATEWAY || '3110'}`;
+    const mcpHrUrl = process.env.MCP_HR_URL || `http://localhost:${process.env.DEV_PG_MCP_HR}`;
+    const gatewayUrl = `http://localhost:${process.env.PORT || process.env.DEV_PG_MCP_GATEWAY}`;
     const internalSecret = process.env.MCP_INTERNAL_SECRET;
 
     if (!internalSecret) {
@@ -175,8 +175,8 @@ router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRe
   }
 
   try {
-    const mcpFinanceUrl = process.env.MCP_FINANCE_URL || 'http://localhost:3102';
-    const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+    const mcpFinanceUrl = process.env.MCP_FINANCE_URL || `http://localhost:${process.env.DEV_PG_MCP_FINANCE}`;
+    const gatewayUrl = `http://localhost:${process.env.PORT || process.env.DEV_PG_MCP_GATEWAY}`;
     const internalSecret = process.env.MCP_INTERNAL_SECRET;
 
     if (!internalSecret) {
@@ -268,8 +268,8 @@ router.post('/finance/tools/approve_budget', async (req: AuthenticatedRequest, r
   }
 
   try {
-    const mcpFinanceUrl = process.env.MCP_FINANCE_URL || 'http://localhost:3102';
-    const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+    const mcpFinanceUrl = process.env.MCP_FINANCE_URL || `http://localhost:${process.env.DEV_PG_MCP_FINANCE}`;
+    const gatewayUrl = `http://localhost:${process.env.PORT || process.env.DEV_PG_MCP_GATEWAY}`;
 
     logger.info('[APPROVAL] Approving budget', { budgetId, approved });
 

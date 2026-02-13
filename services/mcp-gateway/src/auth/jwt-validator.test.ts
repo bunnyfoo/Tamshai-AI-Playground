@@ -14,7 +14,7 @@ jest.mock('jsonwebtoken');
 jest.mock('jwks-rsa');
 
 // Test configuration - uses DEV_PG_KEYCLOAK environment variable
-const TEST_KEYCLOAK_PORT = process.env.DEV_PG_KEYCLOAK || '8190';
+const TEST_KEYCLOAK_PORT = process.env.DEV_PG_KEYCLOAK;
 const TEST_KEYCLOAK_URL = `http://localhost:${TEST_KEYCLOAK_PORT}`;
 const TEST_KEYCLOAK_REALM = 'tamshai';
 const TEST_ISSUER = `${TEST_KEYCLOAK_URL}/realms/${TEST_KEYCLOAK_REALM}`;

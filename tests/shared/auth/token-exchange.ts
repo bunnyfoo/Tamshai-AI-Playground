@@ -230,7 +230,7 @@ export function getTestAuthProvider(logger?: Logger): TestAuthProvider {
     };
 
     const config: TestAuthConfig = {
-      keycloakUrl: process.env.KEYCLOAK_URL || 'http://localhost:8190/auth',
+      keycloakUrl: process.env.KEYCLOAK_URL || `http://localhost:${process.env.DEV_PG_KEYCLOAK}/auth`,
       realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
       clientId: process.env.MCP_INTEGRATION_RUNNER_CLIENT_ID || 'mcp-integration-runner',
       clientSecret: process.env.MCP_INTEGRATION_RUNNER_SECRET || '',

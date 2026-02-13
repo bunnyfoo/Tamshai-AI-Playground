@@ -104,7 +104,7 @@ describe('dual-realm-validator', () => {
       sub: 'internal-user-id',
       preferred_username: 'alice.support',
       email: 'alice@tamshai.com',
-      iss: 'http://localhost:8180/realms/tamshai',
+      iss: `http://localhost:${process.env.DEV_PG_KEYCLOAK}/realms/tamshai`,
       exp: Math.floor(Date.now() / 1000) + 3600,
       iat: Math.floor(Date.now() / 1000),
       realm_access: {
@@ -121,7 +121,7 @@ describe('dual-realm-validator', () => {
       sub: 'customer-user-id',
       preferred_username: 'bob.customer',
       email: 'bob@acme.com',
-      iss: 'http://localhost:8180/realms/tamshai-customers',
+      iss: `http://localhost:${process.env.DEV_PG_KEYCLOAK}/realms/tamshai-customers`,
       exp: Math.floor(Date.now() / 1000) + 3600,
       iat: Math.floor(Date.now() / 1000),
       realm_access: {
@@ -234,7 +234,7 @@ describe('dual-realm-validator', () => {
         header: { kid: 'valid-kid' },
         payload: {
           ...mockInternalPayload,
-          iss: 'http://localhost:8180/realms/unknown-realm',
+          iss: `http://localhost:${process.env.DEV_PG_KEYCLOAK}/realms/unknown-realm`,
         },
       });
 

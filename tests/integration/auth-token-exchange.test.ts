@@ -20,9 +20,9 @@ import axios from 'axios';
 import { getTestAuthProvider, resetTestAuthProvider } from '../shared/auth/token-exchange';
 
 describe('Token Exchange Integration', () => {
-  const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth';
+  const KEYCLOAK_URL = process.env.KEYCLOAK_URL || `http://127.0.0.1:${process.env.DEV_PG_KEYCLOAK}/auth`;
   const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'tamshai-corp';
-  const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3110';
+  const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || `http://127.0.0.1:${process.env.DEV_PG_MCP_GATEWAY}`;
 
   beforeEach(() => {
     resetTestAuthProvider();

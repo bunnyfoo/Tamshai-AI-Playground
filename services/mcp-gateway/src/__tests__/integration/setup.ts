@@ -26,7 +26,7 @@ process.env.NODE_ENV = 'test';
 // Keycloak configuration for TOTP handling
 // Note: KEYCLOAK_URL INCLUDES /auth prefix (set by jest.integration.config.js)
 const KEYCLOAK_CONFIG = {
-  url: process.env.KEYCLOAK_URL || 'http://127.0.0.1:8190/auth',
+  url: process.env.KEYCLOAK_URL || `http://127.0.0.1:${process.env.DEV_PG_KEYCLOAK}/auth`,
   realm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
   adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD,  // Required - no fallback
 };
@@ -40,7 +40,7 @@ const KEYCLOAK_CONFIG = {
 // Note: POSTGRES_PASSWORD is the postgres superuser password, NOT tamshai_app
 const DB_CONFIG_HR = {
   host: process.env.POSTGRES_HOST,
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
+  port: parseInt(process.env.POSTGRES_PORT || process.env.DEV_PG_POSTGRES || ''),
   database: process.env.POSTGRES_DB,
   user: process.env.POSTGRES_USER,
   password: process.env.TAMSHAI_APP_PASSWORD,  // Required - no fallback
@@ -48,7 +48,7 @@ const DB_CONFIG_HR = {
 
 const DB_CONFIG_FINANCE = {
   host: process.env.POSTGRES_HOST,
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
+  port: parseInt(process.env.POSTGRES_PORT || process.env.DEV_PG_POSTGRES || ''),
   database: 'tamshai_finance',
   user: process.env.POSTGRES_USER,
   password: process.env.TAMSHAI_APP_PASSWORD,  // Required - no fallback
@@ -58,7 +58,7 @@ const DB_CONFIG_FINANCE = {
 // Requires TAMSHAI_DB_PASSWORD environment variable
 const DB_CONFIG_ADMIN_FINANCE = {
   host: process.env.POSTGRES_HOST,
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
+  port: parseInt(process.env.POSTGRES_PORT || process.env.DEV_PG_POSTGRES || ''),
   database: 'tamshai_finance',
   user: 'tamshai',  // Superuser with BYPASSRLS for fixture resets
   password: process.env.TAMSHAI_DB_PASSWORD,

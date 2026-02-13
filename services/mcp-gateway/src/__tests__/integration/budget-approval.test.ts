@@ -122,7 +122,7 @@ describe('Budget Approval Workflow - TDD RED PHASE', () => {
     // Create axios client for MCP Finance server with gateway auth
     // NOTE: Docker environment uses port 3112 for MCP Finance
     financeClient = axios.create({
-      baseURL: process.env.MCP_FINANCE_URL || 'http://localhost:3112',
+      baseURL: process.env.MCP_FINANCE_URL || `http://localhost:${process.env.DEV_PG_MCP_FINANCE}`,
       timeout: 10000,
       validateStatus: () => true, // Don't throw on non-2xx status
       headers: {

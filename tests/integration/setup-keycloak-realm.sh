@@ -141,8 +141,8 @@ create_client() {
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": true,
-      "redirectUris": ["http://localhost:3100/*"],
-      "webOrigins": ["http://localhost:3100"]
+      "redirectUris": ["http://localhost:${DEV_PG_MCP_GATEWAY:?DEV_PG_MCP_GATEWAY required}/*"],
+      "webOrigins": ["http://localhost:${DEV_PG_MCP_GATEWAY}"]
     }' 2>/dev/null)
 
   if [ "$response" == "201" ]; then

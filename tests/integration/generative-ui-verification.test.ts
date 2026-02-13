@@ -11,8 +11,8 @@ import axios, { AxiosInstance } from 'axios';
 import { getTestAuthProvider, Logger } from '../shared/auth/token-exchange';
 
 // Test configuration
-const MCP_UI_URL = process.env.MCP_UI_URL || 'http://localhost:3118';
-const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || 'http://localhost:3110';
+const MCP_UI_URL = process.env.MCP_UI_URL || `http://localhost:${process.env.DEV_PG_MCP_UI}`;
+const MCP_GATEWAY_URL = process.env.MCP_GATEWAY_URL || `http://localhost:${process.env.DEV_PG_MCP_GATEWAY}`;
 
 // Simple console logger
 const logger: Logger = {

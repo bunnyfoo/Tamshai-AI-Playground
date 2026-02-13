@@ -301,7 +301,7 @@ describe('Expense Reports Integration Tests - v1.5', () => {
 
     // Create axios client for MCP Finance server with gateway auth
     financeClient = axios.create({
-      baseURL: process.env.MCP_FINANCE_URL || 'http://localhost:3112',
+      baseURL: process.env.MCP_FINANCE_URL || `http://localhost:${process.env.DEV_PG_MCP_FINANCE}`,
       timeout: 10000,
       validateStatus: () => true,
       headers: {
