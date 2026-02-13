@@ -62,7 +62,7 @@ Secrets are stored in GitHub and retrieved via workflow dispatch.
 
 | Secret | Purpose | Used By |
 |--------|---------|---------|
-| `DEV_USER_PASSWORD` | Password for test users (alice.chen, bob.martinez, etc.) | Integration tests |
+| `MCP_INTEGRATION_RUNNER_SECRET` | Service account for token exchange (impersonate test users) | Integration tests |
 | `KEYCLOAK_CLIENT_SECRET` | mcp-gateway client secret | Integration tests |
 | `CLAUDE_API_KEY` | Anthropic API key for AI queries | SSE streaming tests |
 
@@ -161,7 +161,7 @@ npm test -- --coverage
 cd tests/integration
 
 # Set required environment variables (get values from ./scripts/secrets/read-github-secrets.sh)
-export DEV_USER_PASSWORD='<from-github-secrets>'
+export MCP_INTEGRATION_RUNNER_SECRET='<from-github-secrets>'
 export KEYCLOAK_CLIENT_SECRET='<from-keycloak-or-github-secrets>'
 
 # Run all integration tests
@@ -177,7 +177,7 @@ npm test -- sse-streaming.test.ts
 
 ```bash
 cd tests/integration && \
-  DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
+  MCP_INTEGRATION_RUNNER_SECRET="$MCP_INTEGRATION_RUNNER_SECRET" \
   npm test
 ```
 
@@ -191,13 +191,13 @@ cd services/mcp-gateway
 # Run all integration tests
 MCP_GATEWAY_URL=http://127.0.0.1:3110 \
 KEYCLOAK_URL=http://127.0.0.1:8190 \
-DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
+MCP_INTEGRATION_RUNNER_SECRET="$MCP_INTEGRATION_RUNNER_SECRET" \
 npm run test:integration
 
 # Run specific test pattern (e.g., Payroll)
 MCP_GATEWAY_URL=http://127.0.0.1:3110 \
 KEYCLOAK_URL=http://127.0.0.1:8190 \
-DEV_USER_PASSWORD="$DEV_USER_PASSWORD" \
+MCP_INTEGRATION_RUNNER_SECRET="$MCP_INTEGRATION_RUNNER_SECRET" \
 npm run test:integration -- --testNamePattern="Payroll"
 ```
 
@@ -224,7 +224,7 @@ npm run test:integration -- --testNamePattern="Payroll"
 | `MCP_FINANCE_URL` | `http://127.0.0.1:3112` | MCP Finance URL |
 | `MCP_SALES_URL` | `http://127.0.0.1:3113` | MCP Sales URL |
 | `MCP_SUPPORT_URL` | `http://127.0.0.1:3114` | MCP Support URL |
-| `DEV_USER_PASSWORD` | (required) | Test user password |
+| `MCP_INTEGRATION_RUNNER_SECRET` | (required) | Service account secret for token exchange |
 | `KEYCLOAK_CLIENT_SECRET` | `mcp-gateway-secret` | mcp-gateway client secret |
 
 **Note:** Test files add `/auth` to the Keycloak URL internally where needed.
@@ -412,14 +412,21 @@ docker restart tamshai-pg-mcp-gateway
 ### Debug Token Contents
 
 ```bash
-# Get token and decode (requires DEV_USER_PASSWORD and KEYCLOAK_CLIENT_SECRET env vars)
+# Get token via token exchange (requires MCP_INTEGRATION_RUNNER_SECRET env var)
+TOKEN=$(./scripts/get-keycloak-token.sh alice.chen)
+
+# Or manually via curl:
+SVC_TOKEN=$(curl -s -X POST 'http://127.0.0.1:8190/auth/realms/tamshai-corp/protocol/openid-connect/token' \
+  -d 'grant_type=client_credentials' \
+  -d 'client_id=mcp-integration-runner' \
+  -d "client_secret=$MCP_INTEGRATION_RUNNER_SECRET" | jq -r '.access_token')
 TOKEN=$(curl -s -X POST 'http://127.0.0.1:8190/auth/realms/tamshai-corp/protocol/openid-connect/token' \
-  -d 'grant_type=password' \
-  -d 'client_id=mcp-gateway' \
-  -d "client_secret=$KEYCLOAK_CLIENT_SECRET" \
-  -d 'username=alice.chen' \
-  -d "password=$DEV_USER_PASSWORD" \
-  -d 'scope=openid' | jq -r '.access_token')
+  -d 'grant_type=urn:ietf:params:oauth:grant-type:token-exchange' \
+  -d 'client_id=mcp-integration-runner' \
+  -d "client_secret=$MCP_INTEGRATION_RUNNER_SECRET" \
+  -d "subject_token=$SVC_TOKEN" \
+  -d 'requested_subject=alice.chen' \
+  -d 'scope=openid profile roles' | jq -r '.access_token')
 
 # Decode payload
 echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | jq '.realm_access.roles'

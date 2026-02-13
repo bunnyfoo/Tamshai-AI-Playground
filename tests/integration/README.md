@@ -301,19 +301,7 @@ npm test
 * **Authentication Flow**: Client Credentials → Token Exchange (impersonate test users)
 * **Environment**: Dev and CI only (not created in stage/prod)
 
-**Fallback Method: ROPC (Deprecated)**
-
-If `MCP_INTEGRATION_RUNNER_SECRET` is not set, tests fall back to ROPC using `DEV_USER_PASSWORD`:
-
-```bash
-# Verify Keycloak is accessible (note: /auth prefix required for local dev)
-curl http://localhost:$PORT_KEYCLOAK/auth/health/ready
-
-# Load user password (ROPC fallback only)
-export DEV_USER_PASSWORD=$(grep '^DEV_USER_PASSWORD=' ../../infrastructure/docker/.env | cut -d= -f2)
-```
-
-**Test Users** (all with password `[REDACTED-DEV-PASSWORD]` when using ROPC):
+**Test Users** (impersonated via token exchange):
 
 * `eve.thompson` - Executive
 * `alice.chen` - HR Admin
@@ -324,7 +312,7 @@ export DEV_USER_PASSWORD=$(grep '^DEV_USER_PASSWORD=' ../../infrastructure/docke
 * `marcus.johnson` - Engineer
 * `frank.davis` - Intern
 
-**IMPORTANT**: All 8 test users must exist in Keycloak for either authentication method to work.
+**IMPORTANT**: All 8 test users must exist in Keycloak for token exchange to work. No user passwords are needed — the `mcp-integration-runner` service account impersonates users via OAuth 2.0 Token Exchange (RFC 8693).
 
 ### 3\. Sample Data Loaded
 
@@ -422,9 +410,11 @@ Databases must contain sample data:
 # Verify Keycloak is running (note: /auth prefix required for local dev)
 curl http://localhost:$PORT_KEYCLOAK/auth/health/ready
 
-# Check test user exists
+# Check test user exists (prefer client credentials for admin token)
 ADMIN_TOKEN=$(curl -s -X POST http://localhost:$PORT_KEYCLOAK/auth/realms/master/protocol/openid-connect/token \
-  -d "client_id=admin-cli" -d "username=admin" -d "password=<admin-password>" -d "grant_type=password" | \
+  -d "client_id=admin-cli" \
+  -d "client_secret=$KEYCLOAK_ADMIN_CLIENT_SECRET" \
+  -d "grant_type=client_credentials" | \
   jq -r '.access_token')
 
 curl -s "http://localhost:$PORT_KEYCLOAK/auth/admin/realms/tamshai-corp/users" \

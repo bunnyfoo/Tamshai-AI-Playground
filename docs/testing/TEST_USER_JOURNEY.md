@@ -69,12 +69,12 @@ All credentials are stored securely in GitHub Secrets, **not in the codebase**.
 |-------------|-------------|---------|--------------|
 | `TEST_USER_PASSWORD` | All | Password for test-user.journey E2E account | `TEST_USER_PASSWORD` |
 | `MCP_INTEGRATION_RUNNER_SECRET` | Dev, CI | Client secret for mcp-integration-runner service account (token exchange) | `MCP_INTEGRATION_RUNNER_SECRET` |
-| `DEV_USER_PASSWORD` | Dev | Password for identity-synced corporate users (ROPC fallback) | `DEV_USER_PASSWORD` |
+| `DEV_USER_PASSWORD` | Dev | Password for identity-synced corporate users | `DEV_USER_PASSWORD` |
 | `STAGE_USER_PASSWORD` | Stage | Password for identity-synced corporate users | `STAGE_USER_PASSWORD` |
 | `PROD_USER_PASSWORD` | Prod | Password for identity-synced corporate users | `PROD_USER_PASSWORD` |
 | `CUSTOMER_USER_PASSWORD` | All | Password for customer portal test users | `CUSTOMER_USER_PASSWORD` |
 
-**Note**: `TEST_USER_PASSWORD` is for the dedicated E2E test account (test-user.journey), `MCP_INTEGRATION_RUNNER_SECRET` is for integration test authentication via token exchange, `{ENV}_USER_PASSWORD` secrets are for corporate employees provisioned via identity-sync (used as ROPC fallback in integration tests), and `CUSTOMER_USER_PASSWORD` is for customer realm users (<jane.smith@acme.com>, etc.).
+**Note**: `TEST_USER_PASSWORD` is for the dedicated E2E test account (test-user.journey), `MCP_INTEGRATION_RUNNER_SECRET` is for integration test authentication via token exchange (primary method — no user passwords needed), `{ENV}_USER_PASSWORD` secrets are for corporate employees provisioned via identity-sync, and `CUSTOMER_USER_PASSWORD` is for customer realm users (<jane.smith@acme.com>, etc.). ROPC (direct access grants) is disabled in all environments.
 
 ### Integration Test Service Account
 
@@ -103,7 +103,7 @@ All credentials are stored securely in GitHub Secrets, **not in the codebase**.
 - ✅ Easier secret rotation (single secret vs. multiple user passwords)
 - ✅ Test environments only (dev/CI), not in stage/prod
 
-**Fallback**: Integration tests can fall back to ROPC with `DEV_USER_PASSWORD` if `MCP_INTEGRATION_RUNNER_SECRET` is not available (local development without secrets).
+**Note**: ROPC (direct access grants) is disabled in all environments. `MCP_INTEGRATION_RUNNER_SECRET` is required for integration test authentication.
 
 **See Also**: `.claude/plans/test-auth-refactoring.md` for complete migration plan.
 
@@ -609,24 +609,27 @@ Verify the test user exists in Keycloak:
 # Load port from .env:
 source infrastructure/docker/.env
 
-# Direct to Keycloak container port:
-curl -s http://localhost:${PORT_KEYCLOAK}/auth/realms/tamshai-corp/protocol/openid-connect/token \
-  -d "client_id=tamshai-website" \
-  -d "username=test-user.journey" \
-  -d "password=$TEST_USER_PASSWORD" \
-  -d "grant_type=password" \
-  | jq -r '.access_token'
+# Preferred: Token exchange via mcp-integration-runner (no password needed)
+# Step 1: Get service account token
+SVC_TOKEN=$(curl -s http://localhost:${PORT_KEYCLOAK}/auth/realms/tamshai-corp/protocol/openid-connect/token \
+  -d "client_id=mcp-integration-runner" \
+  -d "client_secret=$MCP_INTEGRATION_RUNNER_SECRET" \
+  -d "grant_type=client_credentials" \
+  | jq -r '.access_token')
 
-# Via Caddy reverse proxy (HTTPS, self-signed cert):
-curl -sk https://www.tamshai-playground.local:${PORT_CADDY_HTTPS}/auth/realms/tamshai-corp/protocol/openid-connect/token \
-  -d "client_id=tamshai-website" \
-  -d "username=test-user.journey" \
-  -d "password=$TEST_USER_PASSWORD" \
-  -d "grant_type=password" \
+# Step 2: Exchange for user token
+curl -s http://localhost:${PORT_KEYCLOAK}/auth/realms/tamshai-corp/protocol/openid-connect/token \
+  -d "client_id=mcp-integration-runner" \
+  -d "client_secret=$MCP_INTEGRATION_RUNNER_SECRET" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=$SVC_TOKEN" \
+  -d "requested_subject=test-user.journey" \
+  -d "scope=openid profile roles" \
   | jq -r '.access_token'
 
 # If successful, you'll get an access token
 # If failed, check Keycloak logs: docker logs tamshai-pg-keycloak
+# Note: ROPC (grant_type=password) is disabled in all environments
 ```
 
 ## Troubleshooting

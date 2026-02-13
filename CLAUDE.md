@@ -1336,14 +1336,22 @@ const logger = winston.createLogger({
 **Inspect JWT Token**:
 
 ```bash
-# Get token from Keycloak
-TOKEN=$(curl -X POST http://localhost:8180/realms/tamshai/protocol/openid-connect/token \
-  -d "client_id=mcp-gateway" \
-  -d "client_secret=[REDACTED-DEV-SECRET]" \
-  -d "username=alice.chen" \
-  -d "password=[REDACTED-DEV-PASSWORD]" \
-  -d "grant_type=password" \
-  -d "scope=openid" | jq -r '.access_token')
+# Get token via token exchange (preferred - no user password needed)
+SVC_TOKEN=$(curl -s -X POST http://localhost:8180/realms/tamshai-corp/protocol/openid-connect/token \
+  -d "client_id=mcp-integration-runner" \
+  -d "client_secret=$MCP_INTEGRATION_RUNNER_SECRET" \
+  -d "grant_type=client_credentials" | jq -r '.access_token')
+
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/tamshai-corp/protocol/openid-connect/token \
+  -d "client_id=mcp-integration-runner" \
+  -d "client_secret=$MCP_INTEGRATION_RUNNER_SECRET" \
+  -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+  -d "subject_token=$SVC_TOKEN" \
+  -d "requested_subject=alice.chen" \
+  -d "scope=openid profile roles" | jq -r '.access_token')
+
+# Or use the helper script
+TOKEN=$(./scripts/get-keycloak-token.sh alice.chen)
 
 # Decode token
 echo $TOKEN | cut -d. -f2 | base64 -d | jq .
