@@ -105,32 +105,46 @@ function generateInternalToken(userId: string, roles: string[]): string {
 
 /**
  * Create authenticated MCP HR client with gateway auth token
+ *
+ * IMPORTANT: HMAC token is generated per-request via interceptor (not cached)
+ * because the MCP server enforces a 30-second replay window.
  */
 function createMcpHrClient(token: string, userId: string, roles: string[]): AxiosInstance {
-  return axios.create({
+  const client = axios.create({
     baseURL: CONFIG.mcpHrUrl,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'X-MCP-Internal-Token': generateInternalToken(userId, roles),
     },
     timeout: 30000,
   });
+  client.interceptors.request.use((config) => {
+    config.headers['X-MCP-Internal-Token'] = generateInternalToken(userId, roles);
+    return config;
+  });
+  return client;
 }
 
 /**
  * Create authenticated MCP Finance client with gateway auth token
+ *
+ * IMPORTANT: HMAC token is generated per-request via interceptor (not cached)
+ * because the MCP server enforces a 30-second replay window.
  */
 function createMcpFinanceClient(token: string, userId: string, roles: string[]): AxiosInstance {
-  return axios.create({
+  const client = axios.create({
     baseURL: CONFIG.mcpFinanceUrl,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'X-MCP-Internal-Token': generateInternalToken(userId, roles),
     },
     timeout: 30000,
   });
+  client.interceptors.request.use((config) => {
+    config.headers['X-MCP-Internal-Token'] = generateInternalToken(userId, roles);
+    return config;
+  });
+  return client;
 }
 
 /**

@@ -101,18 +101,25 @@ function generateInternalToken(userId: string, roles: string[]): string {
 
 /**
  * Create authenticated MCP client with gateway auth token
+ *
+ * IMPORTANT: HMAC token is generated per-request via interceptor (not cached)
+ * because the MCP server enforces a 30-second replay window.
  */
 function createMcpClient(baseURL: string, token: string, userId: string, roles: string[] = []): AxiosInstance {
-  return axios.create({
+  const client = axios.create({
     baseURL,
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       'X-User-Id': userId,
-      'X-MCP-Internal-Token': generateInternalToken(userId, roles),
     },
     timeout: 30000,
   });
+  client.interceptors.request.use((config) => {
+    config.headers['X-MCP-Internal-Token'] = generateInternalToken(userId, roles);
+    return config;
+  });
+  return client;
 }
 
 // =============================================================================
