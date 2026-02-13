@@ -343,24 +343,67 @@ describe('Generative UI - Full Verification Suite', () => {
   });
 
   describe('6. Support Domain - Display Directives', () => {
-    test.skip('support:tickets component not registered yet', () => {
-      // TODO: Add support:tickets to component registry
+    test('should render tickets list component', async () => {
+      const response = await httpClient.post(
+        '/api/display',
+        {
+          directive: 'display:support:tickets:priority=high',
+        },
+        { headers: { Authorization: `Bearer ${aliceToken}` } }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data.component.type).toBe('TicketListView');
+      expect(response.data.component.props).toHaveProperty('tickets');
+      expect(Array.isArray(response.data.component.props.tickets)).toBe(true);
     });
   });
 
   describe('7. Payroll Domain - Display Directives', () => {
-    test.skip('payroll:pay_stub component not registered yet', () => {
-      // TODO: Add payroll:pay_stub to component registry
+    test('should render pay stub component', async () => {
+      const response = await httpClient.post(
+        '/api/display',
+        {
+          directive: 'display:payroll:pay_stub:payStubId=11111111-2222-3333-4444-555555555550',
+        },
+        { headers: { Authorization: `Bearer ${aliceToken}` } }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data.component.type).toBe('PayStubDetailCard');
+      expect(response.data.component.props).toHaveProperty('payStubId');
     });
 
-    test.skip('payroll:pay_runs component not registered yet', () => {
-      // TODO: Add payroll:pay_runs to component registry
+    test('should render pay runs list', async () => {
+      const response = await httpClient.post(
+        '/api/display',
+        {
+          directive: 'display:payroll:pay_runs:status=COMPLETED',
+        },
+        { headers: { Authorization: `Bearer ${aliceToken}` } }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data.component.type).toBe('PayRunListView');
+      expect(response.data.component.props).toHaveProperty('payRuns');
+      expect(Array.isArray(response.data.component.props.payRuns)).toBe(true);
     });
   });
 
   describe('8. Tax Domain - Display Directives', () => {
-    test.skip('tax:quarterly_estimate component not registered yet', () => {
-      // TODO: Add tax:quarterly_estimate to component registry
+    test('should render quarterly estimate component', async () => {
+      const response = await httpClient.post(
+        '/api/display',
+        {
+          directive: 'display:tax:quarterly_estimate:quarter=1&year=2026',
+        },
+        { headers: { Authorization: `Bearer ${aliceToken}` } }
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.data.component.type).toBe('TaxEstimateBreakdown');
+      expect(response.data.component.props).toHaveProperty('period');
+      expect(response.data.component.props).toHaveProperty('total');
     });
   });
 
