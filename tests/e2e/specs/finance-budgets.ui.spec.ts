@@ -348,6 +348,11 @@ test.describe('Finance Budgets Page', () => {
           return;
         }
 
+        // Set year filter to "All Years" so 2026 PENDING_APPROVAL budgets are visible
+        const yearFilter = page.locator('[data-testid="year-filter"]');
+        await yearFilter.selectOption('');
+        await page.waitForLoadState('networkidle');
+
         await statusFilter.selectOption('PENDING_APPROVAL');
         await page.waitForLoadState('networkidle');
 
@@ -383,6 +388,11 @@ test.describe('Finance Budgets Page', () => {
           test.skip(true, 'Budgets page not available or no data');
           return;
         }
+
+        // Set year filter to "All Years" so 2026 PENDING_APPROVAL budgets are visible
+        const yearFilterReject = page.locator('[data-testid="year-filter"]');
+        await yearFilterReject.selectOption('');
+        await page.waitForLoadState('networkidle');
 
         await statusFilter.selectOption('PENDING_APPROVAL');
         await page.waitForLoadState('networkidle');

@@ -254,7 +254,7 @@ test.describe('Payroll App E2E Tests', () => {
       }
     });
 
-    test('benefit cards show contribution amounts', async () => {
+    test('benefit cards show contribution amounts or empty state', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
 
@@ -262,17 +262,21 @@ test.describe('Payroll App E2E Tests', () => {
         await page.goto(`${PAYROLL_URL}/benefits`);
         await page.waitForLoadState('networkidle');
 
-        const hasBenefits = await page.locator('text=Your Contribution').first().isVisible({ timeout: 10000 }).catch(() => false);
-        if (!hasBenefits) {
-          test.skip(true, 'No benefits data available');
-          return;
-        }
+        await expect(page.locator('h1:has-text("Benefits")')).toBeVisible({ timeout: 10000 });
 
-        // Each benefit card should show contribution fields
-        await expect(page.locator('text=Your Contribution').first()).toBeVisible();
-        await expect(page.locator('text=Employer Contribution').first()).toBeVisible();
-        await expect(page.locator('text=Frequency').first()).toBeVisible();
-        await expect(page.locator('text=Tax Treatment').first()).toBeVisible();
+        // Test user may have no payroll employee record — verify page renders correctly either way
+        const hasBenefits = await page.locator('text=Your Contribution').first()
+          .isVisible({ timeout: 10000 }).catch(() => false);
+
+        if (hasBenefits) {
+          // Benefits data exists — verify contribution fields
+          await expect(page.locator('text=Employer Contribution').first()).toBeVisible();
+          await expect(page.locator('text=Frequency').first()).toBeVisible();
+          await expect(page.locator('text=Tax Treatment').first()).toBeVisible();
+        } else {
+          // No benefits data — verify empty state message renders
+          await expect(page.locator('text=No benefit elections found')).toBeVisible();
+        }
       } finally {
         await page.close();
       }
@@ -421,7 +425,7 @@ test.describe('Payroll App E2E Tests', () => {
       }
     });
 
-    test('displays State Tax section when withholdings configured', async () => {
+    test('displays State Tax section or valid no-data state', async () => {
       test.skip(!authenticatedContext, 'No test credentials configured');
       const page = await authenticatedContext!.newPage();
 
@@ -429,16 +433,21 @@ test.describe('Payroll App E2E Tests', () => {
         await page.goto(`${PAYROLL_URL}/tax`);
         await page.waitForLoadState('networkidle');
 
-        const hasState = await page.locator('h2:has-text("State Tax")').isVisible({ timeout: 10000 }).catch(() => false);
-        if (!hasState) {
-          test.skip(true, 'No tax withholding data configured');
-          return;
-        }
+        // Verify the page renders correctly regardless of data availability
+        await expect(page.locator('h1:has-text("Tax Withholdings")')).toBeVisible({ timeout: 10000 });
 
-        await expect(page.locator('h2:has-text("State Tax")')).toBeVisible();
-        // State section should show State field
-        const stateLabels = page.locator('text=State');
-        await expect(stateLabels.first()).toBeVisible();
+        const hasState = await page.locator('h2:has-text("State Tax")').isVisible({ timeout: 10000 }).catch(() => false);
+
+        if (hasState) {
+          // State tax data exists — verify State field
+          const stateLabels = page.locator('text=State');
+          await expect(stateLabels.first()).toBeVisible();
+        } else {
+          // No state tax data — verify page still renders with federal section or no-config message
+          const hasFederal = await page.locator('h2:has-text("Federal W-4")').isVisible().catch(() => false);
+          const hasNoConfig = await page.locator('text=No withholding configured').isVisible().catch(() => false);
+          expect(hasFederal || hasNoConfig).toBe(true);
+        }
       } finally {
         await page.close();
       }
