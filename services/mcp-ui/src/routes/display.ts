@@ -186,13 +186,18 @@ router.post('/', validateJWT, async (req: AuthenticatedRequest, res: Response) =
     logger.info('Transform output props', { props: JSON.stringify(props).substring(0, 500) });
 
     // Generate narration
+    logger.info('[NARRATION] About to generate narration');
     const narration = componentDef.generateNarration(mergedData, parsed.params);
+    logger.info('[NARRATION] Generated successfully', { narration: JSON.stringify(narration).substring(0, 200) });
 
     // Check for truncation in any MCP response
+    logger.info('[TRUNCATION] Checking for truncated responses');
     const truncated = mcpResults.some(
       (r) => r.status === 'success' && r.metadata?.truncated
     );
+    logger.info('[TRUNCATION] Check complete', { truncated });
 
+    logger.info('[RESPONSE] Sending JSON response');
     return res.json({
       status: 'success',
       component: {
