@@ -18,7 +18,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { generateInternalToken, INTERNAL_TOKEN_HEADER } from '@tamshai/shared';
-import { getEphemeralUser } from './setup';
+import { getEphemeralUser, getImpersonatedToken } from './setup';
 
 // Get internal secret from environment (required for gateway auth)
 const MCP_INTERNAL_SECRET = process.env.MCP_INTERNAL_SECRET || '';
@@ -32,10 +32,6 @@ const describeIntegration = isCI ? describe.skip : describe;
 const CONFIG = {
   mcpUiUrl: process.env.MCP_UI_URL || 'http://127.0.0.1:3118',
   mcpGatewayUrl: process.env.MCP_GATEWAY_URL || 'http://127.0.0.1:3110',
-  keycloakUrl: process.env.KEYCLOAK_URL!,
-  keycloakRealm: process.env.KEYCLOAK_REALM || 'tamshai-corp',
-  clientId: 'mcp-gateway',
-  clientSecret: process.env.MCP_GATEWAY_CLIENT_SECRET || '',
 };
 
 // Test users with their roles (matching setup.ts TEST_USERS)
@@ -110,33 +106,12 @@ function createMcpUiClient(): AxiosInstance {
   });
 }
 
-/**
- * Get access token from Keycloak using password grant
- */
-async function getAccessToken(username: string, password: string): Promise<string> {
-  const tokenUrl = `${CONFIG.keycloakUrl}/realms/${CONFIG.keycloakRealm}/protocol/openid-connect/token`;
-
-  const params = new URLSearchParams({
-    grant_type: 'password',
-    client_id: CONFIG.clientId,
-    client_secret: CONFIG.clientSecret,
-    username,
-    password,
-    scope: 'openid profile email',
-  });
-
-  const response = await axios.post<{ access_token: string }>(tokenUrl, params, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  return response.data.access_token;
-}
-
 // Cache tokens by username to avoid repeated Keycloak calls
 const tokenCache = new Map<string, string>();
 
 /**
  * Helper to make display requests with JWT authentication
+ * Uses token exchange via getImpersonatedToken (no ROPC)
  */
 async function postDisplay(
   client: AxiosInstance,
@@ -163,7 +138,7 @@ async function postDisplay(
     const ephemeralRole = roleToEphemeralRole[userContext.roles[0]] || 'executive';
     const ephemeralUser = getEphemeralUser(ephemeralRole);
 
-    token = await getAccessToken(ephemeralUser.username, ephemeralUser.password);
+    token = await getImpersonatedToken(ephemeralUser.username);
     tokenCache.set(userContext.username!, token);
   }
 
@@ -398,9 +373,9 @@ describeIntegration('MCP UI - Error Handling', () => {
   });
 
   test('Missing directive field returns proper error', async () => {
-    // Get JWT token for the user
+    // Get JWT token for the user via token exchange
     const ephemeralUser = getEphemeralUser('executive');
-    const token = await getAccessToken(ephemeralUser.username, ephemeralUser.password);
+    const token = await getImpersonatedToken(ephemeralUser.username);
 
     const response = await client.post('/api/display', {
       // Missing directive field

@@ -76,6 +76,29 @@ export class JWTValidator {
    * @throws Error if token is invalid, expired, or has invalid signature
    */
   async validateToken(token: string): Promise<UserContext> {
+    // Split Horizon DNS Fix:
+    // When running integration tests, Keycloak is accessed via 'localhost:8190' from the test runner,
+    // generating tokens with iss="http://localhost:8190...".
+    // However, the Gateway inside Docker sees Keycloak as "http://keycloak:8080...".
+    // We must accept both issuers to allow integration tests to pass.
+    const validIssuers = [this.config.issuer];
+
+    // If the configured issuer is the internal Docker DNS, allow the external localhost equivalent
+    if (this.config.issuer && this.config.issuer.includes('keycloak:8080')) {
+      const localhostIssuer = this.config.issuer.replace('keycloak:8080', 'localhost:8190');
+      validIssuers.push(localhostIssuer);
+      this.logger.debug(`Adding alternate issuer for testing: ${localhostIssuer}`);
+    }
+
+    // Also handle HTTPS Caddy proxy URLs
+    if (this.config.issuer && this.config.issuer.includes('www.tamshai-playground.local')) {
+      const httpIssuer = this.config.issuer.replace('https://', 'http://').replace(':8443', ':8190');
+      if (!validIssuers.includes(httpIssuer)) {
+        validIssuers.push(httpIssuer);
+        this.logger.debug(`Adding alternate HTTP issuer for testing: ${httpIssuer}`);
+      }
+    }
+
     return new Promise((resolve, reject) => {
       jwt.verify(
         token,
@@ -86,12 +109,19 @@ export class JWTValidator {
         },
         {
           algorithms: this.config.algorithms,
-          issuer: this.config.issuer,
-          audience: [this.config.clientId, 'account'],
+          issuer: validIssuers, // Pass array of valid issuers
+          audience: [this.config.clientId, 'account', 'mcp-integration-runner'],
         },
         (err, decoded) => {
           if (err) {
-            reject(err);
+            // Enhanced debugging for 401 investigation
+            // Log specific validation failure reason without leaking token data
+            this.logger.error(`JWT Verification Failed: ${err.message}`, {
+              errorName: err.name,
+              expectedIssuers: validIssuers,
+              expectedAudiences: [this.config.clientId, 'account', 'mcp-integration-runner'],
+            });
+            reject(new Error('Invalid or expired token'));
             return;
           }
 

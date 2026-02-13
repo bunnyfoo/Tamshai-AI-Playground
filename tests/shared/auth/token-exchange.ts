@@ -149,6 +149,8 @@ export class TestAuthProvider {
           grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
           subject_token: serviceToken,
           requested_subject: username,
+          requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+          audience: 'mcp-gateway', // Request tokens with mcp-gateway audience
           scope: 'openid profile roles', // Required for preferred_username and resource_access claims
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }

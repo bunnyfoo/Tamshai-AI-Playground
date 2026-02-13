@@ -4,8 +4,12 @@
  * Global setup and teardown for integration tests.
  * Verifies all services are healthy before running tests.
  *
+ * Authentication:
+ * - User tokens acquired via token exchange (no ROPC on mcp-gateway client)
+ * - Admin tokens use admin-cli ROPC in master realm (Phase 4 migration target)
+ *
  * TOTP Handling:
- * - Uses direct access grants which bypass OTP requirement
+ * - Token exchange bypasses OTP requirement (service account impersonation)
  * - Does NOT delete any user credentials
  * - Temporarily removes CONFIGURE_TOTP required action (if present)
  * - Restores required actions after tests
@@ -133,7 +137,7 @@ async function updateUserRequiredActions(userId, requiredActions) {
  *
  * IMPORTANT: We do NOT delete OTP credentials!
  * We only temporarily remove CONFIGURE_TOTP from required actions.
- * The mcp-gateway client uses direct access grants which bypass OTP.
+ * Token exchange (via mcp-integration-runner) bypasses OTP requirements.
  */
 async function prepareTestUsers() {
   console.log('\n🔐 Preparing test users for automated testing...');

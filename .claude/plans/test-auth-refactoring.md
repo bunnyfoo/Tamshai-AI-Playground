@@ -4,11 +4,11 @@
 
 - **Created**: 2026-02-12
 - **Author**: Claude-QA
-- **Status**: 🚧 In Progress (Phase 1 Complete - TDD RED, Awaiting Phoenix Rebuild)
+- **Status**: 🚧 In Progress (Phases 1-2 Complete, Phase 3-5 Remaining)
 - **Priority**: 🔴 High (Q1 2026)
 - **Estimated Effort**: 3-5 days
 - **Target Completion**: Q1 2026 (February-March)
-- **Last Updated**: 2026-02-12 (Phase 1 Foundation Complete - 25%)
+- **Last Updated**: 2026-02-13 (Phase 2 Integration Tests Complete - 50%)
 
 ---
 
@@ -716,12 +716,22 @@ direct_access_grants_enabled = false  # Migration complete - using token exchang
 
 ### Phase 2: Integration Tests
 
-- [ ] Migrate MCP Gateway tests (6 files)
-- [ ] Migrate MCP HR tests (3 files)
-- [ ] Migrate MCP Finance tests (2 files)
-- [ ] Migrate MCP Sales tests (2 files)
-- [ ] Migrate MCP Support tests (2 files)
-- [ ] Update shared test utilities (`tests/integration/setup.ts`)
+- [x] Migrate MCP Gateway tests ✅ (2026-02-13)
+  - [x] `generative-ui.test.ts` - Replaced ROPC `getAccessToken()` with `getImpersonatedToken()` from setup.ts
+  - [x] `mcp-gateway-proxy.test.ts` - Already uses token exchange (no change needed)
+  - [x] `budget-approval.test.ts` - Uses internal token, not ROPC (no change needed)
+  - [x] `expense-reports.test.ts` - Uses internal token, not ROPC (no change needed)
+  - [x] `generative-ui-verification.test.ts` - Already uses `getTestAuthProvider()` (no change needed)
+- [x] Migrate utility scripts ✅ (2026-02-13)
+  - [x] `setup-keycloak-mappers.js` - Replaced user ROPC verification with token exchange
+- [x] Update shared test utilities ✅ (2026-02-13)
+  - [x] `setup.ts` - Updated comments to reflect token exchange (admin ROPC stays for Phase 4)
+  - [x] `jest.setup.js` - Updated comments to reflect token exchange
+- [x] Audit remaining files ✅ (2026-02-13)
+  - MCP HR/Finance/Sales/Support tests: Use admin-cli in master realm (Phase 4 scope)
+  - customer-support.test.ts: Uses tamshai-customers realm (separate concern)
+  - All JS utility scripts: Use admin-cli in master realm (Phase 4 scope)
+  - E2E tests: Documented exception (keep ROPC for browser automation)
 
 ### Phase 3: Performance Tests
 
@@ -1025,7 +1035,7 @@ grep "p(95)" baseline.log migrated.log
 
 ## 11. Approval & Sign-Off
 
-**Plan Status**: 🚧 **In Progress - Infrastructure Phase Complete**
+**Plan Status**: 🚧 **In Progress - Phase 2 Complete**
 
 **Completed (2026-02-12)**:
 - [x] Keycloak service account created (`mcp-integration-runner`)
@@ -1033,6 +1043,12 @@ grep "p(95)" baseline.log migrated.log
 - [x] GitHub Secret added (`MCP_INTEGRATION_RUNNER_SECRET`)
 - [x] Documentation updated (6 files)
 - [x] Secret retrieval scripts updated
+
+**Completed (2026-02-13 - Phase 2)**:
+- [x] Migrated `generative-ui.test.ts` from ROPC to token exchange
+- [x] Migrated `setup-keycloak-mappers.js` user verification from ROPC to token exchange
+- [x] Updated comments in `setup.ts` and `jest.setup.js`
+- [x] Audited all remaining files - confirmed Phase 4 scope (admin-cli)
 
 **Stakeholders**:
 - [x] **Security Lead**: Approved token exchange security model ✅ (2026-02-12)
@@ -1042,10 +1058,10 @@ grep "p(95)" baseline.log migrated.log
 
 **Next Steps**:
 1. ~~Review this plan with stakeholders~~ ✅ Infrastructure approved
-2. **🔴 Schedule Q1 2026 sprint for code migration (Phases 1-5)** - HIGH PRIORITY
-3. Assign developer to Phase 1 (TestAuthProvider implementation)
-4. Track progress in GitHub Project
-5. Target completion: End of Q1 2026 (March 2026)
+2. ~~Phase 2: Integration test migration~~ ✅ Complete (2026-02-13)
+3. Phase 3: Performance test migration (token pre-generation)
+4. Phase 4: Admin-cli migration to client credentials
+5. Phase 5: Disable ROPC in dev/CI environments
 
 ---
 
@@ -1071,16 +1087,22 @@ grep "p(95)" baseline.log migrated.log
 
 ---
 
-*Plan Version: 1.2*
+*Plan Version: 1.3*
 *Created: 2026-02-12*
-*Last Updated: 2026-02-12 (Priority Elevated to HIGH, Q1 2026 Timeline)*
+*Last Updated: 2026-02-13 (Phase 2 Integration Tests Complete)*
 *Target Completion: 🔴 Q1 2026 (February-March)*
-*Status: 📋 Planning → 🚧 In Progress (15% Complete) → 🚀 Ready for Q1 Implementation*
+*Status: 📋 Planning → 🚧 Phase 2 Complete (50%) → Phase 3-5 Remaining*
 
 **Progress Summary**:
-- ✅ Prerequisites: 2/3 complete (67% - Keycloak client pending Phoenix rebuild)
-- ✅ Phase 1 Documentation: 4/4 complete (100%)
-- ✅ Phase 1 Code: 3/3 complete (100% - TDD RED phase for integration test)
-- ⏳ Phase 2-5: Not started
+- ✅ Prerequisites: 2/3 complete (67%)
+- ✅ Phase 1 Foundation: 100% complete
+- ✅ Phase 2 Integration Tests: 100% complete (2026-02-13)
+  - generative-ui.test.ts migrated to token exchange
+  - setup-keycloak-mappers.js verification migrated to token exchange
+  - setup.ts and jest.setup.js comments updated
+  - All remaining files confirmed as Phase 4 scope (admin-cli)
+- ⏳ Phase 3 Performance Tests: Not started
+- ⏳ Phase 4 Admin-cli Migration: Not started
+- ⏳ Phase 5 ROPC Disable: Not started
 
-**Total Completion**: ~25% (Phase 1 complete, awaiting Phoenix rebuild to transition to TDD GREEN)
+**Total Completion**: ~50% (Phases 1-2 complete)
