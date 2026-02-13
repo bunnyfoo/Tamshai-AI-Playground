@@ -208,6 +208,12 @@ async function getKeycloakAdminToken(): Promise<string> {
 
 **Priority**: **LOW** (tests work, no immediate security risk in dev/CI)
 
+**Implementation Plan**: See `.claude/plans/test-auth-refactoring.md` for complete refactoring plan (Q3 2026).
+- 5-phase migration plan (Foundation → Integration → Performance → Special Cases → Finalization)
+- Token exchange with caching for performance
+- Pre-generated tokens for k6 load tests
+- E2E browser tests keep ROPC (acceptable exception for UI validation)
+
 ---
 
 ## 5. Implementation Plan
