@@ -34,14 +34,24 @@ echo "Keycloak URL: $KEYCLOAK_URL"
 echo "Realm: $REALM"
 echo ""
 
-# Step 1: Authenticate and get admin token
+# Step 1: Authenticate and get admin token (prefer client credentials over ROPC)
 echo "[1/7] Authenticating as admin..."
-ADMIN_TOKEN=$(curl -s -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=$ADMIN_USER" \
-  -d "password=$ADMIN_PASS" \
-  -d "grant_type=password" \
-  -d "client_id=admin-cli" | jq -r '.access_token')
+if [ -n "${KEYCLOAK_ADMIN_CLIENT_SECRET:-}" ]; then
+  echo "  Using client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET)"
+  ADMIN_TOKEN=$(curl -s -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "client_id=admin-cli" \
+    -d "client_secret=$KEYCLOAK_ADMIN_CLIENT_SECRET" \
+    -d "grant_type=client_credentials" | jq -r '.access_token')
+else
+  echo "  Using ROPC fallback (admin username/password)"
+  ADMIN_TOKEN=$(curl -s -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "username=$ADMIN_USER" \
+    -d "password=$ADMIN_PASS" \
+    -d "grant_type=password" \
+    -d "client_id=admin-cli" | jq -r '.access_token')
+fi
 
 if [ "$ADMIN_TOKEN" == "null" ] || [ -z "$ADMIN_TOKEN" ]; then
   echo "❌ Failed to authenticate. Check KEYCLOAK_ADMIN and KEYCLOAK_ADMIN_PASSWORD."

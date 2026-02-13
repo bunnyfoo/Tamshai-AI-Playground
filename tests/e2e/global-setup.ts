@@ -182,15 +182,20 @@ async function provisionTotp(
   totpSecret: string,
   userPassword: string
 ): Promise<void> {
+  const adminClientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
   const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin';
 
-  // 1. Authenticate to Admin API
+  // 1. Authenticate to Admin API (prefer client credentials over ROPC)
+  const formBody = adminClientSecret
+    ? `grant_type=client_credentials&client_id=admin-cli&client_secret=${encodeURIComponent(adminClientSecret)}`
+    : `grant_type=password&client_id=admin-cli&username=admin&password=${encodeURIComponent(adminPassword)}`;
+
   const tokenRes = await jsonRequest(
     `${keycloakUrl}/realms/master/protocol/openid-connect/token`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      formBody: `grant_type=password&client_id=admin-cli&username=admin&password=${encodeURIComponent(adminPassword)}`,
+      formBody,
     }
   );
 

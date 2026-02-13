@@ -3,14 +3,14 @@ const axios = require('axios');
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL;
 
 async function fixTOTP() {
-  // Get admin token
+  // Get admin token (prefer client credentials over ROPC)
+  const clientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
+  const params = clientSecret
+    ? { client_id: 'admin-cli', client_secret: clientSecret, grant_type: 'client_credentials' }
+    : { client_id: 'admin-cli', username: 'admin', password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin', grant_type: 'password' };
+
   const tokenResp = await axios.post(`${KEYCLOAK_URL}/realms/master/protocol/openid-connect/token`,
-    new URLSearchParams({
-      client_id: 'admin-cli',
-      username: 'admin',
-      password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
-      grant_type: 'password'
-    }));
+    new URLSearchParams(params));
   const adminToken = tokenResp.data.access_token;
   console.log('Got admin token');
 

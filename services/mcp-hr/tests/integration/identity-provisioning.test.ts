@@ -66,17 +66,17 @@ class TestKcAdminClient implements KcAdminClient {
     clientId: string;
     clientSecret: string;
   }): Promise<void> {
+    const adminClientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
+    const params = adminClientSecret
+      ? { grant_type: 'client_credentials', client_id: 'admin-cli', client_secret: adminClientSecret }
+      : { grant_type: 'password', client_id: 'admin-cli', username: config.keycloak.adminUsername, password: config.keycloak.adminPassword };
+
     const response = await fetch(
       `${this.baseUrl}${this.pathPrefix}/realms/master/protocol/openid-connect/token`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'password',
-          client_id: 'admin-cli',
-          username: config.keycloak.adminUsername,
-          password: config.keycloak.adminPassword,
-        }),
+        body: new URLSearchParams(params),
       }
     );
 

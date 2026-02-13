@@ -8,12 +8,11 @@ const keycloakUrl = new URL(process.env.KEYCLOAK_URL);
 
 async function getAdminToken() {
   return new Promise((resolve) => {
-    const postData = querystring.stringify({
-      client_id: 'admin-cli',
-      username: 'admin',
-      password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
-      grant_type: 'password',
-    });
+    const clientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
+    const postData = querystring.stringify(clientSecret
+      ? { client_id: 'admin-cli', client_secret: clientSecret, grant_type: 'client_credentials' }
+      : { client_id: 'admin-cli', username: 'admin', password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin', grant_type: 'password' }
+    );
     const req = http.request({
       hostname: keycloakUrl.hostname,
       port: keycloakUrl.port,

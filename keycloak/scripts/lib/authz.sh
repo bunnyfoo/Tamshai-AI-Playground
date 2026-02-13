@@ -52,20 +52,34 @@ get_admin_token() {
         return 1
     fi
 
+    log_info "  [DEBUG] KEYCLOAK_ADMIN_CLIENT_SECRET is ${KEYCLOAK_ADMIN_CLIENT_SECRET:+SET}"
     log_info "  [DEBUG] ADMIN_USER=${ADMIN_USER:-NOT_SET}"
     log_info "  [DEBUG] ADMIN_PASS is ${ADMIN_PASS:+SET}"
 
     log_info "  [DEBUG] Calling curl to get admin token..."
     local token_response
-    token_response=$(curl -s -X POST "$token_url" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "username=${ADMIN_USER}" \
-        -d "password=${ADMIN_PASS}" \
-        -d "grant_type=password" \
-        -d "client_id=admin-cli" 2>&1) || {
-        log_error "curl command failed"
-        return 1
-    }
+    if [ -n "${KEYCLOAK_ADMIN_CLIENT_SECRET:-}" ]; then
+        log_info "  [DEBUG] Using client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET)"
+        token_response=$(curl -s -X POST "$token_url" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "client_id=admin-cli" \
+            -d "client_secret=${KEYCLOAK_ADMIN_CLIENT_SECRET}" \
+            -d "grant_type=client_credentials" 2>&1) || {
+            log_error "curl command failed"
+            return 1
+        }
+    else
+        log_info "  [DEBUG] Using ROPC fallback (admin username/password)"
+        token_response=$(curl -s -X POST "$token_url" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=${ADMIN_USER}" \
+            -d "password=${ADMIN_PASS}" \
+            -d "grant_type=password" \
+            -d "client_id=admin-cli" 2>&1) || {
+            log_error "curl command failed"
+            return 1
+        }
+    fi
 
     log_info "  [DEBUG] curl completed, parsing with jq..."
     local token

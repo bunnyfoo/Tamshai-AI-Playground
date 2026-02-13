@@ -6,7 +6,8 @@
  *
  * Authentication:
  * - User tokens acquired via token exchange (no ROPC on mcp-gateway client)
- * - Admin tokens use admin-cli ROPC in master realm (Phase 4 migration target)
+ * - Admin tokens use admin-cli client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET)
+ *   with ROPC fallback (KEYCLOAK_ADMIN_PASSWORD) for environments not yet configured
  *
  * TOTP Handling:
  * - Token exchange bypasses OTP requirement (service account impersonation)
@@ -56,28 +57,30 @@ async function getUserCredentials(userId) {
 }
 
 /**
- * Get admin token from Keycloak master realm
+ * Get admin token from Keycloak master realm.
+ * Prefers client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET) over ROPC.
  */
 async function getAdminToken() {
   const tokenUrl = `${CONFIG.keycloakUrl}/realms/master/protocol/openid-connect/token`;
+  const clientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
   const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD;
 
   console.log(`\n=== Admin Token Acquisition ===`);
   console.log(`Token URL: ${tokenUrl}`);
-  console.log(`Admin password set: ${adminPassword ? 'YES' : 'NO'}`);
+  console.log(`Client credentials: ${clientSecret ? 'YES' : 'NO'}`);
+  console.log(`ROPC fallback: ${adminPassword ? 'YES' : 'NO'}`);
 
   try {
+    const params = clientSecret
+      ? { client_id: 'admin-cli', client_secret: clientSecret, grant_type: 'client_credentials' }
+      : { client_id: 'admin-cli', username: 'admin', password: adminPassword, grant_type: 'password' };
+
     const response = await axios.post(
       tokenUrl,
-      new URLSearchParams({
-        client_id: 'admin-cli',
-        username: 'admin',
-        password: adminPassword,
-        grant_type: 'password',
-      }),
+      new URLSearchParams(params),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
-    console.log(`✅ Admin token acquired successfully`);
+    console.log(`✅ Admin token acquired via ${clientSecret ? 'client credentials' : 'ROPC (fallback)'}`);
     return response.data.access_token;
   } catch (error) {
     console.error(`❌ Admin token acquisition failed`);

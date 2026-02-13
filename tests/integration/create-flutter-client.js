@@ -15,12 +15,11 @@ const keycloakParsed = new URL(CONFIG.keycloakUrl);
 
 async function getAdminToken() {
   return new Promise((resolve, reject) => {
-    const postData = querystring.stringify({
-      client_id: 'admin-cli',
-      username: 'admin',
-      password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
-      grant_type: 'password',
-    });
+    const clientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
+    const postData = querystring.stringify(clientSecret
+      ? { client_id: 'admin-cli', client_secret: clientSecret, grant_type: 'client_credentials' }
+      : { client_id: 'admin-cli', username: 'admin', password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin', grant_type: 'password' }
+    );
 
     const options = {
       hostname: keycloakParsed.hostname,

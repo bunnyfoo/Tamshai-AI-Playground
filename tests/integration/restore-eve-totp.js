@@ -23,14 +23,14 @@ const TOTP_SECRET = '[REDACTED-DEV-TOTP]';
 const TARGET_USER = 'eve.thompson';
 
 async function getAdminToken() {
+  const clientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
+  const params = clientSecret
+    ? { client_id: 'admin-cli', client_secret: clientSecret, grant_type: 'client_credentials' }
+    : { client_id: 'admin-cli', username: 'admin', password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin', grant_type: 'password' };
+
   const response = await axios.post(
     `${CONFIG.keycloakUrl}/realms/master/protocol/openid-connect/token`,
-    new URLSearchParams({
-      client_id: 'admin-cli',
-      username: 'admin',
-      password: process.env.KEYCLOAK_ADMIN_PASSWORD || 'admin',
-      grant_type: 'password',
-    }),
+    new URLSearchParams(params),
     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
   );
   return response.data.access_token;

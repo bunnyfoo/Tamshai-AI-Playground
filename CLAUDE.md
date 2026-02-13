@@ -1140,25 +1140,28 @@ See `docs/architecture/security-model.md` for complete security documentation.
 
 **ROPC (Resource Owner Password Credentials) Flow**:
 
-The `direct_access_grants_enabled` setting controls whether the ROPC flow (password grant) is allowed for the `mcp-gateway` Keycloak client.
+The `direct_access_grants_enabled` setting controls whether the ROPC flow (password grant) is allowed for the `mcp-gateway` Keycloak client. **ROPC is disabled in all environments** as of 2026-02-13.
 
-**Security Assessment** (2026-02-12):
+**Security Assessment** (2026-02-12, updated 2026-02-13):
 - **Production Runtime**: Does NOT use ROPC flow - all production apps use Authorization Code + PKCE
-- **Integration Tests**: DO use ROPC flow for token acquisition (25+ test files)
-- **Security Risk**: ROPC exposes passwords to client applications (violates OAuth 2.0 Security BCP RFC 8252)
+- **Integration Tests**: Use token exchange (mcp-integration-runner service account) - no ROPC
+- **Performance Tests**: Use token exchange with per-VU caching - no ROPC
+- **Admin API Access**: Uses admin-cli client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET) with ROPC fallback
 
-**Environment Policy**:
+**Environment Policy** (Updated 2026-02-13 - Migration Complete):
 
 | Environment | direct_access_grants_enabled | Justification |
 |-------------|------------------------------|---------------|
 | **Production** | `false` | No runtime usage, security best practice |
 | **Stage** | `false` | Mirror production security posture |
-| **Dev** | `true` | Integration tests require password grant |
-| **CI** | `true` | Automated tests require password grant |
+| **Dev** | `false` | Migration complete - using token exchange and client credentials |
+| **CI** | `false` | Migration complete - using token exchange and client credentials |
+
+**Exception**: E2E browser tests (Playwright) may use ROPC for UI login validation. This is an acceptable exception documented in `docs/security/ROPC_ASSESSMENT.md`.
 
 **Configuration**: Set via `direct_access_grants_enabled` variable in `infrastructure/terraform/keycloak/environments/*.tfvars`
 
-**See Also**: `docs/security/ROPC_ASSESSMENT.md` for complete security analysis and test refactoring recommendations.
+**See Also**: `docs/security/ROPC_ASSESSMENT.md` for complete security analysis and migration results.
 
 ### Compliance
 

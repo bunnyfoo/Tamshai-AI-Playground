@@ -6,7 +6,8 @@
  *
  * Authentication:
  * - User tokens acquired via token exchange (getImpersonatedToken) - no ROPC
- * - Admin tokens use admin-cli ROPC in master realm (Phase 4 migration target)
+ * - Admin tokens use admin-cli client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET)
+ *   with ROPC fallback (KEYCLOAK_ADMIN_PASSWORD) for environments not yet configured
  *
  * TOTP Handling:
  * - Token exchange bypasses OTP requirement (service account impersonation)
@@ -301,11 +302,27 @@ interface KeycloakUser {
 }
 
 /**
- * Get admin token from Keycloak master realm
+ * Get admin token from Keycloak master realm.
+ * Prefers client credentials (KEYCLOAK_ADMIN_CLIENT_SECRET) over ROPC.
  */
 async function getKeycloakAdminToken(): Promise<string> {
+  const clientSecret = process.env.KEYCLOAK_ADMIN_CLIENT_SECRET;
+
+  if (clientSecret) {
+    const response = await axios.post(
+      `${KEYCLOAK_CONFIG.url}/realms/master/protocol/openid-connect/token`,
+      new URLSearchParams({
+        client_id: 'admin-cli',
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data.access_token;
+  }
+
   if (!KEYCLOAK_CONFIG.adminPassword) {
-    throw new Error('KEYCLOAK_ADMIN_PASSWORD environment variable is required for integration tests');
+    throw new Error('KEYCLOAK_ADMIN_CLIENT_SECRET or KEYCLOAK_ADMIN_PASSWORD environment variable is required');
   }
   const response = await axios.post(
     `${KEYCLOAK_CONFIG.url}/realms/master/protocol/openid-connect/token`,

@@ -43,6 +43,7 @@ web_origins = [
 ]
 
 # OAuth Flows
-# ROPC (Resource Owner Password Credentials) enabled for automated testing
+# ROPC (Resource Owner Password Credentials) DISABLED - migration complete (2026-02-13)
+# Tests use token exchange (mcp-integration-runner) and client credentials (admin-cli)
 # See docs/security/ROPC_ASSESSMENT.md for security rationale
-direct_access_grants_enabled = true
+direct_access_grants_enabled = false
