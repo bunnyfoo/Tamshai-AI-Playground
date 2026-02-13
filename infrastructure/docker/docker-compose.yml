@@ -961,7 +961,7 @@ services:
   # - Groups and role assignments (C-Suite, All-Employees)
   # Phoenix principle: All configuration is idempotent and recreatable from code.
   keycloak-sync:
-    image: quay.io/keycloak/keycloak:24.0
+    image: tamshai-pg-keycloak:dev
     container_name: tamshai-pg-keycloak-sync
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:?KEYCLOAK_ADMIN is required}

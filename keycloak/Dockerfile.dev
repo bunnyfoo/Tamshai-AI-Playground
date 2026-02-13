@@ -12,6 +12,12 @@
 
 FROM quay.io/keycloak/keycloak:24.0
 
+# Install jq for realm sync scripts (Authorization Services configuration)
+# Download jq as a static binary (ADD supports URLs, works with minimal base images)
+USER root
+ADD https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 /usr/local/bin/jq
+RUN chmod +x /usr/local/bin/jq
+
 # Copy realm exports into the image (not mounted as volume)
 # This ensures terraform destroy + apply always uses the latest files
 # Keycloak imports all JSON files in /opt/keycloak/data/import/ on startup
@@ -23,5 +29,7 @@ COPY realm-export-customers-dev.json /opt/keycloak/data/import/02-realm-tamshai-
 USER 1000
 
 # Default command for dev mode with realm import
+# Enable token-exchange feature for RFC 8693 (OAuth 2.0 Token Exchange)
+# Enable admin-fine-grained-authz for impersonation permissions
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
-CMD ["start-dev", "--import-realm"]
+CMD ["start-dev", "--import-realm", "--features=token-exchange,admin-fine-grained-authz"]
