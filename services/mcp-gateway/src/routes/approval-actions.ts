@@ -73,8 +73,8 @@ router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedReque
   }
 
   try {
-    const mcpHrUrl = process.env.MCP_HR_URL || 'http://localhost:3101';
-    const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+    const mcpHrUrl = process.env.MCP_HR_URL || `http://localhost:${process.env.DEV_PG_MCP_HR || '3111'}`;
+    const gatewayUrl = `http://localhost:${process.env.PORT || process.env.DEV_PG_MCP_GATEWAY || '3110'}`;
     const internalSecret = process.env.MCP_INTERNAL_SECRET;
 
     if (!internalSecret) {
