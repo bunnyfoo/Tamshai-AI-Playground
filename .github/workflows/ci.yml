@@ -486,6 +486,10 @@ jobs:
           PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_PG_POSTGRES }} -U tamshai -d tamshai -c "CREATE DATABASE tamshai_finance;"
           echo "✅ Created tamshai_finance database"
 
+          # Create tamshai_payroll database
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_PG_POSTGRES }} -U tamshai -d tamshai -c "CREATE DATABASE tamshai_payroll;"
+          echo "✅ Created tamshai_payroll database"
+
       - name: Load sample data
         run: |
           # Load HR sample data (23 employees)
@@ -496,6 +500,11 @@ jobs:
           PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_PG_POSTGRES }} -U tamshai -d tamshai_finance < sample-data/finance-data.sql
           echo "✅ Loaded Finance sample data"
 
+          # Load Payroll schema and sample data
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_PG_POSTGRES }} -U tamshai -d tamshai_payroll < infrastructure/database/payroll/schema.sql
+          PGPASSWORD=$DB_PASSWORD psql -h localhost -p ${{ vars.DEV_PG_POSTGRES }} -U tamshai -d tamshai_payroll < infrastructure/database/payroll/sample-data.sql
+          echo "✅ Loaded Payroll sample data"
+
           # Load Sales sample data (MongoDB) using Docker
           docker run --rm --network host \
             -v "$(pwd)/sample-data:/data" \
@@ -503,12 +512,18 @@ jobs:
             mongosh "mongodb://root:$MONGODB_PASSWORD@localhost:${{ vars.DEV_PG_MONGODB }}/tamshai_sales?authSource=admin" /data/sales-data.js
           echo "✅ Loaded Sales sample data"
 
-          # Load Support sample data (Elasticsearch - already started in earlier step)
-          # Bulk load support tickets and knowledge base
+          # Load Support sample data (MongoDB) for employee-facing ticket tools
+          docker run --rm --network host \
+            -v "$(pwd)/sample-data:/data" \
+            mongo:7 \
+            mongosh "mongodb://root:$MONGODB_PASSWORD@localhost:${{ vars.DEV_PG_MONGODB }}/tamshai_support?authSource=admin" /data/support-data.js
+          echo "✅ Loaded Support sample data (MongoDB)"
+
+          # Load Support Knowledge Base (Elasticsearch) for customer-facing search
           curl -X POST "http://localhost:${{ vars.DEV_PG_ELASTICSEARCH }}/_bulk" \
             -H 'Content-Type: application/x-ndjson' \
             --data-binary @sample-data/support-data.ndjson
-          echo "✅ Loaded Support sample data"
+          echo "✅ Loaded Support Knowledge Base (Elasticsearch)"
 
           echo "✅ All sample data loaded successfully"
 
@@ -788,6 +803,7 @@ jobs:
           KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           ELASTICSEARCH_URL: http://localhost:${{ vars.DEV_PG_ELASTICSEARCH }}
+          MONGODB_URL: mongodb://root:${{ env.MONGODB_PASSWORD }}@localhost:${{ vars.DEV_PG_MONGODB }}/tamshai_support?authSource=admin
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           NODE_ENV: test
@@ -811,6 +827,31 @@ jobs:
           # MCP Gateway URL for calling tools
           MCP_GATEWAY_URL: http://127.0.0.1:${{ vars.DEV_PG_MCP_GATEWAY }}
           NODE_ENV: test
+
+      - name: Install MCP Payroll dependencies
+        working-directory: services/mcp-payroll
+        run: npm ci
+
+      - name: Build MCP Payroll Server
+        working-directory: services/mcp-payroll
+        run: npm run build
+
+      - name: Start MCP Payroll Server
+        working-directory: services/mcp-payroll
+        run: npm start &
+        env:
+          PORT: ${{ vars.DEV_PG_MCP_PAYROLL }}
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}
+          KEYCLOAK_REALM: tamshai-corp
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: ${{ vars.DEV_PG_POSTGRES }}
+          POSTGRES_USER: tamshai
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: tamshai_payroll
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          NODE_ENV: test
+          MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
       - name: Wait for MCP Servers
         run: |
@@ -837,6 +878,7 @@ jobs:
           check_health "MCP Finance" ${{ vars.DEV_PG_MCP_FINANCE }} || exit 1
           check_health "MCP Sales" ${{ vars.DEV_PG_MCP_SALES }} || exit 1
           check_health "MCP Support" ${{ vars.DEV_PG_MCP_SUPPORT }} || exit 1
+          check_health "MCP Payroll" ${{ vars.DEV_PG_MCP_PAYROLL }} || exit 1
           check_health "MCP UI" ${{ vars.DEV_PG_MCP_UI }} || exit 1
 
           echo "✅ All MCP servers are ready!"
