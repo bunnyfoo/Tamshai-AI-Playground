@@ -320,6 +320,249 @@ const componentRegistry: Record<string, ComponentDefinition> = {
       };
     },
   },
+
+  'support:tickets': {
+    type: 'TicketListView',
+    domain: 'support',
+    component: 'tickets',
+    description: 'Displays support tickets filtered by priority, status, or assignee',
+    mcpCalls: [
+      {
+        server: 'support',
+        tool: 'list_tickets',
+        paramMap: {
+          priority: 'priority',
+          status: 'status',
+          assignedTo: 'assignedTo',
+          limit: 'limit'
+        }
+      },
+    ],
+    transform: (data: unknown): Record<string, unknown> => {
+      const tickets = (data as Array<any>) || [];
+
+      return {
+        tickets: tickets.map((ticket: any) => ({
+          id: ticket.ticket_id || ticket.id,
+          title: ticket.title || ticket.subject,
+          description: ticket.description || ticket.issue,
+          priority: ticket.priority?.toLowerCase() || 'medium',
+          status: ticket.status?.toLowerCase() || 'open',
+          customer: {
+            name: ticket.customer_name || ticket.requester_name || 'Unknown',
+            email: ticket.customer_email || ticket.requester_email || '',
+          },
+          assignedTo: ticket.assigned_to_name || 'Unassigned',
+          createdAt: ticket.created_at || ticket.submission_date,
+          updatedAt: ticket.updated_at || ticket.last_modified,
+          resolutionDeadline: ticket.resolution_deadline,
+          tags: ticket.tags || [],
+        })),
+      };
+    },
+    generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
+      const tickets = (data as Array<any>) || [];
+      const priority = params.priority || 'all';
+      const status = params.status || 'all';
+
+      if (tickets.length === 0) {
+        return { text: `No ${priority} priority ${status} tickets found.` };
+      }
+
+      const highPriority = tickets.filter(t => t.priority === 'high' || t.priority === 'critical').length;
+
+      return {
+        text: `Found ${tickets.length} tickets${priority !== 'all' ? ` (${priority} priority)` : ''}${highPriority > 0 ? `, including ${highPriority} high/critical` : ''}.`,
+      };
+    },
+  },
+
+  'payroll:pay_stub': {
+    type: 'PayStubDetailCard',
+    domain: 'payroll',
+    component: 'pay_stub',
+    description: 'Displays detailed pay stub information for a specific employee and pay period',
+    mcpCalls: [
+      {
+        server: 'payroll',
+        tool: 'get_pay_stub',
+        paramMap: {
+          payStubId: 'payStubId'
+        }
+      },
+    ],
+    transform: (data: unknown): Record<string, unknown> => {
+      const stub = data as any;
+
+      return {
+        payStubId: stub.pay_stub_id,
+        employee: {
+          id: stub.employee_id,
+          name: stub.employee_name,
+        },
+        payPeriod: {
+          start: stub.pay_period_start,
+          end: stub.pay_period_end,
+          payDate: stub.pay_date,
+        },
+        grossPay: Number(stub.gross_pay) || 0,
+        netPay: Number(stub.net_pay) || 0,
+        totalTaxes: Number(stub.total_taxes) || 0,
+        totalDeductions: Number(stub.total_deductions) || 0,
+        hoursWorked: stub.hours_worked,
+        overtimeHours: stub.overtime_hours,
+        earnings: stub.earnings || [],
+        taxes: stub.taxes || [],
+        deductions: stub.deductions || [],
+        ytd: {
+          gross: Number(stub.ytd_gross) || 0,
+          net: Number(stub.ytd_net) || 0,
+          taxes: Number(stub.ytd_taxes) || 0,
+        },
+      };
+    },
+    generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
+      const stub = data as any;
+      const employeeName = stub.employee_name || 'Employee';
+      const netPay = Number(stub.net_pay) || 0;
+      const payDate = stub.pay_date || 'unknown date';
+
+      return {
+        text: `Pay stub for ${employeeName}: $${netPay.toFixed(2)} net pay for period ending ${payDate}.`,
+      };
+    },
+  },
+
+  'payroll:pay_runs': {
+    type: 'PayRunListView',
+    domain: 'payroll',
+    component: 'pay_runs',
+    description: 'Displays payroll runs filtered by status or date range',
+    mcpCalls: [
+      {
+        server: 'payroll',
+        tool: 'list_pay_runs',
+        paramMap: {
+          status: 'status',
+          payPeriodStart: 'payPeriodStart',
+          payPeriodEnd: 'payPeriodEnd',
+          limit: 'limit'
+        }
+      },
+    ],
+    transform: (data: unknown): Record<string, unknown> => {
+      const runs = (data as Array<any>) || [];
+
+      return {
+        payRuns: runs.map((run: any) => ({
+          id: run.pay_run_id,
+          payPeriodStart: run.pay_period_start,
+          payPeriodEnd: run.pay_period_end,
+          payDate: run.pay_date,
+          payFrequency: run.pay_frequency,
+          status: run.status?.toLowerCase() || 'draft',
+          employeeCount: Number(run.employee_count) || 0,
+          totalGross: Number(run.total_gross) || 0,
+          totalNet: Number(run.total_net) || 0,
+          totalTaxes: Number(run.total_taxes) || 0,
+          totalDeductions: Number(run.total_deductions) || 0,
+          createdAt: run.created_at,
+          processedAt: run.processed_at,
+        })),
+      };
+    },
+    generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
+      const runs = (data as Array<any>) || [];
+      const status = params.status || 'all';
+
+      if (runs.length === 0) {
+        return { text: `No ${status} pay runs found.` };
+      }
+
+      const totalEmployees = runs.reduce((sum, r) => sum + (Number(r.employee_count) || 0), 0);
+      const totalPayout = runs.reduce((sum, r) => sum + (Number(r.total_net) || 0), 0);
+
+      return {
+        text: `Found ${runs.length} pay run${runs.length !== 1 ? 's' : ''} covering ${totalEmployees} employees with total payout of $${totalPayout.toFixed(2)}.`,
+      };
+    },
+  },
+
+  'tax:quarterly_estimate': {
+    type: 'TaxEstimateBreakdown',
+    domain: 'tax',
+    component: 'quarterly_estimate',
+    description: 'Displays quarterly tax estimate with federal, state, and local calculations',
+    mcpCalls: [
+      {
+        server: 'tax',
+        tool: 'list_quarterly_estimates',
+        paramMap: {
+          quarter: 'quarter',
+          year: 'year',
+          limit: 'limit'
+        }
+      },
+    ],
+    transform: (data: unknown): Record<string, unknown> => {
+      // list_quarterly_estimates returns an array, but we filter for one quarter/year
+      const estimates = (data as Array<any>) || [];
+      const estimate = estimates[0] || {};
+
+      return {
+        period: {
+          quarter: `Q${estimate.quarter || 1}`,
+          year: Number(estimate.year) || new Date().getFullYear(),
+          dueDate: estimate.due_date,
+        },
+        federal: {
+          estimatedTax: Number(estimate.federal_estimate) || 0,
+        },
+        state: {
+          estimatedTax: Number(estimate.state_estimate) || 0,
+        },
+        local: {
+          estimatedTax: Number(estimate.local_estimate) || 0,
+        },
+        total: {
+          estimatedTax: Number(estimate.total_estimate) || 0,
+          paid: Number(estimate.paid_amount) || 0,
+          owed: Math.max(0, (Number(estimate.total_estimate) || 0) - (Number(estimate.paid_amount) || 0)),
+        },
+        status: estimate.status || 'pending',
+        paidDate: estimate.paid_date,
+        paymentReference: estimate.payment_reference,
+      };
+    },
+    generateNarration: (data: unknown, params: Record<string, string>): { text: string } => {
+      const estimates = (data as Array<any>) || [];
+      const estimate = estimates[0] || {};
+      const quarter = `Q${estimate.quarter || params.quarter || 1}`;
+      const year = estimate.year || params.year || new Date().getFullYear();
+      const totalEstimate = Number(estimate.total_estimate) || 0;
+      const paidAmount = Number(estimate.paid_amount) || 0;
+      const owed = Math.max(0, totalEstimate - paidAmount);
+      const status = estimate.status || 'pending';
+
+      if (status === 'paid') {
+        return {
+          text: `${quarter} ${year} tax estimate: Fully paid ($${totalEstimate.toFixed(2)}).`,
+        };
+      } else if (status === 'partial') {
+        return {
+          text: `${quarter} ${year} tax estimate: $${owed.toFixed(2)} remaining of $${totalEstimate.toFixed(2)} total. Payment due by ${estimate.due_date || 'unknown'}.`,
+        };
+      } else if (status === 'overdue') {
+        return {
+          text: `${quarter} ${year} tax estimate: $${owed.toFixed(2)} OVERDUE. Payment was due ${estimate.due_date || 'unknown'}.`,
+        };
+      } else {
+        return {
+          text: `${quarter} ${year} tax estimate: $${totalEstimate.toFixed(2)} estimated. Payment due by ${estimate.due_date || 'unknown'}.`,
+        };
+      }
+    },
+  },
 };
 
 /**
