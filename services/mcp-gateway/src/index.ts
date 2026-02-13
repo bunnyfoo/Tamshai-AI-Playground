@@ -552,7 +552,7 @@ app.use('/api', authMiddleware, confirmationRouter);
 // Gateway endpoints for approval workflows with auto-confirmation
 // Wraps MCP server approval tools for simplified approve/reject actions
 
-app.use('/api', authMiddleware, approvalActionsRouter);
+app.use('/api/mcp', authMiddleware, approvalActionsRouter);
 
 // =============================================================================
 // MCP PROXY ROUTES (Extracted for testability - Phase 7 Refactoring)
