@@ -320,23 +320,24 @@ EOF
 
     log_info "  Permission updated (HTTP $LAST_HTTP_STATUS)"
 
-    # Step 6: Verify the binding persisted
+    # Step 6: Verify the binding persisted using associatedPolicies endpoint
+    # NOTE: The GET /permission/{id} response does NOT include 'policies' in the body.
+    # Policies are stored as relationships and must be queried via /associatedPolicies.
     log_info "  Verifying policy binding persisted..."
-    sleep 2  # Give Keycloak a moment to persist
-
-    local verify_perm
-    # Read from scope endpoint to match where we wrote
-    verify_perm=$(rest_api_call GET "clients/${rm_client_uuid}/authz/resource-server/permission/scope/${impersonate_perm_id}")
+    sleep 1
 
     local verify_policies
-    verify_policies=$(echo "$verify_perm" | jq -r '.policies // null')
+    verify_policies=$(rest_api_call GET "clients/${rm_client_uuid}/authz/resource-server/policy/${impersonate_perm_id}/associatedPolicies")
 
-    if [ "$verify_policies" = "null" ] || [ "$verify_policies" = "[]" ]; then
+    local policy_count
+    policy_count=$(echo "$verify_policies" | jq 'length // 0')
+
+    if [ "$policy_count" = "0" ] || [ "$policy_count" = "null" ]; then
         log_error "  Policy binding did NOT persist"
-        echo "$verify_perm" | jq '{id, name, policies}' >&2
+        echo "$verify_policies" | jq '.' >&2
         return 1
     fi
 
-    log_info "  Policy binding verified"
+    log_info "  Policy binding verified ($policy_count associated policies)"
     log_info "  Token exchange permissions configured successfully"
 }

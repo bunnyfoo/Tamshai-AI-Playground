@@ -586,18 +586,59 @@ sync_integration_runner_client() {
 
         # Assign default client scopes for token exchange claims
         # Without these scopes, exchanged tokens will be missing:
-        # - preferred_username (from 'profile' scope)
-        # - resource_access roles (from 'roles' scope)
+        # - preferred_username (from 'profile' scope via 'roles' scope mappers)
+        # - realm_access.roles (from 'roles' scope)
+        # - groups (from 'roles' scope)
         log_info "  Assigning default client scopes for token exchange..."
-        local scopes=("profile" "email" "roles")
-        for scope_name in "${scopes[@]}"; do
-            # Try to add scope (ignore if already assigned)
-            if _kcadm update "clients/$uuid/default-client-scopes/$scope_name" -r "$REALM" 2>/dev/null; then
-                log_info "    '$scope_name' scope assigned"
+
+        # Default scopes (always included in token)
+        local default_scopes=("openid" "roles" "profile" "web-origins")
+        for scope_name in "${default_scopes[@]}"; do
+            # Get scope ID by name (kcadm endpoint requires ID)
+            local scope_id
+            scope_id=$(_kcadm get "client-scopes" -r "$REALM" --fields id,name 2>/dev/null | \
+                grep -B1 "\"$scope_name\"" | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            if [ -n "$scope_id" ]; then
+                if _kcadm update "clients/$uuid/default-client-scopes/$scope_id" -r "$REALM" 2>/dev/null; then
+                    log_info "    Assigned default scope '$scope_name'"
+                else
+                    log_info "    Default scope '$scope_name' already assigned"
+                fi
             else
-                log_info "    '$scope_name' scope already assigned or not needed"
+                log_warn "    Default scope '$scope_name' not found in realm"
             fi
         done
+
+        # Optional scopes (included when explicitly requested)
+        local optional_scopes=("email")
+        for scope_name in "${optional_scopes[@]}"; do
+            local scope_id
+            scope_id=$(_kcadm get "client-scopes" -r "$REALM" --fields id,name 2>/dev/null | \
+                grep -B1 "\"$scope_name\"" | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            if [ -n "$scope_id" ]; then
+                if _kcadm update "clients/$uuid/optional-client-scopes/$scope_id" -r "$REALM" 2>/dev/null; then
+                    log_info "    Assigned optional scope '$scope_name'"
+                else
+                    log_info "    Optional scope '$scope_name' already assigned"
+                fi
+            else
+                log_warn "    Optional scope '$scope_name' not found in realm"
+            fi
+        done
+
+        # Add mcp-gateway audience mapper so exchanged tokens are accepted by the gateway
+        # Without this, the gateway rejects tokens with "jwt audience invalid"
+        log_info "  Adding mcp-gateway audience mapper..."
+        _kcadm create "clients/$uuid/protocol-mappers/models" -r "$REALM" \
+            -s name="mcp-gateway-audience" \
+            -s protocol="openid-connect" \
+            -s protocolMapper="oidc-audience-mapper" \
+            -s consentRequired=false \
+            -s 'config."included.client.audience"="mcp-gateway"' \
+            -s 'config."id.token.claim"="false"' \
+            -s 'config."access.token.claim"="true"' 2>/dev/null || {
+            log_info "    Audience mapper already exists"
+        }
 
         # Add explicit username mapper to ensure preferred_username is included
         # This guarantees the claim exists even if profile scope doesn't handle it for service accounts
@@ -613,7 +654,7 @@ sync_integration_runner_client() {
             -s 'config."id.token.claim"="true"' \
             -s 'config."access.token.claim"="true"' \
             -s 'config."userinfo.token.claim"="true"' 2>/dev/null || {
-            log_info "    Username mapper already exists or not needed"
+            log_info "    Username mapper already exists"
         }
     fi
 
