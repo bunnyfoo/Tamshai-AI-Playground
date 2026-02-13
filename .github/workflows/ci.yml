@@ -793,6 +793,25 @@ jobs:
           NODE_ENV: test
           MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
 
+      - name: Install MCP UI dependencies
+        working-directory: services/mcp-ui
+        run: npm ci
+
+      - name: Build MCP UI Server
+        working-directory: services/mcp-ui
+        run: npm run build
+
+      - name: Start MCP UI Server
+        working-directory: services/mcp-ui
+        run: npm start &
+        env:
+          PORT: ${{ vars.DEV_PG_MCP_UI }}
+          KEYCLOAK_URL: http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}
+          KEYCLOAK_REALM: tamshai-corp
+          # MCP Gateway URL for calling tools
+          MCP_GATEWAY_URL: http://127.0.0.1:${{ vars.DEV_PG_MCP_GATEWAY }}
+          NODE_ENV: test
+
       - name: Wait for MCP Servers
         run: |
           echo "Waiting for all MCP servers to be ready..."
@@ -818,6 +837,7 @@ jobs:
           check_health "MCP Finance" ${{ vars.DEV_PG_MCP_FINANCE }} || exit 1
           check_health "MCP Sales" ${{ vars.DEV_PG_MCP_SALES }} || exit 1
           check_health "MCP Support" ${{ vars.DEV_PG_MCP_SUPPORT }} || exit 1
+          check_health "MCP UI" ${{ vars.DEV_PG_MCP_UI }} || exit 1
 
           echo "✅ All MCP servers are ready!"
           sleep 2  # Grace period for full initialization
