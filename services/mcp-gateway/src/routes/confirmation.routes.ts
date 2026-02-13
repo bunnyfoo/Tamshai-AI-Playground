@@ -129,6 +129,7 @@ export function createConfirmationRoutes(deps: ConfirmationRoutesDependencies): 
           userContext: {
             userId: userContext.userId,
             username: userContext.username,
+            email: userContext.email,  // Required for RLS policies
             roles: userContext.roles,
           },
         },

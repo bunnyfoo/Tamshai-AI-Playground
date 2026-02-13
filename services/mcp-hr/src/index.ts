@@ -891,9 +891,14 @@ async function reconcileIdentitiesOnStartup(): Promise<void> {
     // Create BullMQ queue for cleanup jobs (required by IdentityService)
     const redisHost = process.env.REDIS_HOST;
     const redisPort = parseInt(process.env.REDIS_PORT!, 10);
+    const redisPassword = process.env.REDIS_PASSWORD;
 
     const cleanupQueue = new Queue('identity-cleanup', {
-      connection: { host: redisHost, port: redisPort },
+      connection: {
+        host: redisHost,
+        port: redisPort,
+        password: redisPassword,
+      },
     }) as CleanupQueue;
 
     // Create Keycloak Admin Client
