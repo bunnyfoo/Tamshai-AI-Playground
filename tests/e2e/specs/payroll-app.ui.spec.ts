@@ -7,6 +7,8 @@
  * - Pay stub viewing
  * - Direct deposit management
  * - 1099 contractor management
+ * - Benefits page
+ * - Tax withholdings page
  *
  * Prerequisites:
  * - User must be authenticated with payroll-read/payroll-write roles
@@ -210,6 +212,233 @@ test.describe('Payroll App E2E Tests', () => {
         await page.waitForLoadState('networkidle');
 
         await expect(page.locator('button:has-text("Generate 1099s")')).toBeVisible({ timeout: 10000 });
+      } finally {
+        await page.close();
+      }
+    });
+  });
+
+  test.describe('Benefits', () => {
+    test('displays benefits page with heading', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/benefits`);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.locator('h1:has-text("Benefits")')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('text=View your benefit elections and deductions')).toBeVisible();
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('shows benefit cards or empty state', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/benefits`);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.locator('h1:has-text("Benefits")')).toBeVisible({ timeout: 10000 });
+
+        // Benefits page shows cards or empty state or error
+        const hasBenefits = await page.locator('text=Your Contribution').first().isVisible({ timeout: 5000 }).catch(() => false);
+        const hasEmpty = await page.locator('text=No benefit elections found').isVisible().catch(() => false);
+        const hasError = await page.locator('text=Error loading benefits').isVisible().catch(() => false);
+        expect(hasBenefits || hasEmpty || hasError).toBe(true);
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('benefit cards show contribution amounts', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/benefits`);
+        await page.waitForLoadState('networkidle');
+
+        const hasBenefits = await page.locator('text=Your Contribution').first().isVisible({ timeout: 10000 }).catch(() => false);
+        if (!hasBenefits) {
+          test.skip(true, 'No benefits data available');
+          return;
+        }
+
+        // Each benefit card should show contribution fields
+        await expect(page.locator('text=Your Contribution').first()).toBeVisible();
+        await expect(page.locator('text=Employer Contribution').first()).toBeVisible();
+        await expect(page.locator('text=Frequency').first()).toBeVisible();
+        await expect(page.locator('text=Tax Treatment').first()).toBeVisible();
+      } finally {
+        await page.close();
+      }
+    });
+  });
+
+  test.describe('1099 Contractors (Extended)', () => {
+    test('status filter dropdown works', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/1099`);
+        await page.waitForLoadState('networkidle');
+
+        const statusFilter = page.locator('#status-filter, select[aria-label="Status"]');
+        const hasFilter = await statusFilter.isVisible({ timeout: 10000 }).catch(() => false);
+        if (!hasFilter) {
+          test.skip(true, 'Status filter not available');
+          return;
+        }
+
+        const options = statusFilter.locator('option');
+        const optionTexts = await options.allTextContents();
+        expect(optionTexts.some(t => t.includes('All') || t.includes('all'))).toBe(true);
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('year filter dropdown works', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/1099`);
+        await page.waitForLoadState('networkidle');
+
+        const yearFilter = page.locator('#year-filter, select[aria-label="Year"]');
+        const hasFilter = await yearFilter.isVisible({ timeout: 10000 }).catch(() => false);
+        if (!hasFilter) {
+          test.skip(true, 'Year filter not available');
+          return;
+        }
+
+        const options = yearFilter.locator('option');
+        const optionTexts = await options.allTextContents();
+        expect(optionTexts.length).toBeGreaterThan(0);
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('table shows contractor rows with expected columns', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/1099`);
+        await page.waitForLoadState('networkidle');
+
+        const hasTable = await page.locator('th:has-text("Name")').isVisible({ timeout: 10000 }).catch(() => false);
+        if (!hasTable) {
+          test.skip(true, 'No contractor data available');
+          return;
+        }
+
+        await expect(page.locator('th:has-text("Name")')).toBeVisible();
+        await expect(page.locator('th:has-text("Company")')).toBeVisible();
+        await expect(page.locator('th:has-text("YTD Payments")')).toBeVisible();
+        await expect(page.locator('th:has-text("Status")')).toBeVisible();
+        await expect(page.locator('th:has-text("1099 Status")')).toBeVisible();
+
+        // At least one row
+        const rows = page.locator('tbody tr');
+        const rowCount = await rows.count();
+        expect(rowCount).toBeGreaterThan(0);
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('active/inactive status badges render', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/1099`);
+        await page.waitForLoadState('networkidle');
+
+        const hasTable = await page.locator('tbody tr').first().isVisible({ timeout: 10000 }).catch(() => false);
+        if (!hasTable) {
+          test.skip(true, 'No contractor data available');
+          return;
+        }
+
+        // Status badges should show "active" or "inactive"
+        const statusCells = page.locator('tbody tr td:nth-child(5) span');
+        const firstStatus = await statusCells.first().textContent();
+        expect(['active', 'inactive']).toContain(firstStatus?.trim().toLowerCase());
+      } finally {
+        await page.close();
+      }
+    });
+  });
+
+  test.describe('Tax Withholdings', () => {
+    test('displays tax withholdings page with heading', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/tax`);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.locator('h1:has-text("Tax Withholdings")')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('text=Manage your federal and state tax elections')).toBeVisible();
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('displays Federal W-4 section or no-withholding message', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/tax`);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.locator('h1:has-text("Tax Withholdings")')).toBeVisible({ timeout: 10000 });
+
+        // Either W-4 section or no withholding message
+        const hasFederal = await page.locator('h2:has-text("Federal W-4")').isVisible({ timeout: 5000 }).catch(() => false);
+        const hasNoConfig = await page.locator('text=No withholding configured').isVisible().catch(() => false);
+        const hasError = await page.locator('text=Error loading tax withholdings').isVisible().catch(() => false);
+        expect(hasFederal || hasNoConfig || hasError).toBe(true);
+
+        if (hasFederal) {
+          await expect(page.locator('text=Filing Status')).toBeVisible();
+          await expect(page.locator('text=Allowances')).toBeVisible();
+          await expect(page.locator('text=Additional Withholding')).toBeVisible();
+        }
+      } finally {
+        await page.close();
+      }
+    });
+
+    test('displays State Tax section when withholdings configured', async () => {
+      test.skip(!authenticatedContext, 'No test credentials configured');
+      const page = await authenticatedContext!.newPage();
+
+      try {
+        await page.goto(`${PAYROLL_URL}/tax`);
+        await page.waitForLoadState('networkidle');
+
+        const hasState = await page.locator('h2:has-text("State Tax")').isVisible({ timeout: 10000 }).catch(() => false);
+        if (!hasState) {
+          test.skip(true, 'No tax withholding data configured');
+          return;
+        }
+
+        await expect(page.locator('h2:has-text("State Tax")')).toBeVisible();
+        // State section should show State field
+        const stateLabels = page.locator('text=State');
+        await expect(stateLabels.first()).toBeVisible();
       } finally {
         await page.close();
       }
