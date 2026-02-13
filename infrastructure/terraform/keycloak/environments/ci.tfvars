@@ -13,7 +13,8 @@
 # Keycloak connection settings (CI uses localhost, no /auth prefix)
 # Note: CI Keycloak runs at root path, dev uses /auth due to KC_HTTP_RELATIVE_PATH
 # IMPORTANT: In CI, keycloak_url is overridden via -var flag using ${{ vars.DEV_PG_KEYCLOAK }}
-keycloak_url        = "http://localhost:8180"
+# The port here is a fallback; the CI workflow passes the actual port via -var flag.
+keycloak_url        = "http://localhost:8190"
 keycloak_admin_user = "admin"
 # keycloak_admin_password - MUST be passed via -var flag from GitHub secret
 
@@ -33,13 +34,14 @@ tls_insecure_skip_verify = true
 
 # Valid redirect URIs for CI
 # IMPORTANT: In CI, overridden via -var flag using ${{ vars.DEV_PG_MCP_GATEWAY }}
+# The port here is a fallback; the CI workflow passes the actual port via -var flag.
 valid_redirect_uris = [
-  "http://localhost:3100/*",
+  "http://localhost:3110/*",
 ]
 
 # Explicit CORS origins (no wildcard paths)
 web_origins = [
-  "http://localhost:3100",
+  "http://localhost:3110",
 ]
 
 # OAuth Flows

@@ -598,9 +598,9 @@ jobs:
 
       - name: Configure Keycloak with Terraform
         env:
-          # Use TF_VAR_ prefix to pass secrets directly to Terraform
-          # This avoids bash interpolation issues with special characters in secrets
-          TF_VAR_keycloak_url: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
+          # Use TF_VAR_ prefix for secrets to avoid bash interpolation issues
+          # with special characters (TF_VAR_ has lower precedence than -var-file,
+          # so only use it for values NOT in ci.tfvars)
           TF_VAR_keycloak_admin_password: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
           TF_VAR_test_user_password: ${{ secrets.DEV_USER_PASSWORD }}
           TF_VAR_mcp_gateway_client_secret: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
@@ -613,10 +613,12 @@ jobs:
           terraform init
 
           # Apply Terraform configuration
-          # Secrets are passed via TF_VAR_ environment variables (no bash interpolation)
+          # Non-secret values use -var (highest precedence, overrides ci.tfvars)
+          # Secret values use TF_VAR_ env vars (not in ci.tfvars, no precedence conflict)
           echo "Creating Keycloak realm, roles, users, and clients with Terraform..."
           terraform apply -auto-approve \
             -var-file=environments/ci.tfvars \
+            -var='keycloak_url=http://localhost:${{ vars.DEV_PG_KEYCLOAK }}' \
             -var='valid_redirect_uris=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/*"]'
 
           # Export client secret for integration tests
