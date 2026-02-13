@@ -692,6 +692,10 @@ jobs:
         working-directory: tests/integration
         run: npm ci
 
+      - name: Install shared test dependencies
+        working-directory: tests/shared
+        run: npm ci
+
       # ============================================================
       # START MCP SERVERS (HR, Finance, Sales, Support)
       # Required for integration tests that call MCP endpoints directly
@@ -895,6 +899,8 @@ jobs:
           REDIS_PORT: 6379
           # Shared secret for MCP server authentication
           MCP_INTERNAL_SECRET: ${{ env.MCP_GATEWAY_CLIENT_SECRET }}
+          # Token exchange authentication (service account impersonation)
+          MCP_INTEGRATION_RUNNER_SECRET: ${{ secrets.MCP_INTEGRATION_RUNNER_SECRET }}
 
       - name: Run MCP HR integration tests
         working-directory: services/mcp-hr
