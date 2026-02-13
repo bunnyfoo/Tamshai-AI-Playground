@@ -343,7 +343,7 @@ test.describe('Payroll App E2E Tests', () => {
         await expect(page.locator('th:has-text("Name")')).toBeVisible();
         await expect(page.locator('th:has-text("Company")')).toBeVisible();
         await expect(page.locator('th:has-text("YTD Payments")')).toBeVisible();
-        await expect(page.locator('th:has-text("Status")')).toBeVisible();
+        await expect(page.getByRole('columnheader', { name: 'Status', exact: true })).toBeVisible();
         await expect(page.locator('th:has-text("1099 Status")')).toBeVisible();
 
         // At least one row

@@ -50,7 +50,7 @@ test.describe('Finance Budgets Page', () => {
         await page.goto(BUDGETS_URL);
         await page.waitForLoadState('networkidle');
 
-        await expect(page.locator('h1:has-text("Budgets")')).toBeVisible({ timeout: 15000 });
+        await expect(page.locator('h2:has-text("Budgets"), h1:has-text("Budgets")')).toBeVisible({ timeout: 15000 });
         await expect(page.locator('text=Manage departmental budgets')).toBeVisible();
       } finally {
         await page.close();
