@@ -161,7 +161,7 @@ resource "keycloak_openid_client" "mcp_gateway" {
   service_accounts_enabled     = true
 
   valid_redirect_uris = var.valid_redirect_uris
-  web_origins         = ["+"] # Allow all valid redirect URIs
+  web_origins         = var.web_origins # Explicit CORS origins (defense-in-depth)
 
   # OAuth/OIDC settings
   full_scope_allowed = true # Include all assigned client roles in tokens
@@ -185,7 +185,7 @@ resource "keycloak_openid_client" "web_portal" {
   implicit_flow_enabled        = false # Use auth code + PKCE instead
 
   valid_redirect_uris = var.valid_redirect_uris
-  web_origins         = ["+"] # Allow all valid redirect URIs
+  web_origins         = var.web_origins # Explicit CORS origins (defense-in-depth)
 
   # PKCE is enforced by default for PUBLIC clients in Keycloak 17+
   # OAuth/OIDC settings

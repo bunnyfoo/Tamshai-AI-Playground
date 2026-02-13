@@ -34,3 +34,8 @@ tls_insecure_skip_verify = true
 valid_redirect_uris = [
   "http://localhost:3100/*",
 ]
+
+# Explicit CORS origins (no wildcard paths)
+web_origins = [
+  "http://localhost:3100",
+]

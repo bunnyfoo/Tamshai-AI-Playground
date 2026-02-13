@@ -69,3 +69,14 @@ variable "valid_redirect_uris" {
   type        = list(string)
   default     = ["http://localhost:3100/*"]
 }
+
+variable "web_origins" {
+  description = "Allowed CORS origins for Keycloak clients (explicit, no wildcards)"
+  type        = list(string)
+  default = [
+    "http://localhost:3100",
+    "http://localhost:4010",
+    "http://localhost:4011",
+    "http://localhost:4012",
+  ]
+}
