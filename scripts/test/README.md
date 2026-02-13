@@ -97,7 +97,7 @@ The `mcp-gateway` client secret can also be retrieved directly from Keycloak:
 ```bash
 MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
   /opt/keycloak/bin/kcadm.sh config credentials \
-  --server http://localhost:8080/auth --realm master --user admin --password admin
+  --server http://localhost:8080/auth --realm master --user admin --password <admin-password>
 
 MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
   /opt/keycloak/bin/kcadm.sh get clients -r tamshai-corp \
@@ -292,7 +292,7 @@ MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
 # Get admin credentials
 MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
   /opt/keycloak/bin/kcadm.sh config credentials \
-  --server http://localhost:8080/auth --realm master --user admin --password admin
+  --server http://localhost:8080/auth --realm master --user admin --password <admin-password>
 
 # Clear requiredActions for a user
 USER_ID="d3f27af0-3fd7-4e89-beca-b005f997003c"  # alice.chen

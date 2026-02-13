@@ -9,6 +9,7 @@
 ## 🎉 Resolution
 
 **Solution**: Use Read-Modify-Write pattern via script:
+
 ```bash
 cd keycloak/scripts
 ./configure-token-exchange.sh
@@ -44,6 +45,7 @@ cd keycloak/scripts
 ## What's Broken ❌
 
 **Failing API Call**:
+
 ```bash
 curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f0408dd8-81f9-4bc9-8207-fc1c782c0070/authz/resource-server/permission/scope/efd9e24d-0f0e-462b-8c91-1dcd16bde196" \
   -H "Authorization: Bearer $TOKEN" \
@@ -58,6 +60,7 @@ curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f0408d
 **Result**: HTTP 200, but subsequent GET shows `policies: null`
 
 **Token Exchange Error**:
+
 ```json
 {
   "error": "access_denied",
@@ -66,6 +69,7 @@ curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f0408d
 ```
 
 **Keycloak Log**:
+
 ```
 reason="subject not allowed to impersonate"
 ```
@@ -76,17 +80,19 @@ reason="subject not allowed to impersonate"
 
 ### Use Admin UI + Realm Export
 
-1. **Access Admin Console**: http://localhost:8190/auth/admin
+1. **Access Admin Console**: <http://localhost:8190/auth/admin>
 2. **Navigate**: Users → Permissions → impersonate link
 3. **Create Policy**: Add `mcp-integration-runner` client to policy
 4. **Bind Policy**: Add to impersonate permission
 5. **Test**: Run token exchange test
 6. **Export Realm**:
+
    ```bash
    docker compose exec keycloak /opt/keycloak/bin/kc.sh export \
      --dir /tmp/export \
      --realm tamshai-corp
    ```
+
 7. **Update**: Copy export to `keycloak/realm-export-dev.json`
 8. **Commit**: Changes now survive Phoenix rebuilds
 

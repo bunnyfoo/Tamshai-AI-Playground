@@ -9,14 +9,14 @@
 ## Prerequisites Check
 
 - [ ] Services running: `docker compose ps` (all healthy)
-- [ ] Keycloak accessible: http://localhost:8190/auth
+- [ ] Keycloak accessible: <http://localhost:8190/auth>
 - [ ] Features enabled: Check logs for `Preview features enabled: admin-fine-grained-authz:v1, token-exchange:v1`
 
 ---
 
 ## Step 1: Access Keycloak Admin Console
 
-1. **URL**: http://localhost:8190/auth/admin
+1. **URL**: <http://localhost:8190/auth/admin>
 2. **Credentials**:
    - Username: `admin`
    - Password: `admin` (from `.env` file `KEYCLOAK_ADMIN_PASSWORD`)
@@ -34,6 +34,7 @@
    - [x] Authorization Enabled = ON (if not, toggle ON and save)
 
 **If client doesn't exist**: Run this first:
+
 ```bash
 cd infrastructure/docker
 source .env
@@ -111,11 +112,13 @@ source .env
 ## Step 7: Verify Configuration
 
 ### Via Admin UI
+
 1. Return to: Users → Permissions → impersonate
 2. **Settings tab**: Should show policy in "Apply Policy" field
 3. **Policies tab**: Should list the policy
 
 ### Via REST API (Optional)
+
 ```bash
 cd infrastructure/docker
 source .env
@@ -133,6 +136,7 @@ curl -s -X GET "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f04
 ```
 
 **Expected Output**:
+
 ```json
 {
   "name": "admin-impersonating.permission.users",
@@ -147,6 +151,7 @@ curl -s -X GET "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f04
 ## Step 8: Test Token Exchange
 
 ### Quick Manual Test
+
 ```bash
 cd infrastructure/docker
 source .env
@@ -176,6 +181,7 @@ echo "$RESULT" | jq '.'
 ```
 
 **Expected Result**:
+
 ```json
 {
   "access_token": "eyJhbGc...",
@@ -188,15 +194,18 @@ echo "$RESULT" | jq '.'
 ```
 
 **If you see an error**:
+
 ```json
 {
   "error": "access_denied",
   "error_description": "Client not allowed to exchange"
 }
 ```
+
 → Policy not properly bound, revisit Step 6
 
 ### Run Integration Tests
+
 ```bash
 cd tests/integration
 npm test -- auth-token-exchange.test.ts
@@ -209,6 +218,7 @@ npm test -- auth-token-exchange.test.ts
 ## Step 9: Export Realm for Idempotency
 
 ### Export via Docker
+
 ```bash
 cd infrastructure/docker
 
@@ -226,6 +236,7 @@ head -50 ./realm-export-new.json
 ```
 
 ### Update Realm Export File
+
 ```bash
 # Backup current export
 cp ../../keycloak/realm-export-dev.json ../../keycloak/realm-export-dev.json.backup
@@ -239,6 +250,7 @@ cp ./realm-export-new.json ../../keycloak/realm-export-dev.json
 ```
 
 ### Alternative: Manual Merge
+
 If export is too large or contains unwanted changes:
 1. Open `realm-export-dev.json` in editor
 2. Find the `authorizationSettings` section
@@ -250,6 +262,7 @@ If export is too large or contains unwanted changes:
 ## Step 10: Verify Idempotency
 
 ### Test Phoenix Rebuild
+
 ```bash
 cd infrastructure/terraform/dev
 
@@ -300,26 +313,34 @@ git push
 ## Troubleshooting
 
 ### Policy Not Visible in Dropdown (Step 6)
+
 - **Refresh page**: Browser cache issue
 - **Check policy exists**: Users → Permissions → impersonate → Policies tab
 - **Recreate policy**: Delete and recreate in Step 5
 
 ### Token Exchange Still Fails After Configuration
+
 - **Check Keycloak logs**:
+
   ```bash
   docker compose logs keycloak | grep -i "exchange\|imperson" | tail -20
   ```
+
 - **Verify policy bound**:
+
   ```bash
   # Use REST API verification from Step 7
   ```
+
 - **Restart Keycloak**:
+
   ```bash
   docker compose restart keycloak
   sleep 60  # Wait for startup
   ```
 
 ### Realm Export Doesn't Include Authorization Settings
+
 - **Use full export flag**: `--users realm_file` (already in commands)
 - **Check file size**: Should be >100KB with authorization settings
 - **Manual verification**: Search file for `"authorizationSettings"`

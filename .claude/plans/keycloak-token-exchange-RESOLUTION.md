@@ -33,12 +33,14 @@
 8. Verifies the binding persisted
 
 **Usage**:
+
 ```bash
 cd keycloak/scripts
 ./configure-token-exchange.sh
 ```
 
 **Output**:
+
 ```
 ==================================================
 Keycloak Token Exchange Configuration
@@ -59,6 +61,7 @@ Keycloak Token Exchange Configuration
 ## Results
 
 ### Before
+
 ```json
 {
   "error": "access_denied",
@@ -67,11 +70,13 @@ Keycloak Token Exchange Configuration
 ```
 
 Keycloak logs:
+
 ```
 reason="subject not allowed to impersonate"
 ```
 
 ### After
+
 ```json
 {
   "access_token": "eyJhbGc...",
@@ -87,6 +92,7 @@ reason="subject not allowed to impersonate"
 ## Test Results
 
 ### Integration Tests
+
 ```bash
 cd tests/integration
 npm test -- auth-token-exchange.test.ts
@@ -99,6 +105,7 @@ npm test -- auth-token-exchange.test.ts
 **Progress**: 56% passing (up from 31%)
 
 ### What Works Now ✅
+
 1. ✅ Client credentials authentication
 2. ✅ Service token acquisition
 3. ✅ Token exchange request (no more "subject not allowed to impersonate")
@@ -122,6 +129,7 @@ npm test -- auth-token-exchange.test.ts
 **Root Cause**: Token exchange configuration incomplete - missing scope/claim mappings
 
 **Example**:
+
 ```javascript
 const payload = decodeToken(aliceToken);
 console.log(payload.preferred_username); // undefined (should be "alice.chen")
@@ -141,6 +149,7 @@ console.log(payload.resource_access?.['mcp-gateway']?.roles); // [] (should incl
 - Does token exchange inherit user roles by default?
 
 **Test Command**:
+
 ```bash
 # Current token exchange call
 curl -X POST "http://localhost:8190/auth/realms/tamshai-corp/protocol/openid-connect/token" \
@@ -168,6 +177,7 @@ curl -X POST "http://localhost:8190/auth/realms/tamshai-corp/protocol/openid-con
 **File**: `tests/shared/auth/token-exchange.ts`
 
 If token exchange requires different parameters, update the `getUserToken()` method:
+
 ```typescript
 async getUserToken(username: string): Promise<string> {
   const params = new URLSearchParams({
@@ -201,11 +211,13 @@ echo "Configuring token exchange permissions..."
 ## Documentation Updates
 
 ### Updated Files
+
 1. ✅ `keycloak-token-exchange-blocking-issue.md` - Added resolution section
 2. ✅ `keycloak-token-exchange-quick-ref.md` - Updated status to RESOLVED
 3. ✅ `keycloak/scripts/configure-token-exchange.sh` - New script created
 
 ### Files to Update (After Claims Fixed)
+
 1. `test-auth-refactoring.md` - Mark Phase 1 complete, document claims issue
 2. `keycloak-token-exchange-ui-steps.md` - Add note about scripted approach
 3. `README.md` or `CLAUDE.md` - Document token exchange setup
@@ -215,9 +227,11 @@ echo "Configuring token exchange permissions..."
 ## Key Learnings
 
 ### 1. Keycloak Authorization API Pattern
+
 **Lesson**: Authorization resources require full object updates, not partial.
 
 **Pattern**:
+
 ```bash
 # 1. READ full state
 CURRENT=$(curl GET /permission/{id})
@@ -230,9 +244,11 @@ curl PUT /permission/{id} -d "$UPDATED"
 ```
 
 ### 2. HTTP Status Codes
+
 **201 Created** is a valid success status for permission updates, not just 200/204.
 
 ### 3. Token Exchange Complexity
+
 Token exchange involves multiple configuration layers:
 - ✅ Features enabled (`token-exchange`, `admin-fine-grained-authz`)
 - ✅ Service account with impersonation role
@@ -246,11 +262,13 @@ Token exchange involves multiple configuration layers:
 ## References
 
 ### External
+
 - [Keycloak Token Exchange](https://www.keycloak.org/securing-apps/token-exchange)
 - [RFC 8693 - OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
 - [Keycloak Authorization Services](https://www.keycloak.org/docs/latest/authorization_services/)
 
 ### Internal
+
 - Primary Issue Report: `.claude/plans/keycloak-token-exchange-blocking-issue.md`
 - Quick Reference: `.claude/plans/keycloak-token-exchange-quick-ref.md`
 - UI Steps (Alternative): `.claude/plans/keycloak-token-exchange-ui-steps.md`

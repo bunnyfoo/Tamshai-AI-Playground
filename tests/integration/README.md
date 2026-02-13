@@ -424,7 +424,7 @@ curl http://localhost:$PORT_KEYCLOAK/auth/health/ready
 
 # Check test user exists
 ADMIN_TOKEN=$(curl -s -X POST http://localhost:$PORT_KEYCLOAK/auth/realms/master/protocol/openid-connect/token \
-  -d "client_id=admin-cli" -d "username=admin" -d "password=admin" -d "grant_type=password" | \
+  -d "client_id=admin-cli" -d "username=admin" -d "password=<admin-password>" -d "grant_type=password" | \
   jq -r '.access_token')
 
 curl -s "http://localhost:$PORT_KEYCLOAK/auth/admin/realms/tamshai-corp/users" \

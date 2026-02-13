@@ -178,7 +178,7 @@ terraform plan -var-file=environments\dev.tfvars
 ### Update single variable
 ```powershell
 # Set/update a specific variable
-setx TF_VAR_claude_api_key "sk-ant-api03-new-key-here"
+setx TF_VAR_claude_api_key "sk-ant-api03-..."
 
 # Restart terminal for change to take effect
 ```

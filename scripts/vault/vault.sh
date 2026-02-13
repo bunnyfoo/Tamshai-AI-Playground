@@ -139,7 +139,7 @@ cmd_set() {
     if [ -z "$SECRET_PATH" ] || [ -z "$SECRET_VALUE" ]; then
         log_error "Secret path and value required"
         echo "Usage: $0 set [env] <path> <key=value>"
-        echo "Example: $0 set dev tamshai/test api_key=secret123"
+        echo "Example: $0 set dev tamshai/test api_key=<your-secret>"
         exit 1
     fi
 

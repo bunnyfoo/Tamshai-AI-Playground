@@ -50,6 +50,7 @@ Successfully implemented client scope assignment for token exchange (allowing mc
 ### Expected Behavior
 
 Should see debug output like:
+
 ```
 [INFO]   [DEBUG] Entering get_admin_token function
 [INFO]   [DEBUG] Token URL: http://keycloak:8080/auth/realms/master/protocol/openid-connect/token
@@ -315,6 +316,7 @@ get_admin_token() {
 - Successfully tested and working
 
 **Relevant section**:
+
 ```bash
 # Step 1: Authenticate and get admin token
 ADMIN_TOKEN=$(curl -s -X POST "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
@@ -388,4 +390,3 @@ echo "✅ Authenticated successfully"
 **Document Version**: 1.0
 **Status**: Documented for third-party review
 **Next Action**: Manual workaround or third-party investigation
-

@@ -51,6 +51,7 @@ Replace Resource Owner Password Credentials (ROPC) flow in integration tests wit
 ## Technical Environment
 
 ### Infrastructure
+
 - **Keycloak Version**: 24.0.5
 - **Container**: `quay.io/keycloak/keycloak:24.0`
 - **Deployment**: Docker Compose (local dev)
@@ -58,17 +59,20 @@ Replace Resource Owner Password Credentials (ROPC) flow in integration tests wit
 - **Database**: PostgreSQL (containerized)
 
 ### Enabled Features
+
 ```dockerfile
 # keycloak/Dockerfile.dev (lines 25-28)
 CMD ["start-dev", "--import-realm", "--features=token-exchange,admin-fine-grained-authz"]
 ```
 
 **Verification** (from logs):
+
 ```
 Preview features enabled: admin-fine-grained-authz:v1, token-exchange:v1
 ```
 
 ### Client Configuration
+
 - **Client ID**: `mcp-integration-runner`
 - **Client UUID**: `1d627f52-bb73-40fe-93f5-812b40cebdaf` (current)
 - **Client Secret**: `cQFv7tO4FZPQS6my5YF+cRD7Z3XJJ6owuZWbhqdFXuc=` (requires URL encoding)
@@ -81,14 +85,19 @@ Preview features enabled: admin-fine-grained-authz:v1, token-exchange:v1
 ## Configuration Steps Completed ✅
 
 ### 1. Enable Token Exchange Feature
+
 **File**: `keycloak/Dockerfile.dev`
+
 ```dockerfile
 CMD ["start-dev", "--import-realm", "--features=token-exchange,admin-fine-grained-authz"]
 ```
+
 **Status**: ✅ Verified in logs
 
 ### 2. Create Service Account Client
+
 **Endpoint**: `POST /admin/realms/tamshai-corp/clients`
+
 ```json
 {
   "clientId": "mcp-integration-runner",
@@ -104,9 +113,11 @@ CMD ["start-dev", "--import-realm", "--features=token-exchange,admin-fine-graine
   "protocol": "openid-connect"
 }
 ```
+
 **Status**: ✅ Client created, service account user created
 
 ### 3. Grant Impersonation Role
+
 **Endpoint**: `POST /admin/realms/tamshai-corp/users/{service-account-user-id}/role-mappings/clients/{realm-management-uuid}`
 
 ```bash
@@ -118,15 +129,19 @@ SA_USER_ID="94a85f93-7969-4622-a87e-ca454cc56f92"
 
 # Impersonation role granted
 ```
+
 **Status**: ✅ Role granted successfully
 
 ### 4. Enable Users Management Permissions
+
 **Endpoint**: `PUT /admin/realms/tamshai-corp/users-management-permissions`
+
 ```json
 {"enabled": true}
 ```
 
 **Response**:
+
 ```json
 {
   "enabled": true,
@@ -141,10 +156,13 @@ SA_USER_ID="94a85f93-7969-4622-a87e-ca454cc56f92"
   }
 }
 ```
+
 **Status**: ✅ Permissions created
 
 ### 5. Create Client Policy
+
 **Endpoint**: `POST /admin/realms/tamshai-corp/clients/{realm-management-uuid}/authz/resource-server/policy/client`
+
 ```json
 {
   "type": "client",
@@ -157,12 +175,14 @@ SA_USER_ID="94a85f93-7969-4622-a87e-ca454cc56f92"
 ```
 
 **Response**:
+
 ```json
 {
   "id": "cfdb972d-6ce9-4fdf-9216-a83d71707ec1",
   "name": "mcp-integration-runner-policy"
 }
 ```
+
 **Status**: ✅ Policy created
 
 ---
@@ -170,12 +190,15 @@ SA_USER_ID="94a85f93-7969-4622-a87e-ca454cc56f92"
 ## ❌ BLOCKING ISSUE: Permission-to-Policy Binding
 
 ### Problem Statement
+
 Unable to bind the client policy (`cfdb972d-6ce9-4fdf-9216-a83d71707ec1`) to the impersonate permission (`efd9e24d-0f0e-462b-8c91-1dcd16bde196`) via the Admin REST API. The `policies` field remains `null` after multiple PUT attempts.
 
 ### Expected Behavior
+
 After updating the permission with a policy ID, subsequent GET requests should show the policy bound to the permission.
 
 ### Actual Behavior
+
 The `policies` field remains `null` despite successful HTTP 200/204 responses from PUT requests.
 
 ---
@@ -183,6 +206,7 @@ The `policies` field remains `null` despite successful HTTP 200/204 responses fr
 ## Attempted Solutions
 
 ### Attempt 1: Direct PUT to Permission Endpoint
+
 **Endpoint**: `PUT /admin/realms/tamshai-corp/clients/{realm-management-uuid}/authz/resource-server/permission/scope/{permission-id}`
 
 ```bash
@@ -204,6 +228,7 @@ curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f0408d
 **Result**: No output, no error. Subsequent GET shows `policies: null`.
 
 ### Attempt 2: Minimal Payload with JQ Update
+
 ```bash
 PERM=$(curl -s -X GET "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/$RM_CLIENT_UUID/authz/resource-server/permission/$IMPERSONATE_PERM_ID" \
   -H "Authorization: Bearer $TOKEN")
@@ -219,6 +244,7 @@ curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/$RM_CL
 **Result**: HTTP 200, but `policies` field still `null` on subsequent GET.
 
 ### Attempt 3: Complete Payload Reconstruction
+
 ```bash
 curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/$RM_CLIENT_UUID/authz/resource-server/permission/scope/$IMPERSONATE_PERM_ID" \
   -H "Authorization: Bearer $TOKEN" \
@@ -243,12 +269,14 @@ curl -X PUT "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/$RM_CL
 ## Verification of Issue
 
 ### GET Request After Update
+
 ```bash
 curl -s -X GET "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f0408dd8-81f9-4bc9-8207-fc1c782c0070/authz/resource-server/permission/efd9e24d-0f0e-462b-8c91-1dcd16bde196" \
   -H "Authorization: Bearer $TOKEN" | jq '{name, policies}'
 ```
 
 **Response**:
+
 ```json
 {
   "name": "admin-impersonating.permission.users",
@@ -257,6 +285,7 @@ curl -s -X GET "http://localhost:8190/auth/admin/realms/tamshai-corp/clients/f04
 ```
 
 ### Token Exchange Test Result
+
 ```bash
 curl -s -X POST "http://localhost:8190/auth/realms/tamshai-corp/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -268,6 +297,7 @@ curl -s -X POST "http://localhost:8190/auth/realms/tamshai-corp/protocol/openid-
 ```
 
 **Response**:
+
 ```json
 {
   "error": "access_denied",
@@ -276,6 +306,7 @@ curl -s -X POST "http://localhost:8190/auth/realms/tamshai-corp/protocol/openid-
 ```
 
 ### Keycloak Logs
+
 ```
 type="TOKEN_EXCHANGE_ERROR",
 realmId="tamshai-corp",
@@ -325,26 +356,31 @@ requested_subject="alice.chen"
 ## Possible Root Causes
 
 ### 1. API Endpoint Mismatch
+
 The PUT endpoint `/permission/scope/{id}` may not support policy binding, or may require a different endpoint structure.
 
 **Evidence**: No errors, but changes don't persist.
 
 ### 2. Transaction/Caching Issue
+
 Keycloak may cache authorization configuration and not immediately persist changes via REST API.
 
 **Evidence**: GET immediately after PUT shows old state.
 
 ### 3. Missing Field or Validation
+
 The payload may be missing a required field or violating a constraint not documented in the API.
 
 **Evidence**: No error responses, silent failure.
 
 ### 4. API vs UI Divergence
+
 The Admin UI may use different internal APIs than the public REST API for fine-grained permissions.
 
 **Evidence**: Documentation focuses on UI, no API examples exist.
 
 ### 5. Feature Flag or Configuration
+
 Additional configuration may be required beyond enabling `admin-fine-grained-authz`.
 
 **Evidence**: Speculative, no documentation found.
@@ -354,6 +390,7 @@ Additional configuration may be required beyond enabling `admin-fine-grained-aut
 ## Recommended Solutions
 
 ### Option 1: Admin UI Configuration (Fastest)
+
 **Effort**: 10-15 minutes
 **Idempotency**: Achievable via realm export
 
@@ -378,6 +415,7 @@ Additional configuration may be required beyond enabling `admin-fine-grained-aut
 - Not scriptable for CI/CD
 
 ### Option 2: Keycloak Terraform Provider
+
 **Effort**: 2-4 hours
 **Idempotency**: Built-in
 
@@ -398,6 +436,7 @@ Additional configuration may be required beyond enabling `admin-fine-grained-aut
 - May have same API limitations
 
 ### Option 3: Deep API Investigation
+
 **Effort**: 4-8 hours
 **Idempotency**: TBD
 
@@ -419,6 +458,7 @@ Additional configuration may be required beyond enabling `admin-fine-grained-aut
 - Could still require UI
 
 ### Option 4: Alternative Permission Model
+
 **Effort**: 1-2 hours
 **Idempotency**: High
 
@@ -440,6 +480,7 @@ Additional configuration may be required beyond enabling `admin-fine-grained-aut
 ## Current State Summary
 
 ### ✅ What Works
+
 - Keycloak 24.0.5 with `token-exchange` and `admin-fine-grained-authz` features enabled
 - Service account client created and configured
 - Service account has impersonation role
@@ -448,12 +489,14 @@ Additional configuration may be required beyond enabling `admin-fine-grained-aut
 - Client credentials flow functional (service account can authenticate)
 
 ### ❌ What's Blocked
+
 - Client policy not bound to impersonate permission (API issue)
 - Token exchange returns "subject not allowed to impersonate"
 - Integration tests cannot migrate from ROPC to token exchange
 - Non-idempotent manual configuration required
 
 ### 🔄 Idempotency Status
+
 - **Keycloak Features**: ✅ Idempotent (in Dockerfile)
 - **Client Creation**: ⚠️ Manual via API (survives restarts but not rebuilds)
 - **Policy Binding**: ❌ Not persisting via API

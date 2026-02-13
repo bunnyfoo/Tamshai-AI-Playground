@@ -28,9 +28,9 @@ Successfully reduced `.secrets.baseline` from 367 secrets to 182 secrets (**-50%
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
 | **Total Files** | 100 | 97 | -3 (-3%) |
-| **Total Secrets** | 367 | 182 | -185 (-50%) |
+| **Total Secrets** | 367 | 176 | -191 (-52%) |
 | **Build Artifacts** | 205+ | 0 | -100% |
-| **Documentation** | 31 | ~25 | -19% (est.) |
+| **Documentation** | 31 | 25 | -6 (-19%) |
 | **Test Files** | 21 | ~15 | -29% (est.) |
 
 ---
@@ -40,6 +40,7 @@ Successfully reduced `.secrets.baseline` from 367 secrets to 182 secrets (**-50%
 ### 1. Build Artifacts Removed (205+ secrets)
 
 **Files Removed from Tracking:**
+
 ```
 D  clients/web/packages/auth/tsconfig.tsbuildinfo (75 secrets)
 D  clients/web/packages/ui/tsconfig.tsbuildinfo   (109 secrets)
@@ -51,6 +52,7 @@ D  tests/performance/smoke-results.json           (7 secrets)
 **Total Removed:** 205+ secrets (56% of original baseline)
 
 **.gitignore Updates:**
+
 ```gitignore
 # Build outputs
 *.tsbuildinfo
@@ -73,6 +75,7 @@ tests/performance/summary.json
 - **Heuristic Filters:** UUID detection, templated secrets, indirect references
 
 **Excluded Patterns:**
+
 ```regex
 .*\.tsbuildinfo$
 .*node_modules/.*
@@ -92,20 +95,27 @@ tests/performance/.*-results\.json$
 **Files Modified:**
 - `docs/deployment/VAULT_SETUP.md` (6 secrets → pragmas)
 - `docs/testing/E2E_USER_TESTS.md` (5 secrets → pragmas)
+- `scripts/gcp/README.md` (3 secrets → placeholders)
+- `tests/integration/README.md` (1 secret -> placeholder)
+- `scripts/test/README.md` (2 secrets -> placeholder)
+
 
 **Approach:**
+
 ```markdown
 # Before
 password="SuperSecretPassword123"
 
 # After
-password="EXAMPLE_PASSWORD_CHANGE_ME"  # pragma: allowlist secret
+password="<your-secure-password>"
 ```
 
 **Remaining Work:**
 - Fix gitleaks detection of example secrets
 - Add fenced code block language specs (markdownlint)
 - Fix table formatting issues
+
+**Status:** Partially complete
 
 ---
 
@@ -115,6 +125,7 @@ password="EXAMPLE_PASSWORD_CHANGE_ME"  # pragma: allowlist secret
 - `services/mcp-gateway/src/ai/claude-client.test.ts` (4 secrets → 0)
 
 **Changes:**
+
 ```typescript
 // Before
 apiKey: 'sk-ant-api03-real-key'
@@ -153,6 +164,7 @@ apiKey: 'sk-ant-api03-test-DUMMY-KEY-NOT-REAL' // pragma: allowlist secret - Tes
 **Issue:** Example secrets in documentation still detected
 
 **Findings:**
+
 ```
 docs/deployment/VAULT_SETUP.md:274
   client_secret="EXAMPLE_SECRET_CHANGE_ME"
@@ -180,12 +192,14 @@ scripts/security/sanitize-docs.sh:67
 **Issue:** Windows CRLF line endings in bash scripts
 
 **Findings:**
+
 ```
 scripts/security/clean-secrets-baseline.sh: SC1017 (error): Literal carriage return
 scripts/security/sanitize-docs.sh: SC1017 (error): Literal carriage return
 ```
 
 **Fix Required:**
+
 ```bash
 # Convert to LF
 dos2unix scripts/security/clean-secrets-baseline.sh
@@ -200,6 +214,7 @@ tr -d '\r' < file.sh > file.tmp && mv file.tmp file.sh
 ### 4. markdownlint (FAILED)
 
 **Issues:**
+
 ```
 docs/deployment/VAULT_SETUP.md:73
   MD040: Missing language for fenced code block

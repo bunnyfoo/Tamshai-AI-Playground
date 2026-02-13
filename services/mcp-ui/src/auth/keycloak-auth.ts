@@ -208,10 +208,14 @@ export class KeycloakAuthService {
  * @throws Error if MCP_UI_CLIENT_SECRET is not set
  */
 export function createAuthServiceFromEnv(): KeycloakAuthService {
-  const keycloakUrl = process.env.KEYCLOAK_URL || 'http://keycloak:8080';
+  const keycloakUrl = process.env.KEYCLOAK_URL;
   const realm = process.env.KEYCLOAK_REALM || 'tamshai-corp';
   const clientId = process.env.MCP_UI_CLIENT_ID || 'mcp-ui';
   const clientSecret = process.env.MCP_UI_CLIENT_SECRET;
+
+  if (!keycloakUrl) {
+    throw new Error('KEYCLOAK_URL environment variable is required. Set it to your Keycloak server URL (e.g., https://keycloak.example.com/auth)');
+  }
 
   if (!clientSecret) {
     logger.warn('MCP_UI_CLIENT_SECRET not set - service-to-service auth disabled');

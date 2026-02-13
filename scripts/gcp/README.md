@@ -346,7 +346,7 @@ The `PROD_USER_PASSWORD` GitHub Secret is the **source of truth** for the `provi
 
 ```bash
 # Set the GitHub Secret (one-time)
-echo "YourSecurePassword123!" | gh secret set PROD_USER_PASSWORD
+echo "<your-secure-password>" | gh secret set PROD_USER_PASSWORD
 
 # Trigger the provisioning workflow
 gh workflow run provision-prod-users.yml -f action=all
@@ -358,7 +358,7 @@ For running provisioning directly via Cloud Run Job (without GitHub Actions):
 
 ```bash
 # Update password in GCP Secret Manager
-echo -n 'YourNewPassword123!' | gcloud secrets versions add prod-user-password \
+echo -n '<your-new-password>' | gcloud secrets versions add prod-user-password \
   --data-file=- --project=${GCP_PROJECT}
 
 # Then run the provisioning job with force password reset
@@ -374,7 +374,7 @@ gcloud run jobs execute provision-users \
 For initial infrastructure setup, you can pass the password to Terraform:
 
 ```bash
-export TF_VAR_prod_user_password="YourSecurePassword123!"
+export TF_VAR_prod_user_password="<your-secure-password>"
 terraform apply
 ```
 
