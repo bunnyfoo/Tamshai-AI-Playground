@@ -10,6 +10,7 @@
     "test:rbac": "jest rbac.test.ts",
     "test:sse": "jest sse-streaming.test.ts",
     "test:mcp": "jest mcp-tools.test.ts",
+    "test:genui": "jest generative-ui-verification.test.ts",
     "test:verbose": "jest --verbose",
     "test:debug": "DEBUG=* jest --verbose"
   },
