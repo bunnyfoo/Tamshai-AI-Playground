@@ -583,7 +583,39 @@ sync_integration_runner_client() {
                 fi
             fi
         fi
+
+        # Assign default client scopes for token exchange claims
+        # Without these scopes, exchanged tokens will be missing:
+        # - preferred_username (from 'profile' scope)
+        # - resource_access roles (from 'roles' scope)
+        log_info "  Assigning default client scopes for token exchange..."
+        local scopes=("profile" "email" "roles")
+        for scope_name in "${scopes[@]}"; do
+            # Try to add scope (ignore if already assigned)
+            if _kcadm update "clients/$uuid/default-client-scopes/$scope_name" -r "$REALM" 2>/dev/null; then
+                log_info "    '$scope_name' scope assigned"
+            else
+                log_info "    '$scope_name' scope already assigned or not needed"
+            fi
+        done
+
+        # Add explicit username mapper to ensure preferred_username is included
+        # This guarantees the claim exists even if profile scope doesn't handle it for service accounts
+        log_info "  Adding username mapper for token exchange..."
+        _kcadm create "clients/$uuid/protocol-mappers/models" -r "$REALM" \
+            -s name="username-mapper" \
+            -s protocol="openid-connect" \
+            -s protocolMapper="oidc-usermodel-property-mapper" \
+            -s consentRequired=false \
+            -s 'config."user.attribute"="username"' \
+            -s 'config."claim.name"="preferred_username"' \
+            -s 'config."jsonType.label"="String"' \
+            -s 'config."id.token.claim"="true"' \
+            -s 'config."access.token.claim"="true"' \
+            -s 'config."userinfo.token.claim"="true"' 2>/dev/null || {
+            log_info "    Username mapper already exists or not needed"
+        }
     fi
 
-    log_info "  mcp-integration-runner client configured"
+    log_info "  mcp-integration-runner client configured with token exchange scopes"
 }

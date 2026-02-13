@@ -149,6 +149,7 @@ export class TestAuthProvider {
           grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
           subject_token: serviceToken,
           requested_subject: username,
+          scope: 'openid profile', // Required for preferred_username and user claims
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
