@@ -70,3 +70,8 @@ web_origins = [
   "http://localhost:4011",
   "http://localhost:4012",
 ]
+
+# OAuth Flows
+# ROPC (Resource Owner Password Credentials) enabled for integration testing
+# See docs/security/ROPC_ASSESSMENT.md for security rationale
+direct_access_grants_enabled = true

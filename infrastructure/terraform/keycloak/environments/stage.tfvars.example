@@ -51,3 +51,9 @@ web_origins = [
   "https://tax.tamshai.com",
   "https://customer-support.tamshai.com",
 ]
+
+# OAuth Flows
+# ROPC (Resource Owner Password Credentials) DISABLED for security (mirror production)
+# Stage uses Authorization Code + PKCE flow only (OAuth 2.0 Security BCP RFC 8252)
+# See docs/security/ROPC_ASSESSMENT.md for security rationale
+direct_access_grants_enabled = false

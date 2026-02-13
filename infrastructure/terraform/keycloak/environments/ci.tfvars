@@ -39,3 +39,8 @@ valid_redirect_uris = [
 web_origins = [
   "http://localhost:3100",
 ]
+
+# OAuth Flows
+# ROPC (Resource Owner Password Credentials) enabled for automated testing
+# See docs/security/ROPC_ASSESSMENT.md for security rationale
+direct_access_grants_enabled = true

@@ -1137,6 +1137,30 @@ See `.claude/plans/generative-ui-testing-guide.md` for complete manual testing p
 
 See `docs/architecture/security-model.md` for complete security documentation.
 
+### OAuth Flow Policy
+
+**ROPC (Resource Owner Password Credentials) Flow**:
+
+The `direct_access_grants_enabled` setting controls whether the ROPC flow (password grant) is allowed for the `mcp-gateway` Keycloak client.
+
+**Security Assessment** (2026-02-12):
+- **Production Runtime**: Does NOT use ROPC flow - all production apps use Authorization Code + PKCE
+- **Integration Tests**: DO use ROPC flow for token acquisition (25+ test files)
+- **Security Risk**: ROPC exposes passwords to client applications (violates OAuth 2.0 Security BCP RFC 8252)
+
+**Environment Policy**:
+
+| Environment | direct_access_grants_enabled | Justification |
+|-------------|------------------------------|---------------|
+| **Production** | `false` | No runtime usage, security best practice |
+| **Stage** | `false` | Mirror production security posture |
+| **Dev** | `true` | Integration tests require password grant |
+| **CI** | `true` | Automated tests require password grant |
+
+**Configuration**: Set via `direct_access_grants_enabled` variable in `infrastructure/terraform/keycloak/environments/*.tfvars`
+
+**See Also**: `docs/security/ROPC_ASSESSMENT.md` for complete security analysis and test refactoring recommendations.
+
 ### Compliance
 
 **Standards**:

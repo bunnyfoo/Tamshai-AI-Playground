@@ -157,7 +157,7 @@ resource "keycloak_openid_client" "mcp_gateway" {
   access_type                  = "CONFIDENTIAL"
   client_secret                = var.mcp_gateway_client_secret
   standard_flow_enabled        = true
-  direct_access_grants_enabled = true
+  direct_access_grants_enabled = var.direct_access_grants_enabled # SECURITY: ROPC disabled in stage/prod, enabled in dev/CI for testing (see docs/security/ROPC_ASSESSMENT.md)
   service_accounts_enabled     = true
 
   valid_redirect_uris = var.valid_redirect_uris
