@@ -172,7 +172,7 @@ cmd_rotate() {
     NEW_SECRET=$(openssl rand -base64 32)
 
     echo "New secret generated (32 bytes, base64 encoded)"
-    read -p "Apply this rotation? (yes/no): " confirm
+    read -r -p "Apply this rotation? (yes/no): " confirm
 
     if [ "$confirm" = "yes" ]; then
         if [ "$ENV" = "dev" ]; then

@@ -11,9 +11,7 @@
 
 Successfully reduced `.secrets.baseline` from 367 secrets to 182 secrets (**-50% reduction**) by implementing stricter detection policies and removing build artifacts.
 
-###
-
- Key Achievements
+### Key Achievements
 
 1. ✅ **Build Artifacts Removed** - 205+ secrets from *.tsbuildinfo and test results
 2. ✅ **.detect-secrets Configuration** - Aggressive exclusion patterns implemented
@@ -41,13 +39,13 @@ Successfully reduced `.secrets.baseline` from 367 secrets to 182 secrets (**-50%
 
 **Files Removed from Tracking:**
 
-```
+```text
 D  clients/web/packages/auth/tsconfig.tsbuildinfo (75 secrets)
 D  clients/web/packages/ui/tsconfig.tsbuildinfo   (109 secrets)
 D  tests/performance/load-results.json            (8 secrets)
 D  tests/performance/smoke-results.json           (7 secrets)
 ✓  .turbo/cache/*.json                           (6+ secrets - already ignored)
-```
+```text
 
 **Total Removed:** 205+ secrets (56% of original baseline)
 
@@ -61,7 +59,7 @@ D  tests/performance/smoke-results.json           (7 secrets)
 # Performance test results (contain test data/tokens)
 tests/performance/*-results.json
 tests/performance/summary.json
-```
+```text
 
 ---
 
@@ -84,7 +82,7 @@ tests/performance/summary.json
 .*build/.*
 .*coverage/.*
 tests/performance/.*-results\.json$
-```
+```text
 
 **Impact:** Prevents ~200+ false positives from being added to baseline in the future.
 
@@ -99,7 +97,6 @@ tests/performance/.*-results\.json$
 - `tests/integration/README.md` (1 secret -> placeholder)
 - `scripts/test/README.md` (2 secrets -> placeholder)
 
-
 **Approach:**
 
 ```markdown
@@ -108,7 +105,7 @@ password="SuperSecretPassword123"
 
 # After
 password="<your-secure-password>"
-```
+```text
 
 **Remaining Work:**
 - Fix gitleaks detection of example secrets
@@ -132,7 +129,7 @@ apiKey: 'sk-ant-api03-real-key'
 
 // After
 apiKey: 'sk-ant-api03-test-DUMMY-KEY-NOT-REAL' // pragma: allowlist secret - Test dummy value
-```
+```text
 
 **Remaining Work:**
 - Apply to remaining test files (scripts/secrets/*.sh, services/mcp-*/tests/)
@@ -165,13 +162,13 @@ apiKey: 'sk-ant-api03-test-DUMMY-KEY-NOT-REAL' // pragma: allowlist secret - Tes
 
 **Findings:**
 
-```
+```text
 docs/deployment/VAULT_SETUP.md:274
   client_secret="EXAMPLE_SECRET_CHANGE_ME"
 
 scripts/security/sanitize-docs.sh:67
   sed pattern contains the old example secret
-```
+```text
 
 **Fix Required:**
 - Remove sed patterns with example secrets from sanitize-docs.sh
@@ -193,10 +190,10 @@ scripts/security/sanitize-docs.sh:67
 
 **Findings:**
 
-```
+```text
 scripts/security/clean-secrets-baseline.sh: SC1017 (error): Literal carriage return
 scripts/security/sanitize-docs.sh: SC1017 (error): Literal carriage return
-```
+```text
 
 **Fix Required:**
 
@@ -207,7 +204,7 @@ dos2unix scripts/security/sanitize-docs.sh
 
 # Or with tr
 tr -d '\r' < file.sh > file.tmp && mv file.tmp file.sh
-```
+```text
 
 ---
 
@@ -215,7 +212,7 @@ tr -d '\r' < file.sh > file.tmp && mv file.tmp file.sh
 
 **Issues:**
 
-```
+```text
 docs/deployment/VAULT_SETUP.md:73
   MD040: Missing language for fenced code block
 
@@ -224,7 +221,7 @@ docs/testing/E2E_USER_TESTS.md:187, 428
 
 docs/testing/E2E_USER_TESTS.md:199-200
   MD055/MD056: Table formatting issues (missing trailing pipe, column count)
-```
+```text
 
 **Fix Required:**
 - Specify language for all ` ```  ` blocks (bash, typescript, json, etc.)
@@ -273,27 +270,27 @@ docs/testing/E2E_USER_TESTS.md:199-200
 
 ### Short-term (This Week)
 
-4. **Regenerate Baseline:**
+1. **Regenerate Baseline:**
    - [ ] Install detect-secrets locally or in CI
    - [ ] Run `detect-secrets scan --baseline .secrets.baseline`
    - [ ] Verify count drops below 150 secrets
 
-5. **Update Pre-commit Config:**
+2. **Update Pre-commit Config:**
    - [ ] Add `.gitleaks.toml` configuration
    - [ ] Update `.pre-commit-config.yaml` with stricter policies
 
-6. **Documentation:**
+3. **Documentation:**
    - [ ] Update VULNERABILITY_MONITORING.md with secrets baseline info
    - [ ] Create secrets management guide
 
 ### Long-term (This Month)
 
-7. **Remaining Test Files:**
+1. **Remaining Test Files:**
    - [ ] scripts/gcp/*.sh (6 files, ~12 secrets)
    - [ ] services/mcp-*/tests/*.ts (5 files, ~10 secrets)
    - [ ] docs/plans/*.md (3 files, ~6 secrets)
 
-8. **CI/CD Integration:**
+2. **CI/CD Integration:**
    - [ ] Add secrets-baseline check to security workflow
    - [ ] Alert on baseline size increases
    - [ ] Require justification for new baseline entries
@@ -324,7 +321,7 @@ docs/testing/E2E_USER_TESTS.md:199-200
 
 ## Files Changed
 
-```
+```text
 Modified (M):
   .gitignore                                    (+7 lines - tsbuildinfo, perf results)
   .secrets.baseline                             (367 → 182 secrets, -50%)
@@ -342,7 +339,7 @@ Added (A):
   .detect-secrets                               (Aggressive exclusion config)
   scripts/security/clean-secrets-baseline.sh    (Automation script)
   scripts/security/sanitize-docs.sh             (Documentation sanitization)
-```
+```text
 
 ---
 

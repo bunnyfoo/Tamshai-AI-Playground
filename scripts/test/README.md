@@ -80,7 +80,8 @@ eval $(./scripts/secrets/read-github-secrets.sh --all --env)
 ```
 
 **Output Example:**
-```
+
+```bash
 ==========================================
 Retrieved Secrets (all)
 ==========================================
@@ -333,25 +334,27 @@ Both integration test locations have automatic TOTP handling:
 
 #### "Services not ready for integration tests"
 
-```
+```bash
 ❌ Some services are not healthy. Please start all services:
    cd infrastructure/docker && docker compose up -d
 ```
 
 **Solution:** Verify containers are running and healthy:
+
 ```bash
 docker ps --filter "name=tamshai-pg" --format "{{.Names}}: {{.Status}}"
 ```
 
 #### "Account is not fully set up"
 
-```
+```bash
 {"error":"invalid_grant","error_description":"Account is not fully set up"}
 ```
 
 **Note:** This should be handled automatically by the test setup files. If you see this error, it means automatic TOTP handling failed or you're running tests outside the standard frameworks.
 
 **Manual Solution:** Clear user's requiredActions:
+
 ```bash
 MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
   /opt/keycloak/bin/kcadm.sh update users/<USER_ID> -r tamshai-corp \
@@ -361,6 +364,7 @@ MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
 #### "Invalid user credentials"
 
 **Solution:** Reset the user's password:
+
 ```bash
 MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
   /opt/keycloak/bin/kcadm.sh set-password -r tamshai-corp \
@@ -370,6 +374,7 @@ MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
 #### "jwt audience invalid. expected: mcp-gateway"
 
 **Solution:** Add audience mapper to mcp-gateway client:
+
 ```bash
 # Get client ID
 CLIENT_ID=$(MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
@@ -391,6 +396,7 @@ MSYS_NO_PATHCONV=1 docker exec tamshai-pg-keycloak \
 #### "ECONNREFUSED" or "503 Service Unavailable"
 
 **Solution:** Check specific service health:
+
 ```bash
 curl http://127.0.0.1:3110/health  # Gateway
 curl http://127.0.0.1:3111/health  # HR
@@ -398,6 +404,7 @@ curl http://127.0.0.1:3112/health  # Finance
 ```
 
 Restart unhealthy container:
+
 ```bash
 docker restart tamshai-pg-mcp-gateway
 ```
