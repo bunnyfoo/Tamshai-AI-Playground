@@ -73,13 +73,13 @@ describe('Generative UI - Full Verification Suite', () => {
     });
 
     test('should contain all three data arrays', () => {
-      expect(approvalsData.data).toHaveProperty('timeOffRequests');
-      expect(approvalsData.data).toHaveProperty('expenseReports');
-      expect(approvalsData.data).toHaveProperty('budgetAmendments');
+      expect(approvalsData.component.props).toHaveProperty('timeOffRequests');
+      expect(approvalsData.component.props).toHaveProperty('expenseReports');
+      expect(approvalsData.component.props).toHaveProperty('budgetAmendments');
     });
 
     test('should have time-off requests with resolved names', () => {
-      const timeOffRequests = approvalsData.data.timeOffRequests;
+      const timeOffRequests = approvalsData.component.props.timeOffRequests;
       expect(Array.isArray(timeOffRequests)).toBe(true);
 
       if (timeOffRequests.length > 0) {
@@ -95,7 +95,7 @@ describe('Generative UI - Full Verification Suite', () => {
     });
 
     test('should have expense reports with resolved names and item counts', () => {
-      const expenseReports = approvalsData.data.expenseReports;
+      const expenseReports = approvalsData.component.props.expenseReports;
       expect(Array.isArray(expenseReports)).toBe(true);
 
       if (expenseReports.length > 0) {
@@ -119,7 +119,7 @@ describe('Generative UI - Full Verification Suite', () => {
     });
 
     test('should have budget amendments with resolved submitter names', () => {
-      const budgetAmendments = approvalsData.data.budgetAmendments;
+      const budgetAmendments = approvalsData.component.props.budgetAmendments;
       expect(Array.isArray(budgetAmendments)).toBe(true);
 
       if (budgetAmendments.length > 0) {
@@ -152,7 +152,7 @@ describe('Generative UI - Full Verification Suite', () => {
         { headers: { Authorization: `Bearer ${aliceToken}` } }
       );
 
-      const data = response.data.data;
+      const data = response.data.component.props;
       initialApprovalsCount =
         data.timeOffRequests.length +
         data.expenseReports.length +
@@ -277,10 +277,10 @@ describe('Generative UI - Full Verification Suite', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(response.data.component).toBe('EmployeeDetailCard');
-      expect(response.data.data).toHaveProperty('employee');
+      expect(response.data.component.type).toBe('EmployeeDetailCard');
+      expect(response.data.component.props).toHaveProperty('employee');
 
-      const employee = response.data.data.employee;
+      const employee = response.data.component.props.employee;
       expect(employee).toHaveProperty('firstName');
       expect(employee).toHaveProperty('lastName');
       expect(employee).toHaveProperty('workEmail');
@@ -296,9 +296,9 @@ describe('Generative UI - Full Verification Suite', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(response.data.component).toBe('OrgChart');
-      expect(response.data.data).toHaveProperty('nodes');
-      expect(Array.isArray(response.data.data.nodes)).toBe(true);
+      expect(response.data.component.type).toBe('OrgChart');
+      expect(response.data.component.props).toHaveProperty('nodes');
+      expect(Array.isArray(response.data.component.props.nodes)).toBe(true);
     });
   });
 
@@ -313,8 +313,8 @@ describe('Generative UI - Full Verification Suite', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(response.data.component).toBe('BudgetSummary');
-      expect(response.data.data).toHaveProperty('budgets');
+      expect(response.data.component.type).toBe('BudgetSummary');
+      expect(response.data.component.props).toHaveProperty('budgets');
     });
 
     test('should render quarterly report dashboard', async () => {
@@ -327,10 +327,10 @@ describe('Generative UI - Full Verification Suite', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(response.data.component).toBe('QuarterlyReportDashboard');
-      expect(response.data.data).toHaveProperty('report');
+      expect(response.data.component.type).toBe('QuarterlyReportDashboard');
+      expect(response.data.component.props).toHaveProperty('report');
 
-      const report = response.data.data.report;
+      const report = response.data.component.props.report;
       expect(report).toHaveProperty('kpis');
       expect(report).toHaveProperty('arrWaterfall');
     });
@@ -364,7 +364,7 @@ describe('Generative UI - Full Verification Suite', () => {
 
       expect(response.status).toBe(200);
       expect(response.data.component).toMatch(/ticket/i);
-      expect(response.data.data).toHaveProperty('tickets');
+      expect(response.data.component.props).toHaveProperty('tickets');
     });
   });
 
@@ -380,7 +380,7 @@ describe('Generative UI - Full Verification Suite', () => {
 
       expect(response.status).toBe(200);
       expect(response.data.component).toMatch(/pay.*stub/i);
-      expect(response.data.data).toBeDefined();
+      expect(response.data.component.props).toBeDefined();
     });
 
     test('should render pay runs list', async () => {
