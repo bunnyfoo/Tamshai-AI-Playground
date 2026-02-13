@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1091
 # =============================================================================
 # Keycloak Realm Synchronization Script
 # =============================================================================
@@ -36,7 +37,7 @@ set +H  # Disable history expansion to handle passwords with special characters 
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REALM="tamshai-corp"
+export REALM="tamshai-corp"
 ENV="${1:-dev}"
 
 # =============================================================================
@@ -50,6 +51,7 @@ source "$SCRIPT_DIR/lib/clients.sh"
 source "$SCRIPT_DIR/lib/mappers.sh"
 source "$SCRIPT_DIR/lib/groups.sh"
 source "$SCRIPT_DIR/lib/users.sh"
+source "$SCRIPT_DIR/lib/authz.sh"
 
 # =============================================================================
 # Main Execution
@@ -90,6 +92,10 @@ main() {
     # Sync client role mappers on web-portal
     # This ensures mcp-gateway roles are included in tokens for authorization
     sync_client_role_mappers
+
+    # Sync token exchange permissions (dev/ci only)
+    # Configures Authorization Services to allow mcp-integration-runner to impersonate users
+    sync_token_exchange_permissions
 
     # Provision test user (for E2E testing)
     provision_test_user
