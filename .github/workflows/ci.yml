@@ -598,10 +598,13 @@ jobs:
 
       - name: Configure Keycloak with Terraform
         env:
-          DEV_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
-          DEV_USER_PASSWORD: ${{ secrets.DEV_USER_PASSWORD }}
-          DEV_MCP_GATEWAY_CLIENT_SECRET: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
-          MCP_INTEGRATION_RUNNER_SECRET: ${{ secrets.MCP_INTEGRATION_RUNNER_SECRET }}
+          # Use TF_VAR_ prefix to pass secrets directly to Terraform
+          # This avoids bash interpolation issues with special characters in secrets
+          TF_VAR_keycloak_url: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
+          TF_VAR_keycloak_admin_password: ${{ secrets.DEV_KEYCLOAK_ADMIN_PASSWORD }}
+          TF_VAR_test_user_password: ${{ secrets.DEV_USER_PASSWORD }}
+          TF_VAR_mcp_gateway_client_secret: ${{ secrets.DEV_MCP_GATEWAY_CLIENT_SECRET }}
+          TF_VAR_mcp_integration_runner_secret: ${{ secrets.MCP_INTEGRATION_RUNNER_SECRET }}
         working-directory: infrastructure/terraform/keycloak
         run: |
           echo "=== Configuring Keycloak with Terraform ==="
@@ -610,16 +613,11 @@ jobs:
           terraform init
 
           # Apply Terraform configuration
-          # All secrets are passed via -var flags from GitHub secrets (not in tfvars)
+          # Secrets are passed via TF_VAR_ environment variables (no bash interpolation)
           echo "Creating Keycloak realm, roles, users, and clients with Terraform..."
           terraform apply -auto-approve \
             -var-file=environments/ci.tfvars \
-            -var="keycloak_url=http://localhost:${{ vars.DEV_PG_KEYCLOAK }}" \
-            -var='valid_redirect_uris=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/*"]' \
-            -var="keycloak_admin_password=${DEV_KEYCLOAK_ADMIN_PASSWORD}" \
-            -var="test_user_password=${DEV_USER_PASSWORD}" \
-            -var="mcp_gateway_client_secret=${DEV_MCP_GATEWAY_CLIENT_SECRET}" \
-            -var="mcp_integration_runner_secret=${MCP_INTEGRATION_RUNNER_SECRET}"
+            -var='valid_redirect_uris=["http://localhost:${{ vars.DEV_PG_MCP_GATEWAY }}/*"]'
 
           # Export client secret for integration tests
           echo "MCP_GATEWAY_CLIENT_SECRET=$(terraform output -raw mcp_gateway_client_secret)" >> $GITHUB_ENV
@@ -930,10 +928,11 @@ jobs:
           echo "MCP_GATEWAY_CLIENT_SECRET is set: ${MCP_GATEWAY_CLIENT_SECRET:+YES}"
           echo "MCP_GATEWAY_CLIENT_SECRET length: $(echo -n "${MCP_GATEWAY_CLIENT_SECRET}" | wc -c)"
           echo "MCP_INTEGRATION_RUNNER_SECRET is set: ${MCP_INTEGRATION_RUNNER_SECRET:+YES}"
+          echo "MCP_INTEGRATION_RUNNER_SECRET length: $(echo -n "${MCP_INTEGRATION_RUNNER_SECRET}" | wc -c)"
           echo ""
 
           echo "=== Keycloak Health Check ==="
-          curl -sf http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/ | grep -q "Keycloak" && echo "✅ Keycloak is responding" || echo "❌ Keycloak not responding"
+          curl -sf http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/master > /dev/null 2>&1 && echo "✅ Keycloak is responding" || echo "⚠️ Keycloak master realm not responding"
           echo ""
 
           echo "=== MCP Gateway Health Check ==="
@@ -941,61 +940,66 @@ jobs:
           echo ""
 
           echo "=== Test Token Acquisition (Token Exchange) ==="
-          # Step 1: Get service account token via client credentials
-          echo "Step 1: Acquiring mcp-integration-runner service token..."
-          SVC_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
-            -d "grant_type=client_credentials" \
-            -d "client_id=mcp-integration-runner" \
-            -d "client_secret=${MCP_INTEGRATION_RUNNER_SECRET}")
+          # Retry loop - Keycloak may need time after Terraform creates clients
+          TOKEN_ACQUIRED=false
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3: Acquiring mcp-integration-runner service token..."
+            SVC_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
+              -d "grant_type=client_credentials" \
+              -d "client_id=mcp-integration-runner" \
+              -d "client_secret=${MCP_INTEGRATION_RUNNER_SECRET}")
 
-          SVC_HTTP_CODE=$(echo "$SVC_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
-          SVC_BODY=$(echo "$SVC_RESPONSE" | grep -v "HTTP_CODE:")
+            SVC_HTTP_CODE=$(echo "$SVC_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+            SVC_BODY=$(echo "$SVC_RESPONSE" | grep -v "HTTP_CODE:")
 
-          if [ "$SVC_HTTP_CODE" != "200" ]; then
-            echo "❌ Service token acquisition failed with HTTP $SVC_HTTP_CODE"
-            echo "Response: $SVC_BODY"
-            exit 1
-          fi
+            if [ "$SVC_HTTP_CODE" = "200" ]; then
+              SVC_TOKEN=$(echo "$SVC_BODY" | jq -r '.access_token')
+              echo "✅ Service token acquired"
 
-          SVC_TOKEN=$(echo "$SVC_BODY" | jq -r '.access_token')
-          echo "✅ Service token acquired"
+              # Step 2: Exchange service token for user token (alice.chen)
+              echo "Exchanging for alice.chen user token..."
+              TOKEN_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
+                -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+                -d "client_id=mcp-integration-runner" \
+                -d "client_secret=${MCP_INTEGRATION_RUNNER_SECRET}" \
+                -d "subject_token=${SVC_TOKEN}" \
+                -d "requested_subject=alice.chen" \
+                -d "scope=openid profile roles")
 
-          # Step 2: Exchange service token for user token (alice.chen)
-          echo "Step 2: Exchanging for alice.chen user token..."
-          TOKEN_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://127.0.0.1:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/token \
-            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            -d "client_id=mcp-integration-runner" \
-            -d "client_secret=${MCP_INTEGRATION_RUNNER_SECRET}" \
-            -d "subject_token=${SVC_TOKEN}" \
-            -d "requested_subject=alice.chen" \
-            -d "scope=openid profile roles")
+              HTTP_CODE=$(echo "$TOKEN_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+              RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | grep -v "HTTP_CODE:")
 
-          HTTP_CODE=$(echo "$TOKEN_RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
-          RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | grep -v "HTTP_CODE:")
-
-          echo "HTTP Status: $HTTP_CODE"
-
-          if [ "$HTTP_CODE" = "200" ]; then
-            if echo "$RESPONSE_BODY" | jq -e '.access_token' > /dev/null 2>&1; then
-              echo "✅ Token exchange successful"
-              TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token')
-              echo "Token preview (first 50 chars): ${TOKEN:0:50}..."
-              echo ""
-              echo "=== Decoded Token Claims ==="
-              echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, sub, aud, azp, preferred_username, resource_access}' || echo "Token decode failed"
+              if [ "$HTTP_CODE" = "200" ] && echo "$RESPONSE_BODY" | jq -e '.access_token' > /dev/null 2>&1; then
+                echo "✅ Token exchange successful"
+                TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token')
+                echo "Token preview (first 50 chars): ${TOKEN:0:50}..."
+                echo ""
+                echo "=== Decoded Token Claims ==="
+                echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{iss, sub, aud, azp, preferred_username, resource_access}' || echo "Token decode failed"
+                TOKEN_ACQUIRED=true
+                break
+              else
+                echo "⚠️ Token exchange failed with HTTP $HTTP_CODE"
+                echo "Response: $RESPONSE_BODY"
+              fi
             else
-              echo "❌ Response doesn't contain access_token"
-              echo "Response: $RESPONSE_BODY"
-              exit 1
+              echo "⚠️ Service token failed with HTTP $SVC_HTTP_CODE: $SVC_BODY"
             fi
-          else
-            echo "❌ Token exchange failed with HTTP $HTTP_CODE"
-            echo "Response: $RESPONSE_BODY"
-            exit 1
-          fi
 
-          echo ""
-          echo "=== All pre-test checks passed ==="
+            if [ $attempt -lt 3 ]; then
+              echo "Retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+
+          if [ "$TOKEN_ACQUIRED" = "true" ]; then
+            echo ""
+            echo "=== All pre-test checks passed ==="
+          else
+            echo ""
+            echo "⚠️ Token exchange diagnostic failed - integration tests will attempt their own auth"
+            echo "This debug step is non-blocking; integration tests have independent auth setup."
+          fi
 
       - name: Run integration tests
         working-directory: tests/integration
@@ -1121,8 +1125,8 @@ jobs:
           KEYCLOAK_URL: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp
-          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp/protocol/openid-connect/certs
+          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp
+          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/certs
           TOKEN_REVOCATION_FAIL_OPEN: 'true'
           LOG_LEVEL: warn
           MCP_HR_URL: http://localhost:${{ vars.DEV_PG_MCP_HR }}
@@ -1228,8 +1232,8 @@ jobs:
           KEYCLOAK_URL: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}
           KEYCLOAK_REALM: tamshai-corp
           KEYCLOAK_CLIENT_ID: mcp-gateway
-          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp
-          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/auth/realms/tamshai-corp/protocol/openid-connect/certs
+          KEYCLOAK_ISSUER: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp
+          JWKS_URI: http://localhost:${{ vars.DEV_PG_KEYCLOAK }}/realms/tamshai-corp/protocol/openid-connect/certs
           LOG_LEVEL: warn
           MCP_HR_URL: http://localhost:${{ vars.DEV_PG_MCP_HR }}
           MCP_FINANCE_URL: http://localhost:${{ vars.DEV_PG_MCP_FINANCE }}
