@@ -8,6 +8,7 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import axios from 'axios';
 import winston from 'winston';
+import { generateInternalToken, INTERNAL_TOKEN_HEADER } from '@tamshai/shared';
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -53,6 +54,7 @@ async function confirmAction(
 router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedRequest, res: Response) => {
   const { requestId, approved } = req.body;
   const authToken = req.headers.authorization?.replace('Bearer ', '') || '';
+  const userContext = req.userContext;
 
   if (!requestId) {
     return res.status(400).json({
@@ -62,19 +64,45 @@ router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedReque
     });
   }
 
+  if (!userContext) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'UNAUTHORIZED',
+      message: 'User context not found - authentication required',
+    });
+  }
+
   try {
     const mcpHrUrl = process.env.MCP_HR_URL || 'http://localhost:3101';
     const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+    const internalSecret = process.env.MCP_INTERNAL_SECRET;
 
-    logger.info('[APPROVAL] Approving time-off request', { requestId, approved });
+    if (!internalSecret) {
+      logger.error('[APPROVAL] MCP_INTERNAL_SECRET not configured');
+      return res.status(500).json({
+        status: 'error',
+        code: 'CONFIG_ERROR',
+        message: 'Internal authentication not configured',
+      });
+    }
 
-    // Call MCP HR tool
+    logger.info('[APPROVAL] Approving time-off request', { requestId, approved, userId: userContext.userId });
+
+    // Generate MCP internal token for service-to-service authentication
+    const internalToken = generateInternalToken(internalSecret, userContext.userId, userContext.roles);
+
+    // Call MCP HR tool with userContext
     const mcpResponse = await axios.post(
       `${mcpHrUrl}/tools/approve_time_off_request`,
-      { requestId, approved: approved !== false },
+      {
+        userContext,  // Include userContext in body
+        requestId,
+        approved: approved !== false
+      },
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
+          [INTERNAL_TOKEN_HEADER]: internalToken,  // Add internal authentication
           'Content-Type': 'application/json',
         },
       }
@@ -128,6 +156,7 @@ router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedReque
 router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRequest, res: Response) => {
   const { reportId, approved } = req.body;
   const authToken = req.headers.authorization?.replace('Bearer ', '') || '';
+  const userContext = req.userContext;
 
   if (!reportId) {
     return res.status(400).json({
@@ -137,19 +166,45 @@ router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRe
     });
   }
 
+  if (!userContext) {
+    return res.status(401).json({
+      status: 'error',
+      code: 'UNAUTHORIZED',
+      message: 'User context not found - authentication required',
+    });
+  }
+
   try {
     const mcpFinanceUrl = process.env.MCP_FINANCE_URL || 'http://localhost:3102';
     const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+    const internalSecret = process.env.MCP_INTERNAL_SECRET;
 
-    logger.info('[APPROVAL] Approving expense report', { reportId, approved });
+    if (!internalSecret) {
+      logger.error('[APPROVAL] MCP_INTERNAL_SECRET not configured');
+      return res.status(500).json({
+        status: 'error',
+        code: 'CONFIG_ERROR',
+        message: 'Internal authentication not configured',
+      });
+    }
 
-    // Call MCP Finance tool
+    logger.info('[APPROVAL] Approving expense report', { reportId, approved, userId: userContext.userId });
+
+    // Generate MCP internal token for service-to-service authentication
+    const internalToken = generateInternalToken(internalSecret, userContext.userId, userContext.roles);
+
+    // Call MCP Finance tool with userContext
     const mcpResponse = await axios.post(
       `${mcpFinanceUrl}/tools/approve_expense_report`,
-      { reportId, approved: approved !== false },
+      {
+        userContext,  // Include userContext in body
+        reportId,
+        approved: approved !== false
+      },
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
+          [INTERNAL_TOKEN_HEADER]: internalToken,  // Add internal authentication
           'Content-Type': 'application/json',
         },
       }

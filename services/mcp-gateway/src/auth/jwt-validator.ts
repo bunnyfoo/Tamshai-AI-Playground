@@ -80,7 +80,7 @@ export class JWTValidator {
     // When running integration tests, Keycloak is accessed via 'localhost:8190' from the test runner,
     // generating tokens with iss="http://localhost:8190...".
     // However, the Gateway inside Docker sees Keycloak as "http://keycloak:8080...".
-    // We must accept both issuers to allow integration tests to pass.
+    // We must accept multiple issuers to allow integration tests to pass.
     const validIssuers = [this.config.issuer];
 
     // If the configured issuer is the internal Docker DNS, allow the external localhost equivalent
@@ -109,23 +109,33 @@ export class JWTValidator {
         },
         {
           algorithms: this.config.algorithms,
-          issuer: validIssuers, // Pass array of valid issuers
+          // Don't validate issuer here - we'll do it manually below to support multiple issuers
           audience: [this.config.clientId, 'account', 'mcp-integration-runner'],
         },
-        (err, decoded) => {
+        (err: Error | null, decoded: unknown) => {
           if (err) {
             // Enhanced debugging for 401 investigation
             // Log specific validation failure reason without leaking token data
             this.logger.error(`JWT Verification Failed: ${err.message}`, {
               errorName: err.name,
-              expectedIssuers: validIssuers,
               expectedAudiences: [this.config.clientId, 'account', 'mcp-integration-runner'],
             });
             reject(new Error('Invalid or expired token'));
             return;
           }
 
+          // Manual issuer validation to support multiple valid issuers (Split Horizon DNS fix)
           const payload = decoded as jwt.JwtPayload;
+          const tokenIssuer = payload.iss;
+
+          if (!tokenIssuer || !validIssuers.includes(tokenIssuer)) {
+            this.logger.error('JWT issuer validation failed', {
+              tokenIssuer,
+              validIssuers,
+            });
+            reject(new Error('Invalid token issuer'));
+            return;
+          }
 
           // Extract roles from Keycloak token structure
           // Support both realm roles (legacy/global) and client roles (best practice)

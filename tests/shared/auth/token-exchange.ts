@@ -149,8 +149,6 @@ export class TestAuthProvider {
           grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
           subject_token: serviceToken,
           requested_subject: username,
-          requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-          audience: 'mcp-gateway', // Request tokens with mcp-gateway audience
           scope: 'openid profile roles', // Required for preferred_username and resource_access claims
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
@@ -169,12 +167,18 @@ export class TestAuthProvider {
       return userToken;
     } catch (error) {
       const axiosError = error as AxiosError;
+      const errorData = axiosError.response?.data;
+      const errorMessage = typeof errorData === 'object'
+        ? JSON.stringify(errorData)
+        : errorData || axiosError.message;
+
       this.logger.error(`Failed to acquire user token for ${username}`, {
         error: axiosError.message,
-        response: axiosError.response?.data,
+        status: axiosError.response?.status,
+        response: errorData,
       });
       throw new Error(
-        `Failed to acquire user token for ${username}: ${axiosError.response?.data || axiosError.message}`
+        `Failed to acquire user token for ${username}: ${errorMessage}`
       );
     }
   }
