@@ -33,14 +33,27 @@ Required: Keycloak, MCP Gateway, MCP HR, MCP Finance, MCP Sales, MCP Support, Po
 
 ### 2. Environment Secrets
 
-Integration tests require `DEV_USER_PASSWORD` to authenticate test users against Keycloak. This secret is stored in GitHub Secrets and must be retrieved before running tests.
+**Preferred Method: Token Exchange (February 2026)**
+
+Integration tests now use the `mcp-integration-runner` service account for secure authentication:
 
 ```bash
-# Retrieve secrets from GitHub (triggers export-test-secrets workflow)
+# Retrieve integration test secret from GitHub
+eval $(./scripts/secrets/read-github-secrets.sh --integration --env)
+```
+
+This sets `MCP_INTEGRATION_RUNNER_SECRET` in your shell session, enabling token exchange authentication (OAuth 2.0 compliant, no user passwords in test code).
+
+**Fallback Method: ROPC (Deprecated)**
+
+If `MCP_INTEGRATION_RUNNER_SECRET` is not available, tests fall back to ROPC using `DEV_USER_PASSWORD`:
+
+```bash
+# Retrieve user password (ROPC fallback only)
 eval $(./scripts/secrets/read-github-secrets.sh --user-passwords --env)
 ```
 
-This sets `DEV_USER_PASSWORD` in your shell session. Without it, all tests that authenticate users will fail (empty password).
+**IMPORTANT**: ROPC is being phased out per OAuth 2.0 Security BCP (RFC 8252). Use token exchange for new test development.
 
 **Optional**: For AI query tests (SSE streaming, RBAC AI queries), also set:
 
@@ -54,7 +67,8 @@ Tests that require `CLAUDE_API_KEY` use the `testOrSkip` pattern and skip gracef
 
 | Variable | Required | Default | Source |
 |----------|----------|---------|--------|
-| `DEV_USER_PASSWORD` | **Yes** | (empty) | `read-github-secrets.sh --user-passwords` |
+| `MCP_INTEGRATION_RUNNER_SECRET` | **Preferred** | (empty, falls back to ROPC) | `read-github-secrets.sh --integration` |
+| `DEV_USER_PASSWORD` | **Fallback** | (empty) | `read-github-secrets.sh --user-passwords` |
 | `CLAUDE_API_KEY` | No | (empty, tests skip) | Anthropic Console |
 | `KEYCLOAK_ADMIN_PASSWORD` | No | `admin` | Local dev default |
 | `KEYCLOAK_URL` | **Auto** | Derived from `PORT_KEYCLOAK` | `.env` via `jest.config.js` |
@@ -70,8 +84,9 @@ Tests that require `CLAUDE_API_KEY` use the `testOrSkip` pattern and skip gracef
 ### read-github-secrets.sh Options
 
 ```bash
-./scripts/secrets/read-github-secrets.sh --e2e              # E2E test secrets
-./scripts/secrets/read-github-secrets.sh --user-passwords   # DEV/STAGE/PROD passwords
+./scripts/secrets/read-github-secrets.sh --integration      # Integration test secret (MCP_INTEGRATION_RUNNER_SECRET) - PREFERRED
+./scripts/secrets/read-github-secrets.sh --e2e              # E2E test secrets (TEST_USER_PASSWORD, TEST_USER_TOTP_SECRET)
+./scripts/secrets/read-github-secrets.sh --user-passwords   # DEV/STAGE/PROD passwords (ROPC fallback)
 ./scripts/secrets/read-github-secrets.sh --keycloak         # Keycloak admin password
 ./scripts/secrets/read-github-secrets.sh --all              # All secrets
 ./scripts/secrets/read-github-secrets.sh --all --env        # Output as export statements
@@ -89,8 +104,8 @@ The script triggers a GitHub Actions workflow (`export-test-secrets.yml`), waits
 ### tests/integration/ (Primary Suite)
 
 ```bash
-# 1. Get secrets first
-eval $(./scripts/secrets/read-github-secrets.sh --user-passwords --env)
+# 1. Get secrets first (token exchange - preferred)
+eval $(./scripts/secrets/read-github-secrets.sh --integration --env)
 
 # 2. Run tests
 cd tests/integration
@@ -213,7 +228,7 @@ SSE streaming for AI query responses.
 
 ---
 
-### services/mcp-gateway/src/__tests__/integration/
+### services/mcp-gateway/src/**tests**/integration/
 
 #### 6. rls-policies.test.ts (37 tests) - TDD RED
 

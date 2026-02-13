@@ -198,6 +198,7 @@ This is normal and expected on Windows.
 | `TEST_ENV` | No | N/A | Environment: `dev` (default), `stage`, or `prod` |
 | `TEST_USER_PASSWORD` | Yes* | GitHub Secret: `TEST_USER_PASSWORD` | Password for test-user.journey |
 | `TEST_USER_TOTP_SECRET` | Yes* | GitHub Secret: `TEST_USER_TOTP_SECRET` | TOTP secret for globalSetup provisioning |
+| `MCP_INTEGRATION_RUNNER_SECRET` | For integration tests | GitHub Secret: `MCP_INTEGRATION_RUNNER_SECRET` | Service account secret (token exchange, integration tests only) |
 | `DEV_USER_PASSWORD` | For API tests | `.env` file | Password for corporate users (eve.thompson, etc.) |
 | `CUSTOMER_USER_PASSWORD` | For customer tests | `.env` file / GitHub Secret | Password for customer realm users |
 | `TEST_USERNAME` | No | N/A | Override username (default: `test-user.journey`) |
@@ -205,6 +206,8 @@ This is normal and expected on Windows.
 <!-- Note: TEST_USER_PASSWORD and TEST_USER_TOTP_SECRET are GitHub Secrets - pragma: allowlist secret -->
 
 *Required for full employee login journey test. Without `TEST_USER_PASSWORD`, the TOTP login test is skipped. Without `TEST_USER_TOTP_SECRET`, globalSetup is skipped (tests fall back to auto-capture).
+
+**Note on MCP_INTEGRATION_RUNNER_SECRET**: This secret is used by **integration tests** (tests/integration/), not E2E tests. E2E tests authenticate as real users (test-user.journey) using ROPC for browser-based login flows. Integration tests use token exchange to impersonate users when calling MCP server APIs directly. See [Integration Test README](../../tests/integration/README.md) for details.
 
 **Loading secrets from .env** (Terraform-generated, contains all passwords):
 

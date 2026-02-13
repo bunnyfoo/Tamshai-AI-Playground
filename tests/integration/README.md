@@ -277,16 +277,42 @@ All services must be up and healthy:
 * ✅ MCP Sales (port from `PORT_MCP_SALES` env var)
 * ✅ MCP Support (port from `PORT_MCP_SUPPORT` env var)
 
-### 2\. Test Users Configured
+### 2\. Authentication Configuration
 
-All 8 test users must exist in Keycloak: 
-    
+**Preferred Method: Token Exchange (February 2026)**
+
+Integration tests now use the `mcp-integration-runner` service account for secure authentication:
+
+```bash
+# Load integration test secret from GitHub
+eval $(../../scripts/secrets/read-github-secrets.sh --integration --env)
+
+# Or set manually (local dev)
+export MCP_INTEGRATION_RUNNER_SECRET="<secret-from-github-secrets>"
+
+# Run tests (will use token exchange automatically)
+npm test
+```
+
+**Service Account Details**:
+- **Client ID**: `mcp-integration-runner`
+- **Client Secret**: From `MCP_INTEGRATION_RUNNER_SECRET` environment variable
+- **Authentication Flow**: Client Credentials → Token Exchange (impersonate test users)
+- **Environment**: Dev and CI only (not created in stage/prod)
+
+**Fallback Method: ROPC (Deprecated)**
+
+If `MCP_INTEGRATION_RUNNER_SECRET` is not set, tests fall back to ROPC using `DEV_USER_PASSWORD`:
+
 ```bash
 # Verify Keycloak is accessible (note: /auth prefix required for local dev)
 curl http://localhost:$PORT_KEYCLOAK/auth/health/ready
+
+# Load user password (ROPC fallback only)
+export DEV_USER_PASSWORD=$(grep '^DEV_USER_PASSWORD=' ../../infrastructure/docker/.env | cut -d= -f2)
 ```
 
-**Test Users** (all with password `[REDACTED-DEV-PASSWORD]`):
+**Test Users** (all with password `[REDACTED-DEV-PASSWORD]` when using ROPC):
 
 * `eve.thompson` - Executive
 * `alice.chen` - HR Admin
@@ -296,6 +322,8 @@ curl http://localhost:$PORT_KEYCLOAK/auth/health/ready
 * `nina.patel` - Manager
 * `marcus.johnson` - Engineer
 * `frank.davis` - Intern
+
+**IMPORTANT**: All 8 test users must exist in Keycloak for either authentication method to work.
 
 ### 3\. Sample Data Loaded
 

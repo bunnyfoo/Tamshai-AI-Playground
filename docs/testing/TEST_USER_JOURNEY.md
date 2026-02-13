@@ -67,12 +67,44 @@ All credentials are stored securely in GitHub Secrets, **not in the codebase**.
 | Secret Name | Environment | Purpose | Env Var Name |
 |-------------|-------------|---------|--------------|
 | `TEST_USER_PASSWORD` | All | Password for test-user.journey E2E account | `TEST_USER_PASSWORD` |
-| `DEV_USER_PASSWORD` | Dev | Password for identity-synced corporate users | `DEV_USER_PASSWORD` |
+| `MCP_INTEGRATION_RUNNER_SECRET` | Dev, CI | Client secret for mcp-integration-runner service account (token exchange) | `MCP_INTEGRATION_RUNNER_SECRET` |
+| `DEV_USER_PASSWORD` | Dev | Password for identity-synced corporate users (ROPC fallback) | `DEV_USER_PASSWORD` |
 | `STAGE_USER_PASSWORD` | Stage | Password for identity-synced corporate users | `STAGE_USER_PASSWORD` |
 | `PROD_USER_PASSWORD` | Prod | Password for identity-synced corporate users | `PROD_USER_PASSWORD` |
 | `CUSTOMER_USER_PASSWORD` | All | Password for customer portal test users | `CUSTOMER_USER_PASSWORD` |
 
-**Note**: `TEST_USER_PASSWORD` is for the dedicated E2E test account (test-user.journey), `{ENV}_USER_PASSWORD` secrets are for corporate employees provisioned via identity-sync, and `CUSTOMER_USER_PASSWORD` is for customer realm users (jane.smith@acme.com, etc.).
+**Note**: `TEST_USER_PASSWORD` is for the dedicated E2E test account (test-user.journey), `MCP_INTEGRATION_RUNNER_SECRET` is for integration test authentication via token exchange, `{ENV}_USER_PASSWORD` secrets are for corporate employees provisioned via identity-sync (used as ROPC fallback in integration tests), and `CUSTOMER_USER_PASSWORD` is for customer realm users (jane.smith@acme.com, etc.).
+
+### Integration Test Service Account
+
+**New in February 2026**: Integration tests now use **Token Exchange (RFC 8693)** via the `mcp-integration-runner` service account instead of ROPC.
+
+**Service Account Details**:
+- **Client ID**: `mcp-integration-runner`
+- **Client Secret**: Stored in `MCP_INTEGRATION_RUNNER_SECRET` GitHub Secret
+- **Client Type**: CONFIDENTIAL
+- **Enabled Flows**: Client Credentials + Token Exchange (impersonation)
+- **Disabled Flows**: ROPC, Standard Flow (no browser)
+- **Permissions**: `impersonation` role from `realm-management` client
+- **Environment**: Dev and CI only (not created in stage/prod)
+
+**Authentication Flow**:
+1. Integration test obtains client credentials token using `MCP_INTEGRATION_RUNNER_SECRET`
+2. Test exchanges token to impersonate a test user (e.g., alice.chen, bob.martinez)
+3. Test uses impersonated token to call MCP endpoints
+4. No user passwords required in test code (only service account secret)
+
+**Benefits**:
+- ✅ Follows OAuth 2.0 Security Best Current Practice (RFC 8252)
+- ✅ No user passwords in test code (centralized secret management)
+- ✅ Fine-grained permissions (impersonation only, no other privileges)
+- ✅ Clear audit trail (service account shown in logs)
+- ✅ Easier secret rotation (single secret vs. multiple user passwords)
+- ✅ Test environments only (dev/CI), not in stage/prod
+
+**Fallback**: Integration tests can fall back to ROPC with `DEV_USER_PASSWORD` if `MCP_INTEGRATION_RUNNER_SECRET` is not available (local development without secrets).
+
+**See Also**: `.claude/plans/test-auth-refactoring.md` for complete migration plan.
 
 #### TOTP Secrets
 
