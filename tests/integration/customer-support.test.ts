@@ -201,15 +201,21 @@ async function mcpRequest(
 /**
  * Create MCP client that adds userContext to requests
  * Compatible with existing test pattern: client.post(endpoint, data)
+ *
+ * IMPORTANT: The HMAC internal token is generated per-request (not cached)
+ * because the MCP server enforces a 30-second replay window. Caching the
+ * token at client creation time causes 401 errors when tests take longer
+ * than 30 seconds to reach the server.
  */
 function createMcpClient(token: string) {
   const userContext = extractUserContextFromToken(token);
-  const internalToken = generateInternalToken(
-    userContext.userId as string,
-    userContext.roles as string[]
-  );
   return {
     post: async (endpoint: string, data: Record<string, unknown> = {}) => {
+      // Generate fresh HMAC token per-request to stay within 30s replay window
+      const internalToken = generateInternalToken(
+        userContext.userId as string,
+        userContext.roles as string[]
+      );
       return axios.post(`${CONFIG.mcpSupportUrl}${endpoint}`, {
         ...data,
         userContext,
