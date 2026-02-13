@@ -194,4 +194,79 @@ router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRe
   }
 });
 
+/**
+ * POST /api/mcp/finance/tools/approve_budget
+ *
+ * Approve a pending budget with auto-confirmation
+ * Auth middleware applied at app level in index.ts
+ */
+router.post('/finance/tools/approve_budget', async (req: AuthenticatedRequest, res: Response) => {
+  const { budgetId, approved, approvedAmount, approverNotes } = req.body;
+  const authToken = req.headers.authorization?.replace('Bearer ', '') || '';
+
+  if (!budgetId) {
+    return res.status(400).json({
+      status: 'error',
+      code: 'MISSING_FIELD',
+      message: 'Missing required field: budgetId',
+    });
+  }
+
+  try {
+    const mcpFinanceUrl = process.env.MCP_FINANCE_URL || 'http://localhost:3102';
+    const gatewayUrl = `http://localhost:${process.env.PORT || 3100}`;
+
+    logger.info('[APPROVAL] Approving budget', { budgetId, approved });
+
+    // Call MCP Finance tool
+    const mcpResponse = await axios.post(
+      `${mcpFinanceUrl}/tools/approve_budget`,
+      { budgetId, approved: approved !== false, approvedAmount, approverNotes },
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // If pending_confirmation, auto-confirm immediately
+    if (mcpResponse.data.status === 'pending_confirmation' && mcpResponse.data.confirmationId) {
+      const confirmResult = await confirmAction(
+        mcpResponse.data.confirmationId,
+        true,
+        gatewayUrl,
+        authToken!
+      );
+
+      return res.json({
+        status: 'success',
+        message: 'Budget approved successfully',
+        data: confirmResult,
+      });
+    }
+
+    return res.json(mcpResponse.data);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const statusCode = error && typeof error === 'object' && 'response' in error &&
+                       error.response && typeof error.response === 'object' &&
+                       'status' in error.response ?
+                       (error.response.status as number) : 500;
+    const details = error && typeof error === 'object' && 'response' in error &&
+                    error.response && typeof error.response === 'object' &&
+                    'data' in error.response ?
+                    error.response.data : errorMessage;
+
+    logger.error('[APPROVAL] Budget approval failed', { error: errorMessage });
+
+    return res.status(statusCode).json({
+      status: 'error',
+      code: 'APPROVAL_FAILED',
+      message: 'Failed to approve budget',
+      details,
+    });
+  }
+});
+
 export default router;

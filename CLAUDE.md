@@ -1116,8 +1116,7 @@ Transform sample applications into enterprise-grade modules with unified UX, add
 7. ❌ Finance Quarterly Report (display:finance:quarterly_report) - Tool not implemented
 
 **Known Limitations**:
-- `approvals:pending.expenseReports.itemCount` - Always 0 (MCP doesn't provide)
-- `approvals:pending.budgetAmendments.currentBudget` - Always 0 (MCP doesn't provide)
+- `approvals:pending.budgetAmendments.currentBudget` - Always 0 (tool returns new budget submissions, not amendments to existing budgets)
 - `finance:quarterly_report` - Cannot test until get_quarterly_report tool is implemented
 
 **Testing Instructions**:

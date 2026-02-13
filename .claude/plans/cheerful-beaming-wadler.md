@@ -1,4 +1,11 @@
-# Plan: Fix Customer Realm Provisioning
+# Plan: Fix Customer Realm Provisioning (Login UX Flow)
+
+**Status**: CLOSED
+**Closed**: 2026-02-13
+
+All 9 items have been implemented and verified in the codebase.
+
+---
 
 ## Context
 
@@ -21,7 +28,7 @@ The customer realm (`tamshai-customers`) is imported by Docker's `--import-realm
 
 Add under the `KEYCLOAK CONFIGURATION` section:
 
-```
+```text
 KEYCLOAK_CUSTOMER_REALM=tamshai-customers
 ```
 
@@ -57,7 +64,7 @@ This is a static value (same as `KEYCLOAK_REALM=tamshai-corp` pattern used in je
 **d. `infrastructure/terraform/dev/templates/docker.env.tftpl`**
 - Add under `USER CREDENTIALS` section:
 
-  ```
+  ```text
   # Password for customer test users - GitHub secret: CUSTOMER_USER_PASSWORD
   CUSTOMER_USER_PASSWORD=${customer_user_password}
   ```
