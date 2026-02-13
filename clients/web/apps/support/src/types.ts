@@ -87,6 +87,7 @@ export interface CustomerOrganization {
  */
 export interface KBArticle {
   id: string;
+  kb_id?: string;
   title: string;
   content: string;
   category: string;

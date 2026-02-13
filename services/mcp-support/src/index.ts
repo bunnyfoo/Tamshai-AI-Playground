@@ -170,7 +170,7 @@ async function searchTickets(input: any, userContext: UserContext): Promise<MCPT
 // =============================================================================
 
 const SearchKnowledgeBaseInputSchema = z.object({
-  query: z.string(),
+  query: z.string().optional(),
   category: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(50),
   cursor: z.string().optional(), // Base64-encoded pagination cursor

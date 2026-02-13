@@ -35,8 +35,8 @@ export default function ArticleDetailPage() {
       if (!token) throw new Error('Not authenticated');
 
       const url = apiConfig.mcpGatewayUrl
-        ? `${apiConfig.mcpGatewayUrl}/api/mcp/support/get_article/${articleId}`
-        : `/api/mcp/support/get_article/${articleId}`;
+        ? `${apiConfig.mcpGatewayUrl}/api/mcp/support/get_knowledge_article?articleId=${encodeURIComponent(articleId!)}`
+        : `/api/mcp/support/get_knowledge_article?articleId=${encodeURIComponent(articleId!)}`;
 
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +77,7 @@ export default function ArticleDetailPage() {
 
       const data = await response.json() as APIResponse<KBArticleSummary[]>;
       // Filter out current article and limit to 3
-      const filtered = (data.data || []).filter((a) => a.id !== articleId).slice(0, 3);
+      const filtered = (data.data || []).filter((a) => (a as any).kb_id !== articleId && a.id !== articleId).slice(0, 3);
       return { ...data, data: filtered };
     },
     enabled: !!articleResponse?.data,
@@ -468,7 +468,7 @@ export default function ArticleDetailPage() {
                 {relatedArticles.map((related) => (
                   <Link
                     key={related.id}
-                    to={`/knowledge-base/${related.id}`}
+                    to={`/knowledge-base/${(related as any).kb_id || related.id}`}
                     className="block p-3 bg-secondary-50 hover:bg-secondary-100 rounded-lg transition-colors"
                     data-testid={`related-article-${related.id}`}
                   >

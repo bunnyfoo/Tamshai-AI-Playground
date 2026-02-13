@@ -160,6 +160,18 @@ describe('Generative UI - Full Verification Suite', () => {
     });
 
     test('should approve time-off request and persist to database', async () => {
+      // DEBUG: Log alice token info
+      const aliceParts = aliceToken.split('.');
+      if (aliceParts.length === 3) {
+        const payload = JSON.parse(Buffer.from(aliceParts[1], 'base64').toString());
+        console.log('[DEBUG] Alice token payload:', JSON.stringify({
+          sub: payload.sub,
+          preferred_username: payload.preferred_username,
+          aud: payload.aud,
+          resource_access: payload.resource_access
+        }, null, 2));
+      }
+
       // Get a pending time-off request
       const approvalsResponse = await httpClient.post(
         '/api/display',
@@ -229,6 +241,11 @@ describe('Generative UI - Full Verification Suite', () => {
       }
 
       const expenseToApprove = expenseReports[0];
+
+      // Validate token before using
+      if (!bobToken || typeof bobToken !== 'string' || bobToken.split('.').length !== 3) {
+        throw new Error(`Invalid bobToken: ${typeof bobToken}, length: ${bobToken?.length}`);
+      }
 
       // Approve via MCP Gateway
       const approveResponse = await axios.post(

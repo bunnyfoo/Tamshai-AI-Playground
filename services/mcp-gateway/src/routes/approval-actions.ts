@@ -126,12 +126,6 @@ router.post('/hr/tools/approve_time_off_request', async (req: AuthenticatedReque
  * Auth middleware applied at app level in index.ts
  */
 router.post('/finance/tools/approve_expense_report', async (req: AuthenticatedRequest, res: Response) => {
-  logger.warn('[APPROVAL-ROUTE-DEBUG] Expense report approval route hit', {
-    hasAuth: !!req.headers.authorization,
-    hasUserContext: !!req.userContext,
-    body: req.body
-  });
-
   const { reportId, approved } = req.body;
   const authToken = req.headers.authorization?.replace('Bearer ', '') || '';
 
