@@ -546,7 +546,7 @@ jobs:
             -e KC_HOSTNAME_STRICT_HTTPS=false \
             -e KC_HTTP_ENABLED=true \
             -p ${{ vars.DEV_PG_KEYCLOAK }}:8080 \
-            quay.io/keycloak/keycloak:24.0 start-dev
+            quay.io/keycloak/keycloak:24.0 start-dev --features=token-exchange,admin-fine-grained-authz
 
           # Wait for Keycloak to be ready (can take 60-90 seconds)
           echo "Waiting for Keycloak to start..."
